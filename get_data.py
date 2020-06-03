@@ -7,8 +7,8 @@ f = open('/Users/wangxindi/Downloads/allMeSH_2019.json', encoding="utf8")
 objects = ijson.items(f, 'articles.item')
 
 ids_list = []
-text = []
-labels = []
+text_list = []
+labels_list = []
 
 for obj in tqdm(objects):
     try:
@@ -16,8 +16,8 @@ for obj in tqdm(objects):
         text = obj["title"].strip() + " " + obj["abstractText"].strip()
         label = obj["meshMajor"]
         ids_list.append(ids)
-        text.append(text)
-        labels.append(label)
+        text_list.append(text)
+        labels_list.append(label)
     except AttributeError:
         print(obj["pmid"].strip())
 
@@ -29,7 +29,7 @@ with open('MeSH_name_id_mapping_2019.txt') as f:
         mapping_id[key] = value
 
 mesh_id_list = []
-for mesh in labels:
+for mesh in labels_list:
     new_mesh = []
     for item in mesh:
         index = mapping_id.get(item.strip())
@@ -43,13 +43,13 @@ for meshID in mesh_id_list:
 file.close()
 
 file = open("train_text.txt", "w", encoding='utf-8')
-for i, txt in enumerate(text):
+for i, txt in enumerate(text_list):
     document = ids_list[i] + "|" + txt
     file.write(document.strip() + "\r")
 file.close()
 
 file = open("train_meshList.txt", "w", encoding='utf-8')
-for i, mesh in enumerate(labels):
+for i, mesh in enumerate(labels_list):
     m = ids_list[i] + '||' + '|'.join(mesh)
     file.write(m.strip() + "\r")
 file.close()
