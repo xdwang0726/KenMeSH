@@ -2,7 +2,7 @@ import ijson
 from tqdm import tqdm
 
 """ get text(abstract and title) and MeSH terms to each document """
-f = open('/Users/wangxindi/Downloads/allMeSH_2019.json', encoding="utf8")
+f = open('allMeSH_2019.json', encoding="utf8")
 
 objects = ijson.items(f, 'articles.item')
 
