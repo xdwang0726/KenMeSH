@@ -7,7 +7,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--allMesh')
     parser.add_argument('--MeshID')
-    parser.add_argument('--train_meshI')
+    parser.add_argument('--train_meshID')
     parser.add_argument('--train_text')
     parser.add_argument('--train_MeshList')
     args = parser.parse_args()
