@@ -45,7 +45,11 @@ def main():
         new_mesh = []
         for item in mesh:
             index = mapping_id.get(item.strip())
-            new_mesh.append(index.strip())
+            if index is None:
+                print(index)
+                pass
+            else:
+                new_mesh.append(index.strip())
         mesh_id_list.append(new_mesh)
 
     print("Writing training MeSH ID to file")
