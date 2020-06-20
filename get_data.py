@@ -20,9 +20,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--allMesh')
     parser.add_argument('--MeshID')
-    parser.add_argument('--train_meshID')
-    parser.add_argument('--train_text')
-    parser.add_argument('--train_MeshList')
+    parser.add_argument('--train_json')
     args = parser.parse_args()
 
     """ mapping mesh terms to meshIDs """
@@ -59,9 +57,10 @@ def main():
     pubmed = {'articles': dataset}
     json_object = json.dumps(pubmed, indent=4)
 
-    with open("train.json", "w") as outfile:
+    with open(args.train_json, "w") as outfile:
         outfile.write(json_object)
 
+    print('Finished writing to json file!')
 
 if __name__ == "__main__":
     main()
