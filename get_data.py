@@ -15,6 +15,7 @@ def from_mesh2id(labels_list, mapping_id):
             mesh_id.append(index.strip())
     return mesh_id
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--allMesh')
