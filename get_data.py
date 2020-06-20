@@ -1,7 +1,19 @@
 import ijson
+import json
 from tqdm import tqdm
 import argparse
 
+
+def from_mesh2id(labels_list, mapping_id):
+    mesh_id = []
+    for mesh in labels_list:
+        index = mapping_id.get(mesh.strip())
+        if index is None:
+            print(index)
+            pass
+        else:
+            mesh_id.append(index.strip())
+    return mesh_id
 
 def main():
     parser = argparse.ArgumentParser()
@@ -12,27 +24,6 @@ def main():
     parser.add_argument('--train_MeshList')
     args = parser.parse_args()
 
-    """ get text(abstract and title) and MeSH terms to each document """
-    f = open(args.allMesh, encoding="utf8")
-
-    objects = ijson.items(f, 'articles.item')
-
-    ids_list = []
-    text_list = []
-    labels_list = []
-
-    for obj in tqdm(objects):
-        try:
-            ids = obj["pmid"].strip()
-            text = obj["title"].strip() + " " + obj["abstractText"].strip()
-            label = obj["meshMajor"]
-            ids_list.append(ids)
-            text_list.append(text)
-            labels_list.append(label)
-        except AttributeError:
-            print(obj["pmid"].strip())
-
-    print('Finished Loading Data!')
     """ mapping mesh terms to meshIDs """
     mapping_id = {}
     with open(args.MeshID) as f:
@@ -40,38 +31,35 @@ def main():
             (key, value) = line.split('=')
             mapping_id[key] = value
 
-    mesh_id_list = []
-    for mesh in labels_list:
-        new_mesh = []
-        for item in mesh:
-            index = mapping_id.get(item.strip())
-            if index is None:
-                print(index)
-                pass
-            else:
-                new_mesh.append(index.strip())
-        mesh_id_list.append(new_mesh)
+    """ get text(abstract and title) and MeSH terms to each document """
+    f = open(args.allMesh, encoding="utf8")
 
-    print("Writing training MeSH ID to file")
-    file = open(args.train_meshID, "w", encoding='utf-8')
-    for meshID in mesh_id_list:
-        allID = '|'.join(meshID)
-        file.write(allID.strip() + "\r")
-    file.close()
+    objects = ijson.items(f, 'articles.item')
 
-    print('Writing trianing text to file')
-    file = open(args.train_text, "w", encoding='utf-8')
-    for i, txt in enumerate(text_list):
-        document = ids_list[i] + "|" + txt
-        file.write(document.strip() + "\r")
-    file.close()
+    dataset = []
 
-    print('Writing training MeSH list to file')
-    file = open(args.train_MeshList, "w", encoding='utf-8')
-    for i, mesh in enumerate(labels_list):
-        m = ids_list[i] + '||' + '|'.join(mesh)
-        file.write(m.strip() + "\r")
-    file.close()
+    for obj in tqdm(objects):
+        data_point = {}
+        try:
+            ids = obj["pmid"].strip()
+            text = obj["abstractText"].strip()
+            label = obj["meshMajor"]
+            data_point['pmid'] = ids
+            data_point['abstractText'] = text
+            data_point['meshMajor'] = label
+            data_point['meshId'] = from_mesh2id(label, mapping_id)
+            dataset.append(data_point)
+        except AttributeError:
+            print(obj["pmid"].strip())
+
+    print('Finished Loading Data!')
+
+    """ write to json file """
+    pubmed = {'articles': dataset}
+    json_object = json.dumps(pubmed, indent=4)
+
+    with open("train.json", "w") as outfile:
+        outfile.write(json_object)
 
 
 if __name__ == "__main__":
