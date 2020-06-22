@@ -37,28 +37,31 @@ def main():
 
     dataset = []
 
+    i = 0
     for obj in tqdm(objects):
-        data_point = {}
-        try:
-            ids = obj["pmid"].strip()
-            text = obj["abstractText"].strip()
-            label = obj["meshMajor"]
-            data_point['pmid'] = ids
-            data_point['abstractText'] = text
-            data_point['meshMajor'] = label
-            data_point['meshId'] = from_mesh2id(label, mapping_id)
-            dataset.append(data_point)
-        except AttributeError:
-            print(obj["pmid"].strip())
+        if i <= 10000:
+            data_point = {}
+            try:
+                ids = obj["pmid"].strip()
+                text = obj["abstractText"].strip()
+                label = obj["meshMajor"]
+                data_point['pmid'] = ids
+                data_point['abstractText'] = text
+                data_point['meshMajor'] = label
+                data_point['meshId'] = from_mesh2id(label, mapping_id)
+                dataset.append(data_point)
+            except AttributeError:
+                print(obj["pmid"].strip())
+        else:
+            break
+        i += 1
 
     print('Finished Loading Data!')
 
     """ write to json file """
-    pubmed = {'articles': dataset}
-    json_object = json.dumps(pubmed, indent=4)
 
     with open(args.train_json, "w") as outfile:
-        outfile.write(json_object)
+        json.dump(dataset, outfile, indent=4)
 
     print('Finished writing to json file!')
 
