@@ -37,24 +37,19 @@ def main():
 
     dataset = []
 
-    i = 0
     for obj in tqdm(objects):
-        if i <= 10000:
-            data_point = {}
-            try:
-                ids = obj["pmid"].strip()
-                text = obj["abstractText"].strip()
-                label = obj["meshMajor"]
-                data_point['pmid'] = ids
-                data_point['abstractText'] = text
-                data_point['meshMajor'] = label
-                data_point['meshId'] = from_mesh2id(label, mapping_id)
-                dataset.append(data_point)
-            except AttributeError:
-                print(obj["pmid"].strip())
-        else:
-            break
-        i += 1
+        data_point = {}
+        try:
+            ids = obj["pmid"].strip()
+            text = obj["abstractText"].strip()
+            label = obj["meshMajor"]
+            data_point['pmid'] = ids
+            data_point['abstractText'] = text
+            data_point['meshMajor'] = label
+            data_point['meshId'] = from_mesh2id(label, mapping_id)
+            dataset.append(data_point)
+        except AttributeError:
+            print(obj["pmid"].strip())
 
     print('Finished Loading Data!')
 
