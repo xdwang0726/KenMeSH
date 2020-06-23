@@ -1,5 +1,32 @@
 import re
+from torchtext import data
 
+
+class TextMultiLabelDataset(data.Dataset):
+    def __init__(self, df, text_field, label_field, txt_col, lbl_cols, **kwargs):
+        # torchtext Field objects
+        fields = [('text', text_field), ('label', label_field)]
+        for l in lbl_cols:
+            fields.append((l, label_field))
+
+        is_test = False if lbl_cols[0] in df.columns else True
+        n_labels = len(lbl_cols)
+
+        examples = []
+        for idx, row in df.iterrows():
+            if not is_test:
+                lbls = [row[l] for l in lbl_cols]
+            else:
+                lbls = [0.0] * n_labels
+
+            txt = str(row[txt_col])
+            examples.append(data.Example.fromlist([txt] + lbls, fields))
+
+        super().__init__(examples, fields, **kwargs)
+
+
+def tokenizer(text):
+    return
 
 def text_preprocess(string):
     """
@@ -36,3 +63,4 @@ def text_preprocess(string):
 def get_label_embeddings():
 
     return
+
