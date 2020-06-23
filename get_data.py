@@ -55,8 +55,10 @@ def main():
 
     """ write to json file """
 
+    pubmed = {'articles': dataset}
+
     with open(args.train_json, "w") as outfile:
-        json.dump(dataset, outfile, indent=4)
+        json.dump(pubmed, outfile, indent=4)
 
     print('Finished writing to json file!')
 
