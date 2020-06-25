@@ -1,13 +1,14 @@
 import re
 from torchtext import data
+import spacy
 
 
 class TextMultiLabelDataset(data.Dataset):
     def __init__(self, df, text_field, label_field, txt_col, lbl_cols, **kwargs):
         # torchtext Field objects
         fields = [('text', text_field), ('label', label_field)]
-        for l in lbl_cols:
-            fields.append((l, label_field))
+        # for l in lbl_cols:
+        # fields.append((l, label_field))
 
         is_test = False if lbl_cols[0] in df.columns else True
         n_labels = len(lbl_cols)
@@ -20,13 +21,19 @@ class TextMultiLabelDataset(data.Dataset):
                 lbls = [0.0] * n_labels
 
             txt = str(row[txt_col])
-            examples.append(data.Example.fromlist([txt] + lbls, fields))
+            examples.append(data.Example.fromlist([txt, lbls], fields))
 
-        super().__init__(examples, fields, **kwargs)
+        super(TextMultiLabelDataset, self).__init__(examples, fields, **kwargs)
 
 
-def tokenizer(text):
-    return
+def tokenize(text):
+    tokens = []
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(text)
+    for token in doc:
+        tokens.append(token.text)
+    return tokens
+
 
 def text_preprocess(string):
     """

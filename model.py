@@ -25,30 +25,24 @@ class Embeddings_OOV(torch.nn.Module):
 
 
 class ContentsExtractor(nn.Module):
-    def __init__(self, pretrained_file, vocab_size, embedding_dim, channel, nKernel, ksz, dropout_rate):
+    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
         super(ContentsExtractor, self).__init__()
 
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
-        self.channel = channel
         self.nKernel = nKernel
         self.ksz = ksz
-        self.dropout_rate = dropout_rate
 
-        model = gensim.models.KeyedVectors.load_word2vec_format(pretrained_file, binary=True)
-        weight = torch.FloatTensor(model.wv)
-        self.embedding_layer = nn.Embedding.from_pretrained(weight)
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
-        self.convs = nn.ModuleList([nn.Conv2d(channel, nKernel, (k, embedding_dim)) for k in ksz])
-
-        self.dropout = nn.Dropout(dropout_rate)
+        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 
     def forward(self, input_seq):
-        embedded_seq = self.embedding_layer(input_seq)
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
 
         embedded_seq = embedded_seq.unsqueeze(1)
-        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks)*(N,Knum,W)
-        x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks)*(N,Knum)
+        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
 
         x_concat = torch.cat(x_maxpool, 1)
 
@@ -106,10 +100,10 @@ class LabelNet(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self):
+    def __init__(self, vocab_size, nKernel, ksz, node_features, hidden_gcn_size, num_classes, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
-        self.cnn = ContentsExtractor()
-        self.gcn = LabelNet()
+        self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
+        self.gcn = LabelNet(node_features, hidden_gcn_size, num_classes)
 
     def forward(self, input_seq, data):
         x_feature = self.cnn(input_seq)

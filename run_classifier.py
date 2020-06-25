@@ -1,17 +1,19 @@
+import os
+
 import ijson
-from tqdm import tqdm
-from sklearn.preprocessing import MultiLabelBinarizer
 import pandas as pd
 import torch
-
-import spacy
-from spacy.tokenizer import Tokenizer
-from torchtext.data import Field
+from sklearn.preprocessing import MultiLabelBinarizer
+from torch.nn import init
 from torchtext import data
+from torchtext.vocab import Vectors
+from tqdm import tqdm
+
+from utils import tokenize, TextMultiLabelDataset
 
 ########## Load Dataset and Preprocessing ##########
 
-# load the data
+##### load training data #####
 f = open('train.json', encoding="utf8")
 objects = ijson.items(f, 'articles.item')
 
@@ -44,27 +46,30 @@ mlb = MultiLabelBinarizer(classes=meshIDs)
 label_vectors = mlb.fit_transform(label_id)
 
 # write to dataframe
-df = pd.DataFrame(pmid, columns=['PMID'])
-df['text'] = all_text
-pd.concat([df, pd.DataFrame(label_vectors)], axis=1)
+df_train = pd.DataFrame(pmid, columns=['PMID'])
+df_train['text'] = all_text
+df_train = pd.concat([df_train, pd.DataFrame(label_vectors, columns=meshIDs)], axis=1)
 
-#
+text_col = 'text'
+label_col = meshIDs
+
+##### load test data #####
+
+
 TEXT = data.Field(tokenize=tokenize, lower=True, batch_first=True, truncate_first=True)
-LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, tensor_type=torch.FloatTensor)
+LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
 
+train = TextMultiLabelDataset(df_train, text_field=TEXT, label_field=LABEL, txt_col=text_col, lbl_cols=label_col)
 
+# build vocab
+file_path = 'BioWord2Vec.vec'
+cache, name = os.path.split(file_path)
+vectors = Vectors(name=name, cache=cache)
+vectors.unk_init = init.xavier_uniform
+TEXT.build_vocab(train, vectors=vectors)
 
-
-
-
-
-# Tokenize
-nlp = spacy.load("en_core_web_sm")
-tokenizer = Tokenizer(nlp.vocab)
-
-TEXT = Field(sequential=True, tokenize=tokenizer, lower=True)
-LABEL = data.Field(sequential=True, use_vocab=True)
-fields = [('abstractText', TEXT)]
-
-# load dataset
-meshIndexing = data.TabularDataset(path='train.json', format='json', fields=fields)
+# using the training corpus to create the vocabulary
+using_gpu = True
+train_iter = data.Iterator(dataset=train, batch_size=32, train=True, repeat=False, device=0 if using_gpu else -1)
+vocab_size = len(TEXT.vocab.itos)
+num_classes = len(meshIDs)
