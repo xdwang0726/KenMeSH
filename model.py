@@ -100,16 +100,18 @@ class LabelNet(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, node_features, hidden_gcn_size, num_classes, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, node_features, hidden_gcn_size, num_classes, dropout_rate,
+                 embedding_dim=200):
         super(MeSH_GCN, self).__init__()
         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
         self.gcn = LabelNet(node_features, hidden_gcn_size, num_classes)
+        self.dropout = nn.Dropout(p=dropout_rate)
 
     def forward(self, input_seq, data):
         x_feature = self.cnn(input_seq)
         label_feature = self.gcn(data)
         concat = torch.cat((x_feature, label_feature), dim=0)
-        concat = F.dropout(concat)
+        concat = self.dropout(concat)
         x = F.log_softmax(concat, dim=1)
         return x
 

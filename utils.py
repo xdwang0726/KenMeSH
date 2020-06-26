@@ -66,8 +66,3 @@ def text_preprocess(string):
     string = re.sub(r"\s{2,}", " ", string)
     return string.strip().lower()
 
-
-def get_label_embeddings():
-
-    return
-
