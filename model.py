@@ -1,8 +1,9 @@
+import dgl.function as fn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import gensim
-import dgl.function as fn
+
+
 #from torch_geometric.nn import GCNConv
 
 
@@ -87,9 +88,9 @@ class GCNLayer(nn.Module):
 
 
 class LabelNet(nn.Module):
-    def __init__(self, node_features, hidden_gcn_size, num_classes):
+    def __init__(self, hidden_gcn_size, num_classes, in_node_features=200):
         super(LabelNet, self).__init__()
-        self.gcn1 = GCNLayer(node_features, hidden_gcn_size)
+        self.gcn1 = GCNLayer(in_node_features, hidden_gcn_size)
         self.gcn2 = GCNLayer(hidden_gcn_size, num_classes)
 
     def forward(self, g, features):
@@ -100,16 +101,15 @@ class LabelNet(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, node_features, hidden_gcn_size, num_classes, dropout_rate,
-                 embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_classes, dropout_rate, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
-        self.gcn = LabelNet(node_features, hidden_gcn_size, num_classes)
+        self.gcn = LabelNet(hidden_gcn_size, num_classes, embedding_dim)
         self.dropout = nn.Dropout(p=dropout_rate)
 
-    def forward(self, input_seq, data):
+    def forward(self, input_seq, g, features):
         x_feature = self.cnn(input_seq)
-        label_feature = self.gcn(data)
+        label_feature = self.gcn(g, features)
         concat = torch.cat((x_feature, label_feature), dim=0)
         concat = self.dropout(concat)
         x = F.log_softmax(concat, dim=1)

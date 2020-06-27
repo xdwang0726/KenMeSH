@@ -1,22 +1,22 @@
+import argparse
 import os
 
 import ijson
 import pandas as pd
 import torch
-import torch.nn as nn
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.nn import init
 from torchtext import data
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from utils import tokenize, TextMultiLabelDataset
 from build_graph import get_edge_and_node_fatures, build_MeSH_graph
 from model import MeSH_GCN
+from utils import tokenize, TextMultiLabelDataset
 
 
 def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec_path, MeSH_id_pair_path,
-                    parent_children_path, using_gpu):
+                    parent_children_path, using_gpu, nKernel, ksz, hidden_gcn_size, dropout_rate, embedding_dim=200):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -107,6 +107,30 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     G = build_MeSH_graph(edges, node_count, label_embedding)
 
     # Prepare model
-    net = MeSH_GCN(vocab_size, nKernel, ksz, num_classes, hidden_gcn_size, dropout_rate, embedding_dim)
-    net.embedding_layer.weight.data.copy_(TEXT.vocab.vectors)
-    return train_iter, test_iter, G
+    net = MeSH_GCN(vocab_size, nKernel, ksz, hidden_gcn_size, num_classes, dropout_rate, embedding_dim)
+    net.cnn.embedding_layer.weight.data.copy_(TEXT.vocab.vectors)
+    return train_iter, test_iter, G, net
+
+
+def main():
+    train_data_path, test_data_path, mesh_id_list_path, word2vec_path, MeSH_id_pair_path,
+    parent_children_path, using_gpu, nKernel, ksz, hidden_gcn_size, dropout_rate, embedding_dim = 200
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_path')
+    parser.add_argument('--test_path')
+    parser.add_argument('--mesh_id_path')
+    parser.add_argument('--word2vec_path')
+    parser.add_argument('--meSH_pair_path')
+    parser.add_argument('--mesh_parent_children_path')
+    parser.add_argument('using_gpu')
+    parser.add_argument('--cnn_num_kernel')
+    parser.add_argument('--ksz')
+    parser.add_argument('--mesh_parent_children_path')
+    parser.add_argument('using_gpu')
+    parser.add_argument('--cnn_kernel_sz')
+    parser.add_argument('using_gpu')
+    args = parser.parse_args()
+
+
+if __name__ == "__main__":
+    main()

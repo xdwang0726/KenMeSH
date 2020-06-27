@@ -1,7 +1,8 @@
-import ijson
-import json
-from tqdm import tqdm
 import argparse
+import json
+
+import ijson
+from tqdm import tqdm
 
 
 def from_mesh2id(labels_list, mapping_id):

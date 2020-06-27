@@ -1,6 +1,7 @@
 import dgl
 import torch
 import torch.nn as nn
+
 from utils import tokenize
 
 
@@ -30,7 +31,7 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vocab_siz
             index_item = (values.index(item[0]), values.index(item[1]))
             edges.append(index_item)
 
-    label_embedding = {}
+    label_embedding = torch.zeros(0)
     for key, value in mapping_id.items():
         embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=200)
         key = tokenize(key)
@@ -44,9 +45,9 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vocab_siz
                 seq = field.vocab.stoi.get(k)
             key_seq.append(seq)
 
-        embedded_key = embedding(torch.LongTensor(key_seq))
-        embedding = torch.mean(embedded_key, 1)
-        label_embedding[values.index(value)] = embedding
+        embedded_key = embedding(torch.LongTensor(key_seq))  # size: (seq_len, embedding_sz)
+        embedding = torch.mean(input=embedded_key, dim=0, keepdim=True)
+        label_embedding = torch.cat((label_embedding, embedding), dim=0)
 
     return edges, node_count, label_embedding
 
@@ -59,5 +60,5 @@ def build_MeSH_graph(edge_list, nodes, label_embedding):
     src, dst = tuple(zip(*edge_list))
     g.add_edges(src, dst)
     # add node feature to the graph
-    g.ndata['feat'] = torch.tensor(label_embedding.values())
+    g.ndata['feat'] = label_embedding
     return g
