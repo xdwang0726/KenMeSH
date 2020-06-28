@@ -30,19 +30,25 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     label = []
     label_id = []
 
+    i = 0
     print("Loading training data")
     for obj in tqdm(objects):
-        try:
-            ids = obj["pmid"].strip()
-            text = obj["abstractText"].strip()
-            original_label = obj["meshMajor"]
-            mesh_id = obj['meshId']
-            pmid.append(ids)
-            all_text.append(text)
-            label.append(original_label)
-            label_id.append(mesh_id)
-        except AttributeError:
-            print(obj["pmid"].strip())
+        if i <= 50000:
+            try:
+                ids = obj["pmid"].strip()
+                text = obj["abstractText"].strip()
+                original_label = obj["meshMajor"]
+                mesh_id = obj['meshId']
+                pmid.append(ids)
+                all_text.append(text)
+                label.append(original_label)
+                label_id.append(mesh_id)
+            except AttributeError:
+                print(obj["pmid"].strip())
+        else:
+            break
+        i += 1
+
     print("Finish loading training data")
 
     # load test data
@@ -156,7 +162,7 @@ def main():
 
             # zero the parameter gradients
             optimizer.zero_grad()
-            model.lr_scheduler.step()
+            lr_scheduler.step()
 
             # forward + backward + optimize
             outputs = model(xs, G, G.ndata['feat'])
