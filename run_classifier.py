@@ -101,7 +101,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     # build vocab
     print('Starting loading vocab')
     cache, name = os.path.split(word2vec_path)
-    vectors = Vectors(name=name, cache=cache)
+    vectors = Vectors(name=name, cache=cache, max_vectors=100000)
     vectors.unk_init = init.xavier_uniform
     TEXT.build_vocab(train, vectors=vectors)
     print('Finished loading vocab')
