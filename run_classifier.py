@@ -45,9 +45,9 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
                 label_id.append(mesh_id)
             except AttributeError:
                 print(obj["pmid"].strip())
+            i += 1
         else:
             break
-        i += 1
 
     print("Finish loading training data")
 
