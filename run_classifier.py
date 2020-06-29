@@ -30,9 +30,8 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     label = []
     label_id = []
 
-    i = 0
     print("Loading training data")
-    for obj in tqdm(objects):
+    for i, obj in enumerate(tqdm(objects)):
         if i <= 100000:
             try:
                 ids = obj["pmid"].strip()
@@ -45,7 +44,6 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
                 label_id.append(mesh_id)
             except AttributeError:
                 print(obj["pmid"].strip())
-            i += 1
         else:
             break
 
