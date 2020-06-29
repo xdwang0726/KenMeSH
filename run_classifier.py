@@ -32,7 +32,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     print("Loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 500:
             try:
                 ids = obj["pmid"].strip()
                 text = obj["abstractText"].strip()
@@ -96,7 +96,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
 
     train = TextMultiLabelDataset(all_text, text_field=TEXT, label_field=LABEL, lbls=label_vectors)
-    test = TextMultiLabelDataset(test_text, test_text=TEXT, label_field=None, test=True)
+    test = TextMultiLabelDataset(test_text, test_field=TEXT, label_field=None, test=True)
 
     # build vocab
     print('Starting loading vocab')
@@ -147,10 +147,14 @@ def main():
 
     args = parser.parse_args()
 
+    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    print(device)
+
     mlb, train_iter, test_iter, G, model = prepare_dataset(args.train_path, args.test_path, args.mesh_id_path,
                                                            args.word2vec_path, args.meSH_pair_path,
                                                            args.mesh_parent_children_path)
-
+    model.to(device)
+    G.to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=1e-4)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=.99)
     criterion = nn.BCELoss()
@@ -160,8 +164,8 @@ def main():
         for i, batch in enumerate(tqdm(train_iter)):
             model.train()
             # load data
-            xs = batch.text
-            ys = batch.label
+            xs = batch.text.to(device)
+            ys = batch.label.to(device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -185,7 +189,7 @@ def main():
     model.eval()
     pred = []
     for batch in tqdm(test_iter):
-        xs = batch.text
+        xs = batch.text.to(device)
         logits = model(xs, xs, G, G.ndata['feat'])
         pred.append(logits)
 
