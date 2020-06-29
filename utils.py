@@ -18,13 +18,12 @@ class TextMultiLabelDataset(data.Dataset):
             n_labels = len(lbls)
 
         examples = []
-        for i, lbl in enumerate(tqdm(lbls)):
+        for i, txt in enumerate(tqdm(text)):
             if not is_test:
-                l = lbl
+                l = lbls[i]
             else:
                 l = [0.0] * n_labels
 
-            txt = text[i]
             examples.append(data.Example.fromlist([txt, l], fields))
 
         super(TextMultiLabelDataset, self).__init__(examples, fields, **kwargs)
