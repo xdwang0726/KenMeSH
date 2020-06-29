@@ -32,7 +32,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     print("Loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 500:
+        if i <= 50000:
             try:
                 ids = obj["pmid"].strip()
                 text = obj["abstractText"].strip()
@@ -102,7 +102,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     print('Starting loading vocab')
     cache, name = os.path.split(word2vec_path)
     vectors = Vectors(name=name, cache=cache, max_vectors=100000)
-    vectors.unk_init = init.xavier_uniform
+    #    vectors.unk_init = init.xavier_uniform
     TEXT.build_vocab(train, vectors=vectors)
     print('Finished loading vocab')
 
