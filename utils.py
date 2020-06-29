@@ -1,6 +1,7 @@
 import re
 from torchtext import data
 import spacy
+from tqdm import tqdm
 
 
 class TextMultiLabelDataset(data.Dataset):
@@ -17,8 +18,7 @@ class TextMultiLabelDataset(data.Dataset):
             n_labels = len(lbls)
 
         examples = []
-        for i, lbl in enumerate(lbls):
-            print(i)
+        for i, lbl in enumerate(tqdm(lbls)):
             if not is_test:
                 l = lbl
             else:
