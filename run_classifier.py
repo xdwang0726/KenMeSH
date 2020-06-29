@@ -77,23 +77,26 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     label_vectors = mlb.fit_transform(label_id)
 
-    # write training data to dataframe
-    df_train = pd.DataFrame(pmid, columns=['PMID'])
-    df_train['text'] = all_text
-    df_train = pd.concat([df_train, pd.DataFrame(label_vectors)], axis=1)
+    # # write training data to dataframe
+    # print('write training data to dataframe')
+    # df_train = pd.DataFrame(pmid, columns=['PMID'])
+    # df_train['text'] = all_text
+    # df_train = pd.concat([df_train, pd.DataFrame(label_vectors)], axis=1)
 
-    # write test data to dataframe
-    df_test = pd.DataFrame(test_pmid, columns=['PMID'])
-    df_test['text'] = test_text
+    # # write test data to dataframe
+    # print('write test data to dataframe')
+    # df_test = pd.DataFrame(test_pmid, columns=['PMID'])
+    # df_test['text'] = test_text
 
-    text_col = 'text'
-    label_col = list(range(0, len(df_train.columns) - 2))
+    # text_col = 'text'
+    # label_col = list(range(0, len(df_train.columns) - 2))
 
+    print('use torchtext to prepare training and test data')
     TEXT = data.Field(tokenize=tokenize, lower=True, batch_first=True, truncate_first=True)
     LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
 
-    train = TextMultiLabelDataset(df_train, text_field=TEXT, label_field=LABEL, txt_col=text_col, lbl_cols=label_col)
-    test = TextMultiLabelDataset(df_test, test_text=TEXT, text_col=text_col, label_field=None, test=True)
+    train = TextMultiLabelDataset(all_text, text_field=TEXT, label_field=LABEL, lbls=label_vectors)
+    test = TextMultiLabelDataset(test_text, test_text=TEXT, label_field=None, test=True)
 
     # build vocab
     print('Starting loading vocab')

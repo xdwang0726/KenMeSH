@@ -4,24 +4,27 @@ import spacy
 
 
 class TextMultiLabelDataset(data.Dataset):
-    def __init__(self, df, text_field, label_field, txt_col, lbl_cols, **kwargs):
+    def __init__(self, text, text_field, label_field, lbls=None, **kwargs):
         # torchtext Field objects
         fields = [('text', text_field), ('label', label_field)]
         # for l in lbl_cols:
         # fields.append((l, label_field))
 
-        is_test = False if lbl_cols[0] in df.columns else True
-        n_labels = len(lbl_cols)
+        is_test = True if lbls is None else False
+        if is_test:
+            pass
+        else:
+            n_labels = len(lbls)
 
         examples = []
-        for idx, row in df.iterrows():
+        for i, lbl in enumerate(lbls):
             if not is_test:
-                lbls = [row[l] for l in lbl_cols]
+                l = lbl
             else:
-                lbls = [0.0] * n_labels
+                l = [0.0] * n_labels
 
-            txt = str(row[txt_col])
-            examples.append(data.Example.fromlist([txt, lbls], fields))
+            txt = text[i]
+            examples.append(data.Example.fromlist([txt, l], fields))
 
         super(TextMultiLabelDataset, self).__init__(examples, fields, **kwargs)
 
