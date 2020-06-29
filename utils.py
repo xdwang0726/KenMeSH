@@ -12,17 +12,11 @@ class TextMultiLabelDataset(data.Dataset):
         # fields.append((l, label_field))
 
         is_test = True if lbls is None else False
-        if is_test:
-            pass
-        else:
-            n_labels = len(lbls)
 
         examples = []
         for i, txt in enumerate(tqdm(text)):
             if not is_test:
                 l = lbls[i]
-            else:
-                l = [0.0] * n_labels
 
             examples.append(data.Example.fromlist([txt, l], fields))
 
