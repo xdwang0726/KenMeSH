@@ -147,7 +147,7 @@ def main():
 
     args = parser.parse_args()
 
-    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     print(device)
 
     mlb, train_iter, test_iter, G, model = prepare_dataset(args.train_path, args.test_path, args.mesh_id_path,
