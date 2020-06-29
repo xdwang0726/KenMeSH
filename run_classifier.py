@@ -32,7 +32,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     print("Loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 50000:
+        if i <= 500:
             try:
                 ids = obj["pmid"].strip()
                 text = obj["abstractText"].strip()
@@ -51,7 +51,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     # load test data
     f_t = open(test_data_path, encoding="utf8")
-    test_objects = ijson.items(f_t, 'articles.item')
+    test_objects = ijson.items(f_t, 'documents.item')
 
     test_pmid = []
     test_text = []
