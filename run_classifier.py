@@ -96,7 +96,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
 
     train = TextMultiLabelDataset(all_text, text_field=TEXT, label_field=LABEL, lbls=label_vectors)
-    test = TextMultiLabelDataset(test_text, text_field=TEXT, label_field=None, test=True)
+    test = TextMultiLabelDataset(test_text, text_field=TEXT, label_field=None, lbls=None)
 
     # build vocab
     print('Starting loading vocab')
