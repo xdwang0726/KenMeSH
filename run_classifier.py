@@ -82,14 +82,14 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     # write training data to dataframe
     df_train = pd.DataFrame(pmid, columns=['PMID'])
     df_train['text'] = all_text
-    df_train = pd.concat([df_train, pd.DataFrame(label_vectors, columns=meshIDs)], axis=1)
+    df_train = pd.concat([df_train, pd.DataFrame(label_vectors)], axis=1)
 
     # write test data to dataframe
     df_test = pd.DataFrame(test_pmid, columns=['PMID'])
     df_test['text'] = test_text
 
     text_col = 'text'
-    label_col = meshIDs
+    label_col = list(range(0, len(df_train.columns) - 2))
 
     TEXT = data.Field(tokenize=tokenize, lower=True, batch_first=True, truncate_first=True)
     LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
@@ -100,7 +100,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     # build vocab
     print('Starting loading vocab')
     cache, name = os.path.split(word2vec_path)
-    vectors = Vectors(name=name, cache=cache)
+    vectors = Vectors(name=name, cache=cache, max_vectors=50000)
     vectors.unk_init = init.xavier_uniform
     TEXT.build_vocab(train, vectors=vectors)
     print('Finished loading vocab')
