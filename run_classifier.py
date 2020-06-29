@@ -59,7 +59,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     print("Loading test data")
     for obj in tqdm(test_objects):
         try:
-            ids = obj["pmid"].strip()
+            ids = obj["pmid"]
             text = obj["abstract"].strip()
             test_pmid.append(ids)
             test_text.append(text)
