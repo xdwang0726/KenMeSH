@@ -17,7 +17,8 @@ class TextMultiLabelDataset(data.Dataset):
         for i, txt in enumerate(tqdm(text)):
             if not is_test:
                 l = lbls[i]
-
+            else:
+                l = None
             examples.append(data.Example.fromlist([txt, l], fields))
 
         super(TextMultiLabelDataset, self).__init__(examples, fields, **kwargs)
