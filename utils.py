@@ -18,6 +18,7 @@ class TextMultiLabelDataset(data.Dataset):
 
         examples = []
         for i, lbl in enumerate(lbls):
+            print(i)
             if not is_test:
                 l = lbl
             else:
