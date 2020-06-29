@@ -75,7 +75,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     print('Number of labels: ', len(meshIDs))
     mlb = MultiLabelBinarizer(classes=meshIDs)
 
-    label_vectors = mlb.fit_transform(label_id)
+    # label_vectors = mlb.fit_transform(label_id)
 
     # # write training data to dataframe
     # print('write training data to dataframe')
@@ -95,7 +95,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     TEXT = data.Field(tokenize=tokenize, lower=True, batch_first=True, truncate_first=True)
     LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
 
-    train = TextMultiLabelDataset(all_text, text_field=TEXT, label_field=LABEL, lbls=label_vectors)
+    train = TextMultiLabelDataset(all_text, text_field=TEXT, label_field=LABEL, lbls=label_id)
     test = TextMultiLabelDataset(test_text, text_field=TEXT, label_field=None, lbls=None)
 
     # build vocab
@@ -165,7 +165,8 @@ def main():
             model.train()
             # load data
             xs = batch.text.to(device)
-            ys = batch.label.to(device)
+            ys = batch.label
+            ys = mlb.fit_transform(ys).to(device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
