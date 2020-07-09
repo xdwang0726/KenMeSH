@@ -5,7 +5,7 @@ import torch.nn as nn
 from utils import tokenize
 
 
-def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vocab_size, field):
+def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
     """
 
     :param file:
@@ -33,21 +33,34 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vocab_siz
 
     label_embedding = torch.zeros(0)
     for key, value in mapping_id.items():
-        embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=200)
         key = tokenize(key)
         key = [k.lower() for k in key]
-        embedding.weight.data.copy_(field.vocab.vectors)
-        key_seq = []
+        key_embedding = torch.zeros(0)
         for k in key:
-            if field.vocab.stoi.get(k) is None:
-                seq = 0
+            if vectors.stoi.get(k) is None:
+                embedding = torch.zeros([1, 200], dtype=torch.float32)
             else:
-                seq = field.vocab.stoi.get(k)
-            key_seq.append(seq)
+                embedding = vectors.vectors[vectors.stoi.get(k)].reshape(1, 200)
+            key_embedding = torch.cat((key_embedding, embedding), dim=0)
+        key_embedding = torch.mean(input=key_embedding, dim=0, keepdim=True)
+        label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
-        embedded_key = embedding(torch.LongTensor(key_seq))  # size: (seq_len, embedding_sz)
-        embedding = torch.mean(input=embedded_key, dim=0, keepdim=True)
-        label_embedding = torch.cat((label_embedding, embedding), dim=0)
+    # for key, value in mapping_id.items():
+    #     embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=200)
+    #     key = tokenize(key)
+    #     key = [k.lower() for k in key]
+    #     embedding.weight.data.copy_(field.vocab.vectors)
+    #     key_seq = []
+    #     for k in key:
+    #         if field.vocab.stoi.get(k) is None:
+    #             seq = 0
+    #         else:
+    #             seq = field.vocab.stoi.get(k)
+    #         key_seq.append(seq)
+    #
+    #     embedded_key = embedding(torch.LongTensor(key_seq))  # size: (seq_len, embedding_sz)
+    #     embedding = torch.mean(input=embedded_key, dim=0, keepdim=True)
+    #     label_embedding = torch.cat((label_embedding, embedding), dim=0)
 
     return edges, node_count, label_embedding
 

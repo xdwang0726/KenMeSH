@@ -1,21 +1,18 @@
 import argparse
 import os
-
-import numpy as np
+import logging
 import ijson
-import pandas as pd
+import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.nn import init
 from torchtext import data
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
 from build_graph import get_edge_and_node_fatures, build_MeSH_graph
 from model import MeSH_GCN
-from utils import tokenize, TextMultiLabelDataset
-
+from utils import MeSH_indexing
 
 def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec_path, MeSH_id_pair_path,
                     parent_children_path, using_gpu=True, nKernel=128, ksz=[3, 4, 5], hidden_gcn_size=512,
@@ -30,7 +27,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     label = []
     label_id = []
 
-    print("Loading training data")
+    logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
         if i <= 100:
             try:
@@ -47,7 +44,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
         else:
             break
 
-    print("Finish loading training data")
+    logging.info("Finish loading training data")
 
     # load test data
     f_t = open(test_data_path, encoding="utf8")
@@ -56,7 +53,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     test_pmid = []
     test_text = []
 
-    print("Loading test data")
+    logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         try:
             ids = obj["pmid"]
@@ -65,14 +62,14 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
             test_text.append(text)
         except AttributeError:
             print(obj["pmid"].strip())
-    print("Finish loading test data")
+    logging.info("Finish loading test data")
 
     # read full MeSH ID list
     with open(mesh_id_list_path, "r") as ml:
         meshIDs = ml.readlines()
 
     meshIDs = [ids.strip() for ids in meshIDs]
-    print('Number of labels: ', len(meshIDs))
+    logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
 
     # label_vectors = mlb.fit_transform(label_id)
@@ -91,15 +88,25 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     # text_col = 'text'
     # label_col = list(range(0, len(df_train.columns) - 2))
 
-    print('use torchtext to prepare training and test data')
-    TEXT = data.Field(tokenize=tokenize, lower=True, batch_first=True, truncate_first=True)
-    LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True, dtype=torch.FloatTensor)
-
-    train = TextMultiLabelDataset(all_text, text_field=TEXT, label_field=LABEL, lbls=label_id)
-    test = TextMultiLabelDataset(test_text, text_field=TEXT, label_field=None, lbls=None)
+    # print('use torchtext to prepare training and test data')
+    # TEXT = data.Field(lower=True, batch_first=True, truncate_first=True)
+    # LABEL = data.Field(sequential=False, use_vocab=False, batch_first=True)
+    logging.info('Prepare training and test sets')
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text)
 
     # build vocab
-    print('Starting loading vocab')
+    logging.info('Build vocab')
+    cache, name = os.path.split(word2vec_path)
+    vectors = Vectors(name=name, cache=cache, max_vectors=100000)
+    vocab = train_dataset.get_vocab(vectors=vectors)
+
+    # Prepare label features
+    edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
+    G = build_MeSH_graph(edges, node_count, label_embedding)
+
+    return mlb, train_dataset, test_dataset, G, net
+
+
     cache, name = os.path.split(word2vec_path)
     vectors = Vectors(name=name, cache=cache, max_vectors=100000)
     #    vectors.unk_init = init.xavier_uniform
@@ -107,16 +114,14 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     print('Finished loading vocab')
 
     # using the training corpus to create the vocabulary
-    train_iter = data.Iterator(dataset=train, batch_size=128, train=True, repeat=False, device=0 if using_gpu else -1)
-    test_iter = data.Iterator(dataset=test, batch_size=64, train=False, sort=False, device=0 if using_gpu else -1)
+    # train_iter, test_iter = data.BucketIterator.splits((train, test), batch_size=4)
+    # train_iter = data.Iterator(dataset=train, batch_size=128, train=True, repeat=False, device=0 if using_gpu else -1)
+    # test_iter = data.Iterator(dataset=test, batch_size=64, train=False, sort=False, device=0 if using_gpu else -1)
 
-    vocab_size = len(TEXT.vocab.itos)
-    num_classes = len(meshIDs)
+    # vocab_size = len(TEXT.vocab.itos)
+    # num_classes = len(meshIDs)
 
-    # Prepare label features
-    edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vocab_size,
-                                                                   TEXT)
-    G = build_MeSH_graph(edges, node_count, label_embedding)
+
 
     # Prepare model
     net = MeSH_GCN(vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim)
