@@ -30,6 +30,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     label = []
     label_id = []
 
+    print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
         if i <= 1000:
@@ -47,6 +48,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
         else:
             break
 
+    print("Finish loading training data")
     logging.info("Finish loading training data")
 
     # load test data
@@ -56,6 +58,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     test_pmid = []
     test_text = []
 
+    print('Start loading test data')
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         try:
@@ -67,6 +70,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
             print(obj["pmid"].strip())
     logging.info("Finish loading test data")
 
+    print('load and prepare Mesh')
     # read full MeSH ID list
     with open(mesh_id_list_path, "r") as ml:
         meshIDs = ml.readlines()
@@ -76,21 +80,26 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     mlb = MultiLabelBinarizer(classes=meshIDs)
 
     # Preparing training and test datasets
+    print('prepare training and test sets')
     logging.info('Prepare training and test sets')
     train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text)
 
     # build vocab
+    print('building vocab')
     logging.info('Build vocab')
     vocab = train_dataset.get_vocab()
 
     # create Vector object map tokens to vectors
+    print('load pre-trained BioWord2Vec')
     cache, name = os.path.split(word2vec_path)
     vectors = Vectors(name=name, cache=cache)
 
     # Prepare label features
+    print('create graph')
     edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
     G = build_MeSH_graph(edges, node_count, label_embedding)
 
+    print('prepare dataset and labels graph done!')
     return mlb, vocab, train_dataset, test_dataset, vectors, G
 
 
