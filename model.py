@@ -43,6 +43,7 @@ class ContentsExtractor(nn.Module):
 
         embedded_seq = embedded_seq.unsqueeze(1)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        print("Convolution Layer", x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
 
         x_concat = torch.cat(x_maxpool, 1)

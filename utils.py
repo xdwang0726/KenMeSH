@@ -1,8 +1,6 @@
 import logging
-import os
 import re
 
-import torch.nn as nn
 import spacy
 import torch
 from torchtext.data.utils import get_tokenizer
@@ -10,8 +8,6 @@ from torchtext.data.utils import ngrams_iterator
 from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
-
-logger = logging.getLogger(__name__)
 
 
 def _text_iterator(text, labels=None, ngrams=1, yield_label=False):
