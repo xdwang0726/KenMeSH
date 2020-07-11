@@ -1,6 +1,6 @@
 import dgl
 import torch
-import torch.nn as nn
+from tqdm import tqdm
 
 from utils import tokenize
 
@@ -14,6 +14,7 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
              node_features: a Tensor with size [num_of_nodes, embedding_dim]
 
     """
+    print('load MeSH id and names')
     # get descriptor and MeSH mapped
     mapping_id = {}
     with open(MeSH_id_pair_file, 'r') as f:
@@ -22,6 +23,7 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
             mapping_id[key] = value.strip()
 
     # count number of nodes and get edges
+    print('count number of nodes and get edges of the graph')
     node_count = len(mapping_id)
     values = list(mapping_id.values())
     edges = []
@@ -31,8 +33,9 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
             index_item = (values.index(item[0]), values.index(item[1]))
             edges.append(index_item)
 
+    print('get label embeddings')
     label_embedding = torch.zeros(0)
-    for key, value in mapping_id.items():
+    for key, value in tqdm(mapping_id.items()):
         key = tokenize(key)
         key = [k.lower() for k in key]
         key_embedding = torch.zeros(0)
@@ -67,12 +70,16 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
 
 
 def build_MeSH_graph(edge_list, nodes, label_embedding):
+    print('start building the graph')
     g = dgl.DGLGraph()
     # add nodes into the graph
+    print('add nodes into the graph')
     g.add_nodes(nodes)
     # add edges, directional graph
+    print('add edges into the graph')
     src, dst = tuple(zip(*edge_list))
     g.add_edges(src, dst)
-    # add node feature to the graph
+    # add node features into the graph
+    print('add node features into the graph')
     g.ndata['feat'] = label_embedding
     return g
