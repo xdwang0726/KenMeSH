@@ -40,11 +40,11 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
         key = [k.lower() for k in key]
         key_embedding = torch.zeros(0)
         for k in key:
-            # embedding = vectors.__getitem__(k).reshape(1, 200)
-            if vectors.stoi.get(k) is None:
-                embedding = torch.zeros([1, 200], dtype=torch.float32)
-            else:
-                embedding = vectors.vectors[vectors.stoi.get(k)].reshape(1, 200)
+            embedding = vectors.__getitem__(k).reshape(1, 200)
+            # if vectors.stoi.get(k) is None:
+            #     embedding = torch.zeros([1, 200], dtype=torch.float32)
+            # else:
+            #     embedding = vectors.vectors[vectors.stoi.get(k)].reshape(1, 200)
             key_embedding = torch.cat((key_embedding, embedding), dim=0)
         key_embedding = torch.mean(input=key_embedding, dim=0, keepdim=True)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)

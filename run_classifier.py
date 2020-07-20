@@ -13,13 +13,13 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from build_graph import get_edge_and_node_fatures, build_MeSH_graph
+import h5py
+from dgl.data.utils import load_graphs
 from model import MeSH_GCN
 from utils import MeSH_indexing
 
 
-def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec_path, MeSH_id_pair_path,
-                    parent_children_path):
+def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec_path, graph_file):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -35,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     for i, obj in enumerate(tqdm(objects)):
         if i <= 1000:
             try:
-                ids = obj["pmid"].strip()
+                ids = obj["pmid"]
                 text = obj["abstractText"].strip()
                 original_label = obj["meshMajor"]
                 mesh_id = obj['meshId']
@@ -95,22 +95,24 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     vectors = Vectors(name=name, cache=cache)
 
     # Prepare label features
-    print('create graph')
-    edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
-    G = build_MeSH_graph(edges, node_count, label_embedding)
+    print('Load graph')
+    G = load_graphs(graph_file)[0]
+
+    # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
+    # G = build_MeSH_graph(edges, node_count, label_embedding)
 
     print('prepare dataset and labels graph done!')
     return mlb, vocab, train_dataset, test_dataset, vectors, G
 
 
-def weight_matrix(vocab, vectors, dim=200):
-    weight_matrix = np.zeros([len(vocab.itos), dim])
-    for i, token in enumerate(vocab.stoi):
-        try:
-            weight_matrix[i] = vectors.__getitem__(token)
-        except KeyError:
-            weight_matrix[i] = np.random.normal(scale=0.5, size=(dim,))
-    return torch.from_numpy(weight_matrix)
+# def weight_matrix(vocab, vectors, dim=200):
+#     weight_matrix = np.zeros([len(vocab.itos), dim])
+#     for i, token in enumerate(vocab.stoi):
+#         try:
+#             weight_matrix[i] = vectors.__getitem__(token)
+#         except KeyError:
+#             weight_matrix[i] = np.random.normal(scale=0.5, size=(dim,))
+#     return torch.from_numpy(weight_matrix)
 
 
 def generate_batch(batch):
@@ -191,6 +193,8 @@ def main():
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--mesh_parent_children_path')
+    parser.add_argument('weight_matrix')
+    parser.add_argument('--graph')
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
@@ -214,12 +218,17 @@ def main():
     # Get dataset and label graph & Load pre-trained embeddings
     mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                           args.test_path, args.mesh_id_path,
-                                                                          args.word2vec_path, args.meSH_pair_path,
-                                                                          args.mesh_parent_children_path)
+                                                                          args.word2vec_path, args.graph)
+
+    # Get weight_matrix
+    weight_file = h5py.File(args.weight_matrix, 'r')
+    weight_matrix = weight_file['weight_matrix'][:]
 
     vocab_size = len(vocab)
     model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-    model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+
+    # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model.cnn.embedding_layer.weight.data.copy_(weight_matrix)
 
     model.to(device)
     G.to(device)
