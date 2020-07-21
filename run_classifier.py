@@ -167,15 +167,13 @@ def test(test, model, mlb, G, batch_sz, device):
     data = DataLoader(test, batch_size=batch_sz, collate_fn=generate_batch)
 
     all_output = []
-    ori_label = []
-    for text, label in data:
+    for text in data:
         text = text.to(device)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             all_output.append(output)
-            label = mlb.fit_transform(label)
-            ori_label.append(label)
-    return all_output, ori_label
+
+    return all_output
 
 
 # predicted binary labels
@@ -214,7 +212,6 @@ def main():
     parser.add_argument('--mesh_parent_children_path')
     parser.add_argument('--graph')
     parser.add_argument('--results')
-    parser.add_argument('--original_label')
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
@@ -261,15 +258,16 @@ def main():
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
 
-    results, original_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
-    pickle.dump(results, open(args.results, "wb"))
-    pickle.dump(results, open(args.original_label, "wb"))
-    # pred = results.data.cpu().numpy()
-    # top_5_pred = top_k_predicted(pred, 5)
-    #
-    # # convert binary label back to orginal ones
-    # top_5_mesh = mlb.inverse_transform(top_5_pred)
-    # top_5_mesh = [list(item) for item in top_5_mesh]
+    results = test(test_dataset, model, mlb, G, args.batch_sz, device)
+
+    pred = results.data.cpu().numpy()
+    top_5_pred = top_k_predicted(pred, 5)
+
+    # convert binary label back to orginal ones
+    top_5_mesh = mlb.inverse_transform(top_5_pred)
+    top_5_mesh = [list(item) for item in top_5_mesh]
+
+    pickle.dump(top_5_mesh, open(args.results, "wb"))
     #
     # # precistion @ k
     # # precision @k
