@@ -79,7 +79,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             (key, value) = line.split('=')
             mapping_id[key] = value.strip()
 
-    meshIDs = mapping_id.values()
+    meshIDs = list(mapping_id.values())
     print('Total number of labels:', len(meshIDs))
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
