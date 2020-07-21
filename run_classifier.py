@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 200000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
