@@ -141,7 +141,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
             optimizer.zero_grad()
-            label = mlb.fit_transform(label)
+            label = torch.from_numpy(mlb.fit_transform(label))
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
             loss = criterion(output, label)
