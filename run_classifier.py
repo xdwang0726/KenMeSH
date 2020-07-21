@@ -261,7 +261,7 @@ def main():
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
 
-    results, original_label = test(test_dataset, model, args.batch_sz, device)
+    results, original_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
     pickle.dump(results, open(args.results, "wb"))
     pickle.dump(results, open(args.original_label, "wb"))
     # pred = results.data.cpu().numpy()
