@@ -129,13 +129,22 @@ def generate_batch(batch):
             concatenated as a single tensor for the input of nn.EmbeddingBag.
         cls: a tensor saving the labels of individual text entries.
     """
+    # check if the dataset if train or test
+    if len(batch[0]) == 2:
+        label = [entry[0] for entry in batch]
 
-    label = [entry[0] for entry in batch]
+        # padding according to the maximum sequence length in batch
+        text = [entry[1] for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text, label
 
-    # padding according to the maximum sequence length in batch
-    text = [entry[1] for entry in batch]
-    text = pad_sequence(text, batch_first=True)
-    return text, label
+        text = [entry[0] for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text
+    else:
+        text = [entry for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
@@ -163,11 +172,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test, model, mlb, G, batch_sz, device):
-    data = DataLoader(test, batch_size=batch_sz, collate_fn=generate_batch)
+def test(test_dataset, model, G, batch_sz, device):
+    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
 
     all_output = []
-    for text in data:
+    for text in test_data:
         text = text.to(device)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
@@ -258,7 +267,7 @@ def main():
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
 
-    results = test(test_dataset, model, mlb, G, args.batch_sz, device)
+    results = test(test_dataset, model, G, args.batch_sz, device)
 
     pred = results.data.cpu().numpy()
     top_5_pred = top_k_predicted(pred, 5)
