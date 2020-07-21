@@ -243,7 +243,7 @@ def main():
     model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model.cnn.embedding_layer.weight.data.copy_(weight_matrix)
+    model.cnn.embedding_layer.weight.data.copy_(torch.from_numpy(weight_matrix))
 
     model.to(device)
     G.to(device)
