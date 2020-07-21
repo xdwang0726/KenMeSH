@@ -106,14 +106,14 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     return mlb, vocab, train_dataset, test_dataset, vectors, G
 
 
-# def weight_matrix(vocab, vectors, dim=200):
-#     weight_matrix = np.zeros([len(vocab.itos), dim])
-#     for i, token in enumerate(vocab.stoi):
-#         try:
-#             weight_matrix[i] = vectors.__getitem__(token)
-#         except KeyError:
-#             weight_matrix[i] = np.random.normal(scale=0.5, size=(dim,))
-#     return torch.from_numpy(weight_matrix)
+def weight_matrix(vocab, vectors, dim=200):
+    weight_matrix = np.zeros([len(vocab.itos), dim])
+    for i, token in enumerate(vocab.stoi):
+        try:
+            weight_matrix[i] = vectors.__getitem__(token)
+        except KeyError:
+            weight_matrix[i] = np.random.normal(scale=0.5, size=(dim,))
+    return torch.from_numpy(weight_matrix)
 
 
 def generate_batch(batch):
@@ -206,7 +206,6 @@ def main():
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--mesh_parent_children_path')
-    parser.add_argument('--weight_matrix')
     parser.add_argument('--graph')
     parser.add_argument('--results')
     parser.add_argument('--original_label')
@@ -236,14 +235,14 @@ def main():
                                                                           args.word2vec_path, args.graph)
 
     # Get weight_matrix
-    weight_file = h5py.File(args.weight_matrix, 'r')
-    weight_matrix = weight_file['weight_matrix'][:]
+    # weight_file = h5py.File(args.weight_matrix, 'r')
+    # weight_matrix = weight_file['weight_matrix'][:]
 
     vocab_size = len(vocab)
     model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
 
-    # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model.cnn.embedding_layer.weight.data.copy_(torch.from_numpy(weight_matrix))
+    model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    # model.cnn.embedding_layer.weight.data.copy_(torch.from_numpy(weight_matrix))
 
     model.to(device)
     G.to(device)
