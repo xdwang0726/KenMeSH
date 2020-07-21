@@ -20,7 +20,7 @@ from model import MeSH_GCN
 from utils import MeSH_indexing
 
 
-def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec_path, graph_file):
+def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -73,10 +73,13 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     print('load and prepare Mesh')
     # read full MeSH ID list
-    with open(mesh_id_list_path, "r") as ml:
-        meshIDs = ml.readlines()
+    mapping_id = {}
+    with open(MeSH_id_pair_file, 'r') as f:
+        for line in f:
+            (key, value) = line.split('=')
+            mapping_id[key] = value.strip()
 
-    meshIDs = [ids.strip() for ids in meshIDs]
+    meshIDs = mapping_id.values()
     print('Total number of labels:', len(meshIDs))
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
@@ -205,7 +208,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path')
     parser.add_argument('--test_path')
-    parser.add_argument('--mesh_id_path')
+    parser.add_argument('----meSH_pair_path')
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--mesh_parent_children_path')
@@ -234,7 +237,7 @@ def main():
 
     # Get dataset and label graph & Load pre-trained embeddings
     mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
-                                                                          args.test_path, args.mesh_id_path,
+                                                                          args.test_path, args.meSH_pair_path,
                                                                           args.word2vec_path, args.graph)
 
     # Get weight_matrix
