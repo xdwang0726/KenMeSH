@@ -1,20 +1,21 @@
 import argparse
 import logging
 import os
+import pickle
 import sys
 
+import h5py
 import ijson
 import numpy as np
 import torch
 import torch.nn as nn
+from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-import h5py
-from dgl.data.utils import load_graphs
 from model import MeSH_GCN
 from utils import MeSH_indexing
 
@@ -156,21 +157,19 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test, model, batch_sz, device):
+def test(test, model, mlb, G, batch_sz, device):
     data = DataLoader(test, batch_size=batch_sz, collate_fn=generate_batch)
 
-    total_accuracy = []
-    for text, offsets, cls in data:
-        text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
+    all_output = []
+    ori_label = []
+    for text, label in data:
+        text = text.to(device)
         with torch.no_grad():
-            output = model(text, offsets)
-            accuracy = (output.argmax(1) == cls).float().mean().item()
-            total_accuracy.append(accuracy)
-
-    if not total_accuracy:
-        return 0.0
-
-    return sum(total_accuracy) / len(total_accuracy)
+            output = model(text, G, G.ndata['feat'])
+            all_output.append(output)
+            label = mlb.fit_transform(label)
+            ori_label.append(label)
+    return all_output, ori_label
 
 
 # predicted binary labels
@@ -185,6 +184,20 @@ def top_k_predicted(predictions, k):
     return predicted_label
 
 
+def getLabelIndex(labels):
+    label_index = np.zeros((len(labels), len(labels[1])))
+    for i in range(0, len(labels)):
+        index = np.where(labels[i] == 1)
+        index = np.asarray(index)
+        N = len(labels[1]) - index.size
+        index = np.pad(index, [(0, 0), (0, N)], 'constant')
+        label_index[i] = index
+
+    label_index = np.array(label_index, dtype=int)
+    label_index = label_index.astype(np.int32)
+    return label_index
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path')
@@ -195,6 +208,8 @@ def main():
     parser.add_argument('--mesh_parent_children_path')
     parser.add_argument('weight_matrix')
     parser.add_argument('--graph')
+    parser.add_argument('--results')
+    parser.add_argument('--original_label')
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
@@ -238,8 +253,25 @@ def main():
     criterion = nn.BCELoss()
 
     # training
-    train(train, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
+
+    results, original_label = test(test_dataset, model, args.batch_sz, device)
+    pickle.dump(results, open(args.results, "wb"))
+    pickle.dump(results, open(args.original_label, "wb"))
+    # pred = results.data.cpu().numpy()
+    # top_5_pred = top_k_predicted(pred, 5)
+    #
+    # # convert binary label back to orginal ones
+    # top_5_mesh = mlb.inverse_transform(top_5_pred)
+    # top_5_mesh = [list(item) for item in top_5_mesh]
+    #
+    # # precistion @ k
+    # # precision @k
+    # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+    #
+    # for k, p in zip([1, 3, 5], precision):
+    #     print('p@{}: {:.5f}'.format(k, p))
 
 
     # start testing
