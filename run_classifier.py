@@ -97,7 +97,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
 
     # Prepare label features
     print('Load graph')
-    G = load_graphs(graph_file)[0]
+    G = load_graphs(graph_file)[0][0]
 
     # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
     # G = build_MeSH_graph(edges, node_count, label_embedding)
