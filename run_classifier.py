@@ -206,7 +206,7 @@ def main():
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--mesh_parent_children_path')
-    parser.add_argument('weight_matrix')
+    parser.add_argument('--weight_matrix')
     parser.add_argument('--graph')
     parser.add_argument('--results')
     parser.add_argument('--original_label')
