@@ -77,6 +77,7 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
         meshIDs = ml.readlines()
 
     meshIDs = [ids.strip() for ids in meshIDs]
+    print('Total number of labels:', len(meshIDs))
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
 
@@ -98,6 +99,8 @@ def prepare_dataset(train_data_path, test_data_path, mesh_id_list_path, word2vec
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
+
+    print('graph', G.ndata['feat'].shape)
 
     # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
     # G = build_MeSH_graph(edges, node_count, label_embedding)
