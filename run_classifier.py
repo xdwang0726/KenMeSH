@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 5000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -273,7 +273,7 @@ def main():
 
     pickle.dump(top_5_mesh, open(args.results, "wb"))
 
-    print("Saving model to {}".format(args.save_model_path))
+    print("\rSaving model to {}".format(args.save_model_path))
     torch.save(model.to('cpu'), args.save_model_path)
     #
     # # precistion @ k
