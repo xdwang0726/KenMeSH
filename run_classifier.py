@@ -4,7 +4,6 @@ import os
 import pickle
 import sys
 
-import h5py
 import ijson
 import numpy as np
 import torch
