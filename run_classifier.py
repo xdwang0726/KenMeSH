@@ -166,7 +166,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
                 sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.3f} loss: {:3.3f}".format(
+                    "\rProgress: {:3.0f}% lr: {:3.3f} loss: {:3.3f} \n".format(
                         progress * 100, lr_scheduler.get_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
@@ -175,14 +175,13 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
 
-    all_output = []
     for text in test_data:
         text = text.to(device)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
-            all_output.append(output)
+            print('output:', type(output))
 
-    return all_output
+    return output
 
 
 # predicted binary labels
@@ -246,15 +245,10 @@ def main():
                                                                           args.test_path, args.meSH_pair_path,
                                                                           args.word2vec_path, args.graph)
 
-    # Get weight_matrix
-    # weight_file = h5py.File(args.weight_matrix, 'r')
-    # weight_matrix = weight_file['weight_matrix'][:]
-
     vocab_size = len(vocab)
     model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
 
     model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    # model.cnn.embedding_layer.weight.data.copy_(torch.from_numpy(weight_matrix))
 
     model.to(device)
     G.to(device)
@@ -267,9 +261,10 @@ def main():
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
 
+    # testing
     results = test(test_dataset, model, G, args.batch_sz, device)
 
-    pred = results.data.cpu().numpy()
+    pred = results.cpu().numpy()
     top_5_pred = top_k_predicted(pred, 5)
 
     # convert binary label back to orginal ones
