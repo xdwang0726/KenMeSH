@@ -174,14 +174,16 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
 def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
-
+    pred = torch.zeros(0)
     for text in test_data:
         text = text.to(device)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
-            print('output:', type(output))
+            pred = torch.cat((pred, output), dim=0)
+            print('output:', output.shape)
+            print('pred', pred.shape)
 
-    return output
+    return pred
 
 
 # predicted binary labels
@@ -264,7 +266,7 @@ def main():
     # testing
     results = test(test_dataset, model, G, args.batch_sz, device)
 
-    pred = results.cpu().numpy()
+    pred = results.data.cpu().numpy()
     top_5_pred = top_k_predicted(pred, 5)
 
     # convert binary label back to orginal ones
