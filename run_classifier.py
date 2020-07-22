@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 500000:
+        if i <= 5000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -166,7 +166,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
                 sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.3f} loss: {:3.3f} \n".format(
+                    "\rProgress: {:3.0f}% lr: {:3.3f} loss: {:3.3f}".format(
                         progress * 100, lr_scheduler.get_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
@@ -180,9 +180,6 @@ def test(test_dataset, model, G, batch_sz, device):
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
-            print('output:', output.shape)
-            print('pred', pred.shape)
-
     return pred
 
 
@@ -222,6 +219,7 @@ def main():
     parser.add_argument('--mesh_parent_children_path')
     parser.add_argument('--graph')
     parser.add_argument('--results')
+    parser.add_argument('--save-model-path')
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
@@ -274,6 +272,9 @@ def main():
     top_5_mesh = [list(item) for item in top_5_mesh]
 
     pickle.dump(top_5_mesh, open(args.results, "wb"))
+
+    print("Saving model to {}".format(args.save_model_path))
+    torch.save(model.to('cpu'), args.save_model_path)
     #
     # # precistion @ k
     # # precision @k
