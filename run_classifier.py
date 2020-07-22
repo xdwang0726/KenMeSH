@@ -33,7 +33,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 5000000:
+        if i <= 10000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -166,7 +166,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             if processed_lines % 128 == 0:
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.3f} loss: {:3.3f}".format(
-                        progress * 100, lr_scheduler.get_lr()[0], loss))
+                        progress * 100, lr_scheduler.get_last_lr[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
 
@@ -229,10 +229,10 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=5)
     parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--scheduler_step_sz', type=int, default=1)
-    parser.add_argument('--lr_gamma', type=float, default=0.8)
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--weight_decay', type=float, default=0)
+    parser.add_argument('--scheduler_step_sz', type=int, default=2)
+    parser.add_argument('--lr_gamma', type=float, default=0.1)
 
     args = parser.parse_args()
 
