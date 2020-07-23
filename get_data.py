@@ -51,6 +51,8 @@ def main():
             dataset.append(data_point)
         except AttributeError:
             print(obj["pmid"].strip())
+        except ValueError:
+            print(obj["pmid"].strip())
 
     print('Finished Loading Data!')
 
