@@ -33,6 +33,7 @@ def main():
 
     """ get text(abstract and title) and MeSH terms to each document """
     f = open(args.allMesh, encoding="utf8")
+    f.decode('utf-8', 'ignore')
 
     objects = ijson.items(f, 'articles.item')
 
