@@ -61,7 +61,7 @@ def main():
             data_point['meshId'] = label_id[i]
             dataset.append(data_point)
         else:
-            print('Not in the list: ', obj["pmid"])
+            print('Not in the list: ', id)
 
     pubmed = {'documents': dataset}
 
