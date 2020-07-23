@@ -23,7 +23,7 @@ def main():
     label_id = []
 
     print('Start loading training data')
-    for obj in enumerate(tqdm(objects)):
+    for obj in tqdm(objects):
         try:
             ids = obj["pmid"]
             text = obj["abstractText"].strip()
