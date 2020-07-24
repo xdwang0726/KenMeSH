@@ -26,7 +26,6 @@ def main():
     for obj in tqdm(objects):
         try:
             ids = obj["pmid"].strip()
-            print(ids)
             text = obj["abstractText"].strip()
             original_label = obj["meshMajor"]
             mesh_id = obj['meshId']
@@ -46,12 +45,13 @@ def main():
     print('Start loading test data')
     for obj in tqdm(test_objects):
         try:
-            ids = obj["pmid"]
+            ids = obj["pmid"].strip()
             test_pmid.append(ids)
         except AttributeError:
             print(obj["pmid"].strip())
 
     # Create new test set with labels
+    print('Create new test set with labels')
     dataset = []
     for i, id in enumerate(tqdm(test_pmid)):
         data_point = {}
@@ -66,6 +66,7 @@ def main():
 
     pubmed = {'documents': dataset}
 
+    print('write to files')
     with open(args.completed_test, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
