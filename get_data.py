@@ -52,6 +52,7 @@ def main():
         except AttributeError:
             print(obj["pmid"].strip())
 
+    print('Total number of articles: ', len(dataset))
     print('Finished Loading Data!')
 
     """ write to json file """
