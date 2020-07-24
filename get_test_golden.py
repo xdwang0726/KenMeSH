@@ -25,7 +25,7 @@ def main():
     print('Start loading training data')
     for obj in tqdm(objects):
         try:
-            ids = obj["pmid"]
+            ids = obj["pmid"].strip()
             print(ids)
             text = obj["abstractText"].strip()
             original_label = obj["meshMajor"]
