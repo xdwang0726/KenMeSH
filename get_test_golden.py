@@ -45,7 +45,7 @@ def main():
     print('Start loading test data')
     for obj in tqdm(test_objects):
         try:
-            ids = obj["pmid"].strip()
+            ids = str(obj["pmid"]).strip()
             test_pmid.append(ids)
         except AttributeError:
             print(obj["pmid"].strip())
