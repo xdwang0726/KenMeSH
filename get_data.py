@@ -41,7 +41,7 @@ def main():
     for obj in tqdm(objects):
         data_point = {}
         try:
-            ids = obj["pmid"].strip()
+            ids = obj["pmid"]
             text = obj["abstractText"].strip()
             label = obj["meshMajor"]
             data_point['pmid'] = ids
@@ -50,7 +50,7 @@ def main():
             data_point['meshId'] = from_mesh2id(label, mapping_id)
             dataset.append(data_point)
         except AttributeError:
-            print(obj["pmid"].strip())
+            print(obj["pmid"])
 
     print('Total number of articles: ', len(dataset))
     print('Finished Loading Data!')
