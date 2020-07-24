@@ -26,6 +26,7 @@ def main():
     for obj in tqdm(objects):
         try:
             ids = obj["pmid"]
+            print(ids)
             text = obj["abstractText"].strip()
             original_label = obj["meshMajor"]
             mesh_id = obj['meshId']
