@@ -102,7 +102,7 @@ def _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams=1, 
     logging.info('Creating testing data')
     test_data, test_labels = _create_data_from_iterator(
         vocab, _text_iterator(test_text, labels=test_labels, ngrams=ngrams, yield_label=False), include_unk,
-        is_test=True)
+        is_test=False)
     logging.info('Total number of labels in training set:'.format(len(train_labels)))
     return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
             MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
