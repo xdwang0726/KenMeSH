@@ -53,13 +53,14 @@ def main():
     # Create new test set with labels
     print('Create new test set with labels')
     dataset = []
-    for i, id in enumerate(tqdm(test_pmid)):
+    for id in tqdm(test_pmid):
         data_point = {}
         if id in pmid:
             data_point['pmid'] = id
-            data_point['abstract'] = all_text[i]
-            data_point['meshMajor'] = label[i]
-            data_point['meshId'] = label_id[i]
+            idx = pmid.index(id)
+            data_point['abstract'] = all_text[idx]
+            data_point['meshMajor'] = label[idx]
+            data_point['meshId'] = label_id[idx]
             dataset.append(data_point)
         else:
             print('Not in the list: ', id)
