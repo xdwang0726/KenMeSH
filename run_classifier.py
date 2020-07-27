@@ -17,6 +17,7 @@ from tqdm import tqdm
 
 from model import MeSH_GCN
 from utils import MeSH_indexing
+from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
@@ -57,6 +58,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     test_pmid = []
     test_text = []
+    test_label = []
 
     print('Start loading test data')
     logging.info("Start loading test data")
@@ -64,8 +66,10 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         try:
             ids = obj["pmid"]
             text = obj["abstract"].strip()
+            label = obj['meshId'].strip()
             test_pmid.append(ids)
             test_text.append(text)
+            test_label.append(label)
         except AttributeError:
             print(obj["pmid"].strip())
     logging.info("Finish loading test data")
@@ -86,7 +90,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text)
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label)
 
     # build vocab
     print('building vocab')
@@ -174,12 +178,14 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
-    for text in test_data:
+    ori_label = []
+    for text, label in test_data:
         text = text.to(device)
+        ori_label.append(label)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
-    return pred
+    return pred, ori_label
 
 
 # predicted binary labels
@@ -261,7 +267,7 @@ def main():
           lr_scheduler)
 
     # testing
-    results = test(test_dataset, model, G, args.batch_sz, device)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
     pred = results.data.cpu().numpy()
     top_5_pred = top_k_predicted(pred, 5)
@@ -274,34 +280,26 @@ def main():
 
     print("\rSaving model to {}".format(args.save_model_path))
     torch.save(model.to('cpu'), args.save_model_path)
-    #
-    # # precistion @ k
-    # # precision @k
-    # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-    #
-    # for k, p in zip([1, 3, 5], precision):
-    #     print('p@{}: {:.5f}'.format(k, p))
 
+    # precision @k
+    test_labelsIndex = getLabelIndex(mlb.fit_transform(test_labels))
+    precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
 
-    # start testing
-    # model.eval()
-    # pred = []
-    # for batch in tqdm(test_iter):
-    #     xs = batch.text.to(device)
-    #     logits = model(xs, xs, G, G.ndata['feat'])
-    #     pred.append(logits)
-    #
-    # pred = pred.data.cpu().numpy()
-    # top_5_pred = top_k_predicted(pred, 5)
-    # # convert binary label back to orginal ones
-    # top_5_mesh = mlb.inverse_transform(top_5_pred)
-    # top_5_mesh = [list(item) for item in top_5_mesh]
-    #
-    # pred_label_5 = open('TextCNN_pred_label_5.txt', 'w')
-    # for meshs in top_5_mesh:
-    #     mesh = ' '.join(meshs)
-    #     pred_label_5.writelines(mesh.strip() + "\r")
-    # pred_label_5.close()
+    for k, p in zip([1, 3, 5], precision):
+        print('p@{}: {:.5f}'.format(k, p))
+
+    # example based evaluation
+    example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
+    print("EMP@5, EMR@5, EMF@5")
+    for em in example_based_measure_5:
+        print(em, ",")
+
+    # label based evaluation
+    label_measure_5 = perf_measure(test_labels, top_5_pred)
+    print("MaP@5, MiP@5, MaF@5, MiF@5: ")
+    for measure in label_measure_5:
+        print(measure, ",")
+
 
 if __name__ == "__main__":
     main()

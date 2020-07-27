@@ -1,9 +1,39 @@
 import numpy as np
 from scipy import stats
+from scipy.sparse import issparse
 
 
 def intersection(lst1, lst2):
     return list(set(lst1) & set(lst2))
+
+
+def precision(p, t):
+    """
+    p, t: two sets of labels/integers
+    >>> precision({1, 2, 3, 4}, {1})
+    0.25
+    """
+    return len(t.intersection(p)) / len(p)
+
+
+def precision_at_ks(Y_pred_scores, Y_test, ks):
+    """
+    Y_pred_scores: nd.array of dtype float, entry ij is the score of label j for instance i
+    Y_test: list of label ids
+    """
+    result = []
+    for k in ks:
+        Y_pred = []
+        for i in np.arange(Y_pred_scores.shape[0]):
+            if issparse(Y_pred_scores):
+                idx = np.argsort(Y_pred_scores[i].data)[::-1]
+                Y_pred.append(set(Y_pred_scores[i].indices[idx[:k]]))
+            else:  # is ndarray
+                idx = np.argsort(Y_pred_scores[i, :])[::-1]
+                Y_pred.append(set(idx[:k]))
+
+        result.append(np.mean([precision(yp, set(yt)) for yt, yp in zip(Y_test, Y_pred)]))
+    return result
 
 
 def macro_precision(TP, FP):

@@ -87,7 +87,7 @@ class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
         return self._vocab
 
 
-def _setup_datasets(train_text, train_labels, test_text, ngrams=1, vocab=None, include_unk=False):
+def _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams=1, vocab=None, include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
         vocab = build_vocab_from_iterator(_text_iterator(train_text, train_labels, ngrams))
@@ -100,11 +100,12 @@ def _setup_datasets(train_text, train_labels, test_text, ngrams=1, vocab=None, i
         vocab, _text_iterator(train_text, labels=train_labels, ngrams=ngrams, yield_label=True), include_unk,
         is_test=False)
     logging.info('Creating testing data')
-    test_data = _create_data_from_iterator(
-        vocab, _text_iterator(test_text, labels=None, ngrams=ngrams, yield_label=False), include_unk, is_test=True)
+    test_data, test_labels = _create_data_from_iterator(
+        vocab, _text_iterator(test_text, labels=test_labels, ngrams=ngrams, yield_label=False), include_unk,
+        is_test=True)
     logging.info('Total number of labels in training set:'.format(len(train_labels)))
     return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-            MultiLabelTextClassificationDataset(vocab, test_data))
+            MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
 
 
 def MeSH_indexing(train_text, train_labels, test_text, ngrams=1, vocab=None, include_unk=False):
