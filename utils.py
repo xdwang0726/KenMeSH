@@ -108,7 +108,7 @@ def _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams=1, 
             MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
 
 
-def MeSH_indexing(train_text, train_labels, test_text, ngrams=1, vocab=None, include_unk=False):
+def MeSH_indexing(train_text, train_labels, test_text, test_labels, ngrams=1, vocab=None, include_unk=False):
     """
 
     Defines MeSH_indexing datasets.
@@ -117,7 +117,7 @@ def MeSH_indexing(train_text, train_labels, test_text, ngrams=1, vocab=None, inc
 
     """
 
-    return _setup_datasets(train_text, train_labels, test_text, ngrams, vocab, include_unk)
+    return _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams, vocab, include_unk)
 
 
 # torchtext 0.6.0 rewrite torchtext.data.Dataset to inherit torch.data.utils.Dataset
