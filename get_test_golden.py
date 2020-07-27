@@ -36,15 +36,6 @@ def main():
         except AttributeError:
             print(obj["pmid"].strip())
 
-    print('pmid', len(pmid))
-    print('all_text', len(all_text))
-    print('label', len(label))
-    print('label_id', len(label_id))
-
-    print(pmid[10000])
-    print(all_text[10000])
-    print(label[10000])
-
     # Load test set ids
     f_t = open(args.test_set, encoding="utf8")
     test_objects = ijson.items(f_t, 'documents.item')
