@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 5000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -284,9 +284,7 @@ def main():
     test_label_transform = mlb.fit_transform(test_labels)
 
     pred = results.data.cpu().numpy()
-    print('pred', pred.shape)
     top_5_pred = top_k_predicted(test_labels, pred, 5)
-    print('top_5', top_5_pred.shape)
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
