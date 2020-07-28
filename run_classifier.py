@@ -281,6 +281,8 @@ def main():
     # testing
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
+    test_label_transform = mlb.fit_transform(test_labels)
+
     pred = results.data.cpu().numpy()
     print('pred', pred.shape)
     top_5_pred = top_k_predicted(test_labels, pred, 5)
@@ -296,7 +298,7 @@ def main():
     torch.save(model.to('cpu'), args.save_model_path)
 
     # precision @k
-    test_labelsIndex = getLabelIndex(mlb.fit_transform(test_labels))
+    test_labelsIndex = getLabelIndex(test_label_transform)
     precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
 
     for k, p in zip([1, 3, 5], precision):
@@ -309,7 +311,7 @@ def main():
         print(em, ",")
 
     # label based evaluation
-    label_measure_5 = perf_measure(mlb.fit_transform(test_labels), top_5_pred)
+    label_measure_5 = perf_measure(test_label_transform, top_5_pred)
     print("MaP@5, MiP@5, MaF@5, MiF@5: ")
     for measure in label_measure_5:
         print(measure, ",")
