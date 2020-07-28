@@ -283,9 +283,9 @@ def main():
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
     pred = results.data.cpu().numpy()
-    print(pred.size)
+    print('pred', pred.size)
     top_5_pred = top_k_predicted(test_labels, pred, 5)
-    print(top_5_pred.size)
+    print('top_5', top_5_pred.size)
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
