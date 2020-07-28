@@ -63,15 +63,14 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading test data')
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
-        try:
-            ids = obj["pmid"]
-            text = obj["abstract"].strip()
-            label = obj['meshId'].strip()
-            test_pmid.append(ids)
-            test_text.append(text)
-            test_label.append(label)
-        except AttributeError:
-            print(obj["pmid"].strip())
+        ids = obj["pmid"]
+        text = obj["abstract"].strip()
+        label = obj['meshId'].strip()
+        test_pmid.append(ids)
+        test_text.append(text)
+        test_label.append(label)
+
+    print('test_text', len(test_text), 'test_label', len(test_label))
     logging.info("Finish loading test data")
 
     print('load and prepare Mesh')
@@ -185,6 +184,7 @@ def test(test_dataset, model, G, batch_sz, device):
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
+    print('pred', pred.shape, 'ori_label', len(ori_label))
     return pred, ori_label
 
 
