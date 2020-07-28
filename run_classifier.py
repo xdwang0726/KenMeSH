@@ -184,8 +184,9 @@ def test(test_dataset, model, G, batch_sz, device):
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
-    print('pred', pred.shape, 'ori_label', len(ori_label))
-    return pred, ori_label
+    flattened = [val for sublist in ori_label for val in sublist]
+    print('pred', pred.shape, 'ori_label', len(flattened))
+    return pred, flattened
 
 
 # predicted binary labels
