@@ -179,13 +179,11 @@ def test(test_dataset, model, G, batch_sz, device):
     ori_label = []
     for text, label in test_data:
         text = text.to(device)
-        print('label', type(label), len(label))
         ori_label.append(label)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     flattened = [val for sublist in ori_label for val in sublist]
-    print('pred', pred.shape, 'ori_label', len(flattened))
     return pred, flattened
 
 
@@ -311,7 +309,7 @@ def main():
         print(em, ",")
 
     # label based evaluation
-    label_measure_5 = perf_measure(test_labels, top_5_pred)
+    label_measure_5 = perf_measure(mlb.fit_transform(test_labels), top_5_pred)
     print("MaP@5, MiP@5, MaF@5, MiF@5: ")
     for measure in label_measure_5:
         print(measure, ",")
