@@ -70,7 +70,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         test_text.append(text)
         test_label.append(label)
 
-    print('test_text', len(test_text), 'test_label', len(test_label))
     logging.info("Finish loading test data")
 
     print('load and prepare Mesh')
@@ -180,6 +179,7 @@ def test(test_dataset, model, G, batch_sz, device):
     ori_label = []
     for text, label in test_data:
         text = text.to(device)
+        print('label', type(label), len(label))
         ori_label.append(label)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
@@ -283,9 +283,9 @@ def main():
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
     pred = results.data.cpu().numpy()
-    print('pred', pred.size)
+    print('pred', pred.shape)
     top_5_pred = top_k_predicted(test_labels, pred, 5)
-    print('top_5', top_5_pred.size)
+    print('top_5', top_5_pred.shape)
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
