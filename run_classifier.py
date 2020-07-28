@@ -190,10 +190,23 @@ def test(test_dataset, model, G, batch_sz, device):
 
 # predicted binary labels
 # find the top k labels in the predicted label set
-def top_k_predicted(predictions, k):
+# def top_k_predicted(predictions, k):
+#     predicted_label = np.zeros(predictions.shape)
+#     for i in range(len(predictions)):
+#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+#         for j in top_k_index:
+#             predicted_label[i][j] = 1
+#     predicted_label = predicted_label.astype(np.int64)
+#     return predicted_label
+
+def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
     for i in range(len(predictions)):
-        top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+        goldenK = len(goldenTruth[i])
+        if goldenK <= k:
+            top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
+        else:
+            top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
         for j in top_k_index:
             predicted_label[i][j] = 1
     predicted_label = predicted_label.astype(np.int64)
@@ -270,7 +283,8 @@ def main():
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
     pred = results.data.cpu().numpy()
-    top_5_pred = top_k_predicted(pred, 5)
+    top_5_pred = top_k_predicted(test_labels, pred, 5)
+    print(top_5_pred.shape)
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
