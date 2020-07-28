@@ -65,7 +65,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     for obj in tqdm(test_objects):
         ids = obj["pmid"]
         text = obj["abstract"].strip()
-        label = obj['meshId'].strip()
+        label = obj['meshId']
         test_pmid.append(ids)
         test_text.append(text)
         test_label.append(label)
