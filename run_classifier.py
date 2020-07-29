@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 100:
+        if i <= 1000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -180,26 +180,17 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test_dataset, model, G, batch_sz, device, mlb):
+def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
     for text, label in test_data:
         text = text.to(device)
         print('test_orig', label, '\n')
-        test_label = mlb.fit_transform(label)
         ori_label.append(label)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
-
-        # print test
-        results = pred.data.cpu().numpy()
-        top_10_pred = top_k_predicted(test_label, results, 10)
-        top_10_mesh = mlb.inverse_transform(top_10_pred)
-        print('predicted train', top_10_mesh, '\n')
-
-
     flattened = [val for sublist in ori_label for val in sublist]
     return pred, flattened
 
@@ -296,12 +287,13 @@ def main():
           lr_scheduler)
 
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device, mlb)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
     test_label_transform = mlb.fit_transform(test_labels)
 
     pred = results.data.cpu().numpy()
-    top_5_pred = top_k_predicted(test_labels, pred, 5)
+    top_5_pred = top_k_predicted(test_labels, pred, 10)
+    print('test_top_10:', top_5_pred, '\n')
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
