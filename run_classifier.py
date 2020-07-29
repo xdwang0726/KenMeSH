@@ -187,17 +187,17 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
     for text, label in test_data:
         text = text.to(device)
         print('test_orig', label, '\n')
-        test_label = mlb.fit_transform(label)
+        # test_label = mlb.fit_transform(label)
         ori_label.append(label)
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
 
         # print test
-        pred = pred.data.cpu().numpy()
-        top_10_pred = top_k_predicted(test_label, pred, 10)
-        top_10_mesh = mlb.inverse_transform(top_10_pred)
-        print('predicted train', top_10_mesh, '\n')
+        # pred = pred.data.cpu().numpy()
+        # top_10_pred = top_k_predicted(test_label, pred, 10)
+        # top_10_mesh = mlb.inverse_transform(top_10_pred)
+        # print('predicted train', top_10_mesh, '\n')
 
 
     flattened = [val for sublist in ori_label for val in sublist]
