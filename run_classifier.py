@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 3000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -265,7 +265,7 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=5)
-    parser.add_argument('--batch_sz', type=int, default=5)
+    parser.add_argument('--batch_sz', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--weight_decay', type=float, default=0)
@@ -300,41 +300,43 @@ def main():
 
     # testing
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device, mlb)
-    print('predicted:', results)
+    print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
+    print('test_golden_truth', test_labels)
 
     pred = results.data.cpu().numpy()
-    top_5_pred = top_k_predicted(test_labels, pred, 10)
+
+    # top_5_pred = top_k_predicted(test_labels, pred, 10)
 
     # convert binary label back to orginal ones
-    top_5_mesh = mlb.inverse_transform(top_5_pred)
-    print('test_top_10:', top_5_mesh, '\n')
-    top_5_mesh = [list(item) for item in top_5_mesh]
+    # top_5_mesh = mlb.inverse_transform(top_5_pred)
+    # print('test_top_10:', top_5_mesh, '\n')
+    # top_5_mesh = [list(item) for item in top_5_mesh]
 
-    pickle.dump(top_5_mesh, open(args.results, "wb"))
+    pickle.dump(pred, open(args.results, "wb"))
 
     print("\rSaving model to {}".format(args.save_model_path))
     torch.save(model.to('cpu'), args.save_model_path)
 
     # precision @k
-    test_labelsIndex = getLabelIndex(test_label_transform)
-    precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-
-    for k, p in zip([1, 3, 5], precision):
-        print('p@{}: {:.5f}'.format(k, p))
-
-    # example based evaluation
-    example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
-    print("EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = perf_measure(test_label_transform, top_5_pred)
-    print("MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
+    # test_labelsIndex = getLabelIndex(test_label_transform)
+    # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+    #
+    # for k, p in zip([1, 3, 5], precision):
+    #     print('p@{}: {:.5f}'.format(k, p))
+    #
+    # # example based evaluation
+    # example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
+    # print("EMP@5, EMR@5, EMF@5")
+    # for em in example_based_measure_5:
+    #     print(em, ",")
+    #
+    # # label based evaluation
+    # label_measure_5 = perf_measure(test_label_transform, top_5_pred)
+    # print("MaP@5, MiP@5, MaF@5, MiF@5: ")
+    # for measure in label_measure_5:
+    #     print(measure, ",")
 
 
 if __name__ == "__main__":
