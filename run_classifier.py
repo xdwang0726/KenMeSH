@@ -160,15 +160,16 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
             optimizer.zero_grad()
-            # test_label = mlb.fit_transform(label)
+            test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
+
             # print train output
-            # pred = output.data.cpu().numpy()
-            # top_10_pred = top_k_predicted(test_label, pred, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted train', top_10_mesh)
+            pred = output.data.cpu().numpy()
+            top_10_pred = top_k_predicted(test_label, pred, 10)
+            top_10_mesh = mlb.inverse_transform(top_10_pred)
+            print('predicted train', top_10_mesh, '\n')
 
             loss = criterion(output, label)
             loss.backward()
@@ -191,15 +192,16 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         text = text.to(device)
         print('test_orig', label, '\n')
         ori_label.append(label)
+        flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
 
             results = pred.data.cpu().numpy()
-            top_10_pred = top_k_predicted(label, results, 10)
+            top_10_pred = top_k_predicted(flattened, results, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
             print('predicted_test', top_10_mesh, '\n')
-        flattened = [val for sublist in ori_label for val in sublist]
+    # flattened = [val for sublist in ori_label for val in sublist]
     print('###################DONE#########################')
     return pred, flattened
 
