@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 100:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -157,12 +157,16 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
             optimizer.zero_grad()
-            print('original_label', label)
-            label = mlb.fit_transform(label)
-            print('transformed_label', label)
-            label = torch.from_numpy(label).type(torch.float)
+            test_label = mlb.fit_transform(label)
+            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
+            # print train output
+            pred = output.data.cpu().numpy()
+            top_10_pred = top_k_predicted(test_label, pred, 10)
+            top_10_mesh = mlb.inverse_transform(top_10_pred)
+            print('predicted train', top_10_mesh)
+
             loss = criterion(output, label)
             loss.backward()
             optimizer.step()
@@ -248,7 +252,7 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=5)
-    parser.add_argument('--batch_sz', type=int, default=32)
+    parser.add_argument('--batch_sz', type=int, default=5)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--weight_decay', type=float, default=0)
