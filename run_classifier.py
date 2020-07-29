@@ -160,6 +160,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
             optimizer.zero_grad()
+            print('train_original', i, label, '\n')
             test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
@@ -169,7 +170,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             pred = output.data.cpu().numpy()
             top_10_pred = top_k_predicted(test_label, pred, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
-            print('predicted train', top_10_mesh, '\n')
+            print('predicted train', i, top_10_mesh, '\n')
 
             loss = criterion(output, label)
             loss.backward()
