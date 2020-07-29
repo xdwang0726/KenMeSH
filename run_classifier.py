@@ -199,7 +199,7 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
             top_10_pred = top_k_predicted(label, results, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
             print('predicted_test', top_10_mesh, '\n')
-    flattened = [val for sublist in ori_label for val in sublist]
+        flattened = [val for sublist in ori_label for val in sublist]
     return pred, flattened
 
 
