@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 3000000:
+        if i <= 2000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -62,16 +62,14 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     print('Start loading test data')
     logging.info("Start loading test data")
-    for i, obj in enumerate(tqdm(test_objects)):
-        if i <= 10:
-            ids = obj["pmid"]
-            text = obj["abstract"].strip()
-            label = obj['meshId']
-            test_pmid.append(ids)
-            test_text.append(text)
-            test_label.append(label)
-        else:
-            break
+    for obj in tqdm(test_objects):
+        ids = obj["pmid"]
+        text = obj["abstract"].strip()
+        label = obj['meshId']
+        test_pmid.append(ids)
+        test_text.append(text)
+        test_label.append(label)
+
 
     logging.info("Finish loading test data")
 
