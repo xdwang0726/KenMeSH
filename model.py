@@ -38,6 +38,9 @@ class ContentsExtractor(nn.Module):
 
         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 
+        self.atten_w = nn.init.xavier_normal_(torch.empty((nKernel, embedding_dim), dtype=torch.float))
+        self.atten_b = nn.init.zeros_(torch.empty((embedding_dim,), dtype=torch.float))
+
     def forward(self, input_seq):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
 
@@ -45,6 +48,10 @@ class ContentsExtractor(nn.Module):
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
+        x = [torch.softmax(F.tanh(torch.matmul(line.transpose(1, 2), self.atten_w) + self.atten_b)) for line in x_conv]
+        print('w', self.atten_w)
+        print('b', self.atten_b)
+        print("x", x[0], x[1], x[2])
 
 
 
