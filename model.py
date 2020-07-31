@@ -43,6 +43,11 @@ class ContentsExtractor(nn.Module):
 
         embedded_seq = embedded_seq.unsqueeze(1)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        print(x_conv[0], x_conv[1])
+        # label-wise attention (mapping different parts of the document representation to different labels)
+
+
+
         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
         print('maxpool', x_maxpool[0].shape)
         x_concat = torch.cat(x_maxpool, 1)
@@ -100,8 +105,9 @@ class LabelNet(nn.Module):
         x = self.gcn2(g, x)
         print('gcn_shape', x.shape)
         print('embedding_shape', g.ndata['feat'].shape)
+
         # concat MeSH embeddings together with GCN result
-        x = torch.cat([x, g.ndata['feat']], dim=0)
+        x = torch.cat([x, g.ndata['feat']], dim=1)
         print('cat_shape', x)
         return x
 
@@ -109,10 +115,10 @@ class LabelNet(nn.Module):
 class MeSH_GCN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
-        gcn_out = len(ksz) * nKernel
+        # gcn_out = len(ksz) * nKernel
 
         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
-        self.gcn = LabelNet(hidden_gcn_size, gcn_out, embedding_dim)
+        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
     def forward(self, input_seq, g, features):
         x_feature = self.cnn(input_seq)
