@@ -139,8 +139,10 @@ class MeSH_GCN(nn.Module):
 
         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 
-        self.atten_w = nn.init.xavier_normal_(torch.empty((nKernel, embedding_dim), dtype=torch.float)).to('cuda')
-        self.atten_b = nn.init.zeros_(torch.empty((embedding_dim,), dtype=torch.float)).to('cuda')
+        self.transform = nn.Linear(nKernel, embedding_dim)
+        nn.init.xavier_uniform(self.transform.weight)
+        nn.init.zeros_(self.transform.bias)
+
 
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
@@ -151,9 +153,10 @@ class MeSH_GCN(nn.Module):
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
+        print('w', self.transform.weight.shape)
+        print('b', self.transform.bias.shape)
         x_doc = [torch.tanh(torch.matmul(line.transpose(1, 2), self.atten_w) + self.atten_b) for line in x_conv]
-        print('w', self.atten_w.shape)
-        print('b', self.atten_b.shape)
+
         print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
         atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1).squeeze(2) for x in x_doc]
