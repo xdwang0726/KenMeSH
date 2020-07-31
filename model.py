@@ -43,7 +43,7 @@ class ContentsExtractor(nn.Module):
 
         embedded_seq = embedded_seq.unsqueeze(1)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-        print(x_conv[0], x_conv[1], x_conv[2])
+        print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
 
 
