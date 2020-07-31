@@ -49,9 +49,9 @@ class ContentsExtractor(nn.Module):
         print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
         x = [torch.tanh(torch.matmul(line.transpose(1, 2), self.atten_w) + self.atten_b) for line in x_conv]
-        print('w', self.atten_w)
-        print('b', self.atten_b)
-        print("x", x[0], x[1], x[2])
+        print('w', self.atten_w.shape)
+        print('b', self.atten_b.shape)
+        print("x", x[0].shape, x[1].shape, x[2].shape)
 
 
 
