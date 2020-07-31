@@ -150,9 +150,10 @@ class MeSH_GCN(nn.Module):
     def forward(self, input_seq, g, features):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         print('embedding', embedded_seq.shape)
-        embedded_seq = embedded_seq.unsqueeze(1)
+        # embedded_seq = embedded_seq.unsqueeze(1)
         print('embedding2', embedded_seq.shape)
-        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        # x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        x_conv = [F.relu(conv(embedded_seq)) for conv in self.convs]
         print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
         print('w', self.transform.weight.shape)
