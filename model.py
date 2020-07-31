@@ -44,8 +44,9 @@ class ContentsExtractor(nn.Module):
         embedded_seq = embedded_seq.unsqueeze(1)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
-
+        print(x_maxpool[0].shape)
         x_concat = torch.cat(x_maxpool, 1)
+        print(x_maxpool.shape)
 
         return x_concat
 
@@ -97,6 +98,11 @@ class LabelNet(nn.Module):
         x = self.gcn1(g, features)
         x = F.relu(x)
         x = self.gcn2(g, x)
+        print('gcn_shape', x.shape)
+        print('embedding_shape', g.ndata['feat'].shape)
+        # concat MeSH embeddings together with GCN result
+        x = torch.cat([x, g.ndata['feat']], dim=0)
+        print('cat_shape', x)
         return x
 
 
