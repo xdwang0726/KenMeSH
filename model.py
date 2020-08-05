@@ -175,14 +175,14 @@ class MeSH_GCN(nn.Module):
         print('x_concat', x_concat.shape)
 
         x_feature = self.content_final(x_concat.transpose(1, 2))
-
-
-
-
+        print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
+        print('label', label_feature.shape)
         label_feature = torch.transpose(label_feature, 0, 1)
+        print('label2', label_feature.shape)
         x = torch.matmul(x_feature, label_feature)
+        print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
 
