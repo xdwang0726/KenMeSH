@@ -168,6 +168,9 @@ class MeSH_GCN(nn.Module):
         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
         print('x_content', x_content[0].shape, x_content[1].shape, x_content[2].shape)
 
+        x_concat = torch.cat(x_content, 1)
+        print('x_concat', x_concat.shape)
+
 
 
 
