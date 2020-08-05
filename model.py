@@ -162,7 +162,7 @@ class MeSH_GCN(nn.Module):
 
         print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
-        atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1).squeeze(2) for x in x_doc]
+        atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in x_doc]
         print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
 
         x_content = [torch.matmul(a, x_conv[i]) for i, a in enumerate(atten)]
