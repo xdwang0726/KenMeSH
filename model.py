@@ -141,7 +141,7 @@ class MeSH_GCN(nn.Module):
         # self.convs = nn.ModuleList(nn.Conv1d(embedding_dim, nKernel, k) for k in ksz)
 
         self.transform = nn.Linear(nKernel, embedding_dim)
-        nn.init.xavier_uniform(self.transform.weight)
+        nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
 
@@ -158,7 +158,7 @@ class MeSH_GCN(nn.Module):
         # label-wise attention (mapping different parts of the document representation to different labels)
         print('w', self.transform.weight.shape)
         print('b', self.transform.bias.shape)
-        x_doc = [torch.tanh(torch.matmul(line.transpose(1, 2), self.atten_w) + self.atten_b) for line in x_conv]
+        x_doc = [torch.tanh(self.transform.weight.matmul(line) + self.transform.bias) for line in x_conv]
 
         print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
