@@ -183,7 +183,7 @@ class MeSH_GCN(nn.Module):
         print('label2', label_feature.shape)
 
         def element_wise_mul(m1, m2):
-            result = torch.zeros(0)
+            result = torch.zeros(0).to('cuda')
             for i in range(m1.shape[1]):
                 v1 = m1[:, i, :]
                 v2 = m2[:, i]
