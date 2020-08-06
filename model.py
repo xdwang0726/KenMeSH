@@ -174,17 +174,31 @@ class MeSH_GCN(nn.Module):
         x_concat = torch.cat(x_content, dim=1)
         print('x_concat', x_concat.shape)
 
-        x_feature = self.content_final(x_concat.transpose(1, 2))
+        x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
         print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
         print('label', label_feature.shape)
         label_feature = torch.transpose(label_feature, 0, 1)
         print('label2', label_feature.shape)
-        x = torch.matmul(x_feature, label_feature)
+
+        def element_wise_mul(m1, m2):
+            result = torch.zeros(0)
+            for i in m1.shape[1]:
+                v1 = m1[:, i, :]
+                v2 = m2[:, :, i]
+                v = torch.matmul(v1, v2)
+                print('v', v.shape)
+                result = torch.cat((result, v), dim=0)
+                print('result', result)
+
+            return result
+
+        x = element_wise_mul(x_feature, label_feature)
         print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
+
 
 class RGCNLayer(nn.Module):
     def __init__(self, in_feat, out_feat, num_rels, num_bases=-1, bias=None,
