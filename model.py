@@ -184,7 +184,7 @@ class MeSH_GCN(nn.Module):
 
         def element_wise_mul(m1, m2):
             result = torch.zeros(0)
-            for i in m1.shape[1]:
+            for i in range(m1.shape[1]):
                 v1 = m1[:, i, :]
                 v2 = m2[:, :, i]
                 v = torch.matmul(v1, v2)
