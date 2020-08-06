@@ -99,12 +99,11 @@ class LabelNet(nn.Module):
         x = self.gcn1(g, features)
         x = F.relu(x)
         x = self.gcn2(g, x)
-        print('gcn_shape', x.shape)
-        print('embedding_shape', g.ndata['feat'].shape)
+        # print('gcn_shape', x.shape)
+        # print('embedding_shape', g.ndata['feat'].shape)
 
         # concat MeSH embeddings together with GCN result
         x = torch.cat([x, g.ndata['feat']], dim=1)
-        print('cat_shape', x)
         return x
 
 
