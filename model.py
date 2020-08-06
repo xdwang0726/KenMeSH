@@ -152,35 +152,35 @@ class MeSH_GCN(nn.Module):
 
     def forward(self, input_seq, g, features):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        print('embedding', embedded_seq.shape)
+        # print('embedding', embedded_seq.shape)
         embedded_seq = embedded_seq.unsqueeze(1)
-        print('embedding2', embedded_seq.shape)
+        #print('embedding2', embedded_seq.shape)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         # x_conv = [F.relu(conv(embedded_seq)) for conv in self.convs]
-        print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
+        #print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
-        print('w', self.transform.weight.shape)
-        print('b', self.transform.bias.shape)
+        # print('w', self.transform.weight.shape)
+        #print('b', self.transform.bias.shape)
         x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in x_conv]
-
-        print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
+        #print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
         atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in x_doc]
-        print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
+        #print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
 
         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
-        print('x_content', x_content[0].shape, x_content[1].shape, x_content[2].shape)
+        #print('x_content', x_content[0].shape, x_content[1].shape, x_content[2].shape)
 
         x_concat = torch.cat(x_content, dim=1)
-        print('x_concat', x_concat.shape)
+        #print('x_concat', x_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
+        #print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
-        print('label', label_feature.shape)
+        #print('label', label_feature.shape)
         label_feature = torch.transpose(label_feature, 0, 1)
-        print('label2', label_feature.shape)
+
+        #print('label2', label_feature.shape)
 
         def element_wise_mul(m1, m2):
             result = torch.zeros(0).to('cuda')
@@ -188,14 +188,14 @@ class MeSH_GCN(nn.Module):
                 v1 = m1[:, i, :]
                 v2 = m2[:, i]
                 v = torch.matmul(v1, v2).unsqueeze(1)
-                print('v', v.shape)
+                #print('v', v.shape)
                 result = torch.cat((result, v), dim=1)
-                print('result', result.shape)
+                #print('result', result.shape)
 
             return result
 
         x = element_wise_mul(x_feature, label_feature)
-        print('x_final', x.shape)
+        #print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
 
