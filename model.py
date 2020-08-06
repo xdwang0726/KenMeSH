@@ -187,9 +187,9 @@ class MeSH_GCN(nn.Module):
             for i in range(m1.shape[1]):
                 v1 = m1[:, i, :]
                 v2 = m2[:, i]
-                v = torch.matmul(v1, v2)
+                v = torch.matmul(v1, v2).unsqueeze(1)
                 print('v', v.shape)
-                result = torch.cat((result, v), dim=0)
+                result = torch.cat((result, v), dim=1)
                 print('result', result.shape)
 
             return result
