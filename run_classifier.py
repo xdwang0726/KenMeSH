@@ -162,12 +162,12 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             print('2')
             optimizer.zero_grad()
             print('3')
-            # print('train_original', i, label, '\n')
-            # test_label = mlb.fit_transform(label)
-            # label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            # text, label = text.to(device), label.to(device)
-            # output = model(text, G, G.ndata['feat'])
-            # print('4')
+            print('train_original', i, label, '\n')
+            test_label = mlb.fit_transform(label)
+            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            text, label = text.to(device), label.to(device)
+            output = model(text, G, G.ndata['feat'])
+            print('4')
 
             # print train output
             # pred = output.data.cpu().numpy()
