@@ -158,6 +158,9 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     print("Training....")
     for epoch in range(num_epochs):
         print('1')
+        print(train_data)
+        for i, (text, label) in enumerate(train_data):
+            print('ok')
         for i, (text, label) in enumerate(train_data):
             print('2')
             optimizer.zero_grad()
