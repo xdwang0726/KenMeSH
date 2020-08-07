@@ -164,11 +164,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
 
-            # # print train output
-            # pred = output.data.cpu().numpy()
-            # top_10_pred = top_k_predicted(test_label, pred, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted train', i, top_10_mesh, '\n')
+            # print train output
+            pred = output.data.cpu().numpy()
+            top_10_pred = top_k_predicted(test_label, pred, 10)
+            top_10_mesh = mlb.inverse_transform(top_10_pred)
+            print('predicted train', i, top_10_mesh, '\n')
 
             loss = criterion(output, label)
             loss.backward()
