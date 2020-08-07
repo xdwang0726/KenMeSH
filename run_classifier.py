@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 50000:
+        if i <= 500:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -157,9 +157,13 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
     print("Training....")
     for epoch in range(num_epochs):
+        print('1')
         for i, (text, label) in enumerate(train_data):
+            print('2')
             optimizer.zero_grad()
+            print('3')
             print('train_original', i, label, '\n')
+            print('4')
             test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
