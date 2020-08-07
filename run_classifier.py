@@ -164,10 +164,10 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             print('3')
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
-            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label = text.to(device), label.to(device)
-            output = model(text, G, G.ndata['feat'])
-            print('4')
+            # label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            # text, label = text.to(device), label.to(device)
+            # output = model(text, G, G.ndata['feat'])
+            # print('4')
 
             # print train output
             # pred = output.data.cpu().numpy()
@@ -175,17 +175,17 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # top_10_mesh = mlb.inverse_transform(top_10_pred)
             # print('predicted train', i, top_10_mesh, '\n')
 
-            print('5')
-            loss = criterion(output, label)
-            loss.backward()
-            optimizer.step()
-            processed_lines = i + len(train_data) * epoch
-            progress = processed_lines / float(num_lines)
-            if processed_lines % 128 == 0:
-                sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
-                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            print('6')
+            # print('5')
+            # loss = criterion(output, label)
+            # loss.backward()
+            # optimizer.step()
+            # processed_lines = i + len(train_data) * epoch
+            # progress = processed_lines / float(num_lines)
+            # if processed_lines % 128 == 0:
+            #     sys.stderr.write(
+            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
+            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
+            # print('6')
         # Adjust the learning rate
         print('7')
         lr_scheduler.step()
