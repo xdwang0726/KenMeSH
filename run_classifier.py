@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 100000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -164,11 +164,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
 
-            # print train output
-            pred = output.data.cpu().numpy()
-            top_10_pred = top_k_predicted(test_label, pred, 10)
-            top_10_mesh = mlb.inverse_transform(top_10_pred)
-            print('predicted train', i, top_10_mesh, '\n')
+            # # print train output
+            # pred = output.data.cpu().numpy()
+            # top_10_pred = top_k_predicted(test_label, pred, 10)
+            # top_10_mesh = mlb.inverse_transform(top_10_pred)
+            # print('predicted train', i, top_10_mesh, '\n')
 
             loss = criterion(output, label)
             loss.backward()
@@ -262,7 +262,7 @@ def main():
     parser.add_argument('--hidden_gcn_size', type=int, default=1024)
     parser.add_argument('--embedding_dim', type=int, default=200)
 
-    parser.add_argument('--num_epochs', type=int, default=5)
+    parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
@@ -306,12 +306,12 @@ def main():
 
     pred = results.data.cpu().numpy()
 
-    # top_5_pred = top_k_predicted(test_labels, pred, 10)
+    top_5_pred = top_k_predicted(test_labels, pred, 10)
 
     # convert binary label back to orginal ones
-    # top_5_mesh = mlb.inverse_transform(top_5_pred)
-    # print('test_top_10:', top_5_mesh, '\n')
-    # top_5_mesh = [list(item) for item in top_5_mesh]
+    top_5_mesh = mlb.inverse_transform(top_5_pred)
+    print('test_top_10:', top_5_mesh, '\n')
+    top_5_mesh = [list(item) for item in top_5_mesh]
 
     pickle.dump(pred, open(args.results, "wb"))
 
@@ -319,23 +319,23 @@ def main():
     torch.save(model.to('cpu'), args.save_model_path)
 
     # precision @k
-    # test_labelsIndex = getLabelIndex(test_label_transform)
-    # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-    #
-    # for k, p in zip([1, 3, 5], precision):
-    #     print('p@{}: {:.5f}'.format(k, p))
-    #
-    # # example based evaluation
-    # example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
-    # print("EMP@5, EMR@5, EMF@5")
-    # for em in example_based_measure_5:
-    #     print(em, ",")
-    #
-    # # label based evaluation
-    # label_measure_5 = perf_measure(test_label_transform, top_5_pred)
-    # print("MaP@5, MiP@5, MaF@5, MiF@5: ")
-    # for measure in label_measure_5:
-    #     print(measure, ",")
+    test_labelsIndex = getLabelIndex(test_label_transform)
+    precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+
+    for k, p in zip([1, 3, 5], precision):
+        print('p@{}: {:.5f}'.format(k, p))
+
+    # example based evaluation
+    example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
+    print("EMP@5, EMR@5, EMF@5")
+    for em in example_based_measure_5:
+        print(em, ",")
+
+    # label based evaluation
+    label_measure_5 = perf_measure(test_label_transform, top_5_pred)
+    print("MaP@5, MiP@5, MaF@5, MiF@5: ")
+    for measure in label_measure_5:
+        print(measure, ",")
 
 
 if __name__ == "__main__":
