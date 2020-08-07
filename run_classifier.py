@@ -160,6 +160,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         print('1')
         print(train_data)
         for i, (text, label) in enumerate(train_data):
+            print(text)
+            print(label)
             print('ok')
         for i, (text, label) in enumerate(train_data):
             print('2')
