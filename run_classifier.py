@@ -155,6 +155,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
     num_lines = num_epochs * len(train_data)
 
+    print("Training....")
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
             optimizer.zero_grad()
@@ -187,6 +188,7 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
+    print('Testing....')
     for text, label in test_data:
         text = text.to(device)
         print('test_orig', label, '\n')
@@ -294,9 +296,10 @@ def main():
     criterion = nn.MultiLabelSoftMarginLoss()
 
     # training
+    print("Start training!")
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
-
+    print('Finish training!')
     # testing
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device, mlb)
     print('predicted:', results, '\n')
