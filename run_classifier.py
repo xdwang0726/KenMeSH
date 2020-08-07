@@ -170,22 +170,22 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             print('4')
 
             # print train output
-            # pred = output.data.cpu().numpy()
-            # top_10_pred = top_k_predicted(test_label, pred, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted train', i, top_10_mesh, '\n')
+            pred = output.data.cpu().numpy()
+            top_10_pred = top_k_predicted(test_label, pred, 10)
+            top_10_mesh = mlb.inverse_transform(top_10_pred)
+            print('predicted train', i, top_10_mesh, '\n')
 
-            # print('5')
-            # loss = criterion(output, label)
-            # loss.backward()
-            # optimizer.step()
-            # processed_lines = i + len(train_data) * epoch
-            # progress = processed_lines / float(num_lines)
-            # if processed_lines % 128 == 0:
-            #     sys.stderr.write(
-            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
-            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            # print('6')
+            print('5')
+            loss = criterion(output, label)
+            loss.backward()
+            optimizer.step()
+            processed_lines = i + len(train_data) * epoch
+            progress = processed_lines / float(num_lines)
+            if processed_lines % 128 == 0:
+                sys.stderr.write(
+                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
+                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
+            print('6')
         # Adjust the learning rate
         print('7')
         lr_scheduler.step()
@@ -301,7 +301,7 @@ def main():
 
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.MultiLabelSoftMarginLoss()
+    criterion = nn.BCELoss()
 
     # training
     print("Start training!")
