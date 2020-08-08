@@ -1,7 +1,6 @@
 import logging
 import re
 
-import spacy
 import torch
 from torchtext.data.utils import get_tokenizer
 from torchtext.data.utils import ngrams_iterator
@@ -144,13 +143,13 @@ def MeSH_indexing(train_text, train_labels, test_text, test_labels, ngrams=1, vo
 #         super(TextMultiLabelDataset, self).__init__(examples, fields, **kwargs)
 
 
-def tokenize(text):
-    tokens = []
-    nlp = spacy.load("en_core_web_sm")
-    doc = nlp(text)
-    for token in doc:
-        tokens.append(token.text)
-    return tokens
+# def tokenize(text):
+#     tokens = []
+#     nlp = spacy.load("en_core_web_sm")
+#     doc = nlp(text)
+#     for token in doc:
+#         tokens.append(token.text)
+#     return tokens
 
 
 def text_preprocess(string):
