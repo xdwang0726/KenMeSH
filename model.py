@@ -38,8 +38,6 @@ class ContentsExtractor(nn.Module):
 
         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 
-        self.atten_w = nn.init.xavier_normal_(torch.empty((nKernel, embedding_dim), dtype=torch.float)).to('cuda')
-        self.atten_b = nn.init.zeros_(torch.empty((embedding_dim,), dtype=torch.float)).to('cuda')
 
     def forward(self, input_seq):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
