@@ -3,7 +3,6 @@ import logging
 import os
 import pickle
 import sys
-
 import ijson
 import numpy as np
 import torch
@@ -14,8 +13,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
-
-from model import MeSH_GCN
+from model import MeSH_GCN_Old
 from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -25,16 +23,14 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # load training data
     f = open(train_data_path, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
-
     pmid = []
     all_text = []
     label = []
     label_id = []
-
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 500:
+        if i <= 1000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -51,15 +47,12 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     print("Finish loading training data")
     logging.info("Finish loading training data")
-
     # load test data
     f_t = open(test_data_path, encoding="utf8")
     test_objects = ijson.items(f_t, 'documents.item')
-
     test_pmid = []
     test_text = []
     test_label = []
-
     print('Start loading test data')
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
@@ -69,10 +62,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         test_pmid.append(ids)
         test_text.append(text)
         test_label.append(label)
-
-
     logging.info("Finish loading test data")
-
     print('load and prepare Mesh')
     # read full MeSH ID list
     mapping_id = {}
@@ -80,36 +70,28 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         for line in f:
             (key, value) = line.split('=')
             mapping_id[key] = value.strip()
-
     meshIDs = list(mapping_id.values())
     print('Total number of labels:', len(meshIDs))
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
-
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
     train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label)
-
     # build vocab
     print('building vocab')
     logging.info('Build vocab')
     vocab = train_dataset.get_vocab()
-
     # create Vector object map tokens to vectors
     print('load pre-trained BioWord2Vec')
     cache, name = os.path.split(word2vec_path)
     vectors = Vectors(name=name, cache=cache)
-
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
-
     print('graph', G.ndata['feat'].shape)
-
     # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
     # G = build_MeSH_graph(edges, node_count, label_embedding)
-
     print('prepare dataset and labels graph done!')
     return mlb, vocab, train_dataset, test_dataset, vectors, G
 
@@ -134,12 +116,10 @@ def generate_batch(batch):
     # check if the dataset if train or test
     if len(batch[0]) == 2:
         label = [entry[0] for entry in batch]
-
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
         text = pad_sequence(text, batch_first=True)
         return text, label
-
         text = [entry[0] for entry in batch]
         text = pad_sequence(text, batch_first=True)
         return text
@@ -152,67 +132,37 @@ def generate_batch(batch):
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
                             num_workers=num_workers)
-
     num_lines = num_epochs * len(train_data)
-
-    print("Training....")
     for epoch in range(num_epochs):
-        print('1')
         for i, (text, label) in enumerate(train_data):
-            print('2')
-            print('3')
-            print('train_original', i, label, '\n')
-            test_label = mlb.fit_transform(label)
+            optimizer.zero_grad()
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
-            print('4')
-
-            # print train output
-            pred = output.data.cpu().numpy()
-            top_10_pred = top_k_predicted(test_label, pred, 10)
-            top_10_mesh = mlb.inverse_transform(top_10_pred)
-            print('predicted train', i, top_10_mesh, '\n')
-
-            print('5')
-            optimizer.zero_grad()
             loss = criterion(output, label)
             loss.backward()
-            print('6')
-            # optimizer.step()
-            # processed_lines = i + len(train_data) * epoch
-            # progress = processed_lines / float(num_lines)
-            # if processed_lines % 128 == 0:
-            #     sys.stderr.write(
-            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
-            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            # print('6')
+            optimizer.step()
+            processed_lines = i + len(train_data) * epoch
+            progress = processed_lines / float(num_lines)
+            if processed_lines % 128 == 0:
+                sys.stderr.write(
+                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
+                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
-        print('7')
         lr_scheduler.step()
-        print('8')
 
 
-def test(test_dataset, model, G, batch_sz, device, mlb):
+def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
-    print('Testing....')
     for text, label in test_data:
         text = text.to(device)
-        print('test_orig', label, '\n')
         ori_label.append(label)
-        flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
-
-            results = pred.data.cpu().numpy()
-            top_10_pred = top_k_predicted(flattened, results, 10)
-            top_10_mesh = mlb.inverse_transform(top_10_pred)
-            print('predicted_test', top_10_mesh, '\n')
-    # flattened = [val for sublist in ori_label for val in sublist]
-    print('###################DONE#########################')
+    flattened = [val for sublist in ori_label for val in sublist]
     return pred, flattened
 
 
@@ -226,6 +176,7 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
 #             predicted_label[i][j] = 1
 #     predicted_label = predicted_label.astype(np.int64)
 #     return predicted_label
+
 
 def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
@@ -249,7 +200,6 @@ def getLabelIndex(labels):
         N = len(labels[1]) - index.size
         index = np.pad(index, [(0, 0), (0, N)], 'constant')
         label_index[i] = index
-
     label_index = np.array(label_index, dtype=int)
     label_index = label_index.astype(np.int32)
     return label_index
@@ -266,83 +216,62 @@ def main():
     parser.add_argument('--graph')
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
-
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=512)
     parser.add_argument('--embedding_dim', type=int, default=200)
-
-    parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=8)
+    parser.add_argument('--num_epochs', type=int, default=5)
+    parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
-
     args = parser.parse_args()
-
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     logging.info('Device:'.format(device))
-
     # Get dataset and label graph & Load pre-trained embeddings
     mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                           args.test_path, args.meSH_pair_path,
                                                                           args.word2vec_path, args.graph)
-
     vocab_size = len(vocab)
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-
-    # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-
+    model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.to(device)
     G.to(device)
-
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
-
     # training
-    print("Start training!")
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
-    print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device, mlb)
-    print('predicted:', results, '\n')
-
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
     test_label_transform = mlb.fit_transform(test_labels)
-    print('test_golden_truth', test_labels)
 
     pred = results.data.cpu().numpy()
-
-    top_5_pred = top_k_predicted(test_labels, pred, 10)
+    print('pred', pred.shape)
+    top_5_pred = top_k_predicted(test_labels, pred, 5)
+    print('top_5', top_5_pred.shape)
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
-    print('test_top_10:', top_5_mesh, '\n')
     top_5_mesh = [list(item) for item in top_5_mesh]
-
-    pickle.dump(pred, open(args.results, "wb"))
-
+    pickle.dump(top_5_mesh, open(args.results, "wb"))
     print("\rSaving model to {}".format(args.save_model_path))
     torch.save(model.to('cpu'), args.save_model_path)
 
     # precision @k
     test_labelsIndex = getLabelIndex(test_label_transform)
     precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-
     for k, p in zip([1, 3, 5], precision):
         print('p@{}: {:.5f}'.format(k, p))
-
     # example based evaluation
     example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
     print("EMP@5, EMR@5, EMF@5")
     for em in example_based_measure_5:
         print(em, ",")
-
     # label based evaluation
     label_measure_5 = perf_measure(test_label_transform, top_5_pred)
     print("MaP@5, MiP@5, MaF@5, MiF@5: ")

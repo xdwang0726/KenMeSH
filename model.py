@@ -25,31 +25,31 @@ class Embeddings_OOV(torch.nn.Module):
         return embed
 
 
-# class ContentsExtractor(nn.Module):
-#     def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
-#         super(ContentsExtractor, self).__init__()
-#
-#         self.vocab_size = vocab_size
-#         self.embedding_dim = embedding_dim
-#         self.nKernel = nKernel
-#         self.ksz = ksz
-#
-#         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-#
-#         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
-#
-#         self.atten_w = nn.init.xavier_normal_(torch.empty((nKernel, embedding_dim), dtype=torch.float)).to('cuda')
-#         self.atten_b = nn.init.zeros_(torch.empty((embedding_dim,), dtype=torch.float)).to('cuda')
-#
-#     def forward(self, input_seq):
-#         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-#
-#         embedded_seq = embedded_seq.unsqueeze(1)
-#         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-#         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
-#         x_concat = torch.cat(x_maxpool, 1)
-#
-#         return x_concat
+class ContentsExtractor(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
+        super(ContentsExtractor, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.nKernel = nKernel
+        self.ksz = ksz
+
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+
+        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
+
+        self.atten_w = nn.init.xavier_normal_(torch.empty((nKernel, embedding_dim), dtype=torch.float)).to('cuda')
+        self.atten_b = nn.init.zeros_(torch.empty((embedding_dim,), dtype=torch.float)).to('cuda')
+
+    def forward(self, input_seq):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+
+        embedded_seq = embedded_seq.unsqueeze(1)
+        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
+        x_concat = torch.cat(x_maxpool, 1)
+
+        return x_concat
 
 
 # Using PyTorch Geometric
@@ -107,21 +107,21 @@ class LabelNet(nn.Module):
         return x
 
 
-# class MeSH_GCN(nn.Module):
-#     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
-#         super(MeSH_GCN, self).__init__()
-#         # gcn_out = len(ksz) * nKernel
-#
-#         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
-#         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
-#
-#     def forward(self, input_seq, g, features):
-#         x_feature = self.cnn(input_seq)
-#         label_feature = self.gcn(g, features)
-#         label_feature = torch.transpose(label_feature, 0, 1)
-#         x = torch.matmul(x_feature, label_feature)
-#         x = torch.sigmoid(x)
-#         return x
+class MeSH_GCN_Old(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+        super(MeSH_GCN, self).__init__()
+        # gcn_out = len(ksz) * nKernel
+
+        self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
+        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+
+    def forward(self, input_seq, g, features):
+        x_feature = self.cnn(input_seq)
+        label_feature = self.gcn(g, features)
+        label_feature = torch.transpose(label_feature, 0, 1)
+        x = torch.matmul(x_feature, label_feature)
+        x = torch.sigmoid(x)
+        return x
 
 
 class MeSH_GCN(nn.Module):
