@@ -109,7 +109,7 @@ class LabelNet(nn.Module):
 
 class MeSH_GCN_Old(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
-        super(MeSH_GCN, self).__init__()
+        super(MeSH_GCN_Old, self).__init__()
         # gcn_out = len(ksz) * nKernel
 
         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
