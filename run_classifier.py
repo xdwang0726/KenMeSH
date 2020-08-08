@@ -177,8 +177,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
             print('5')
             loss = criterion(output, label)
-            # loss.backward()
-            # print('6')
+            loss.backward()
+            print('6')
             # optimizer.step()
             # processed_lines = i + len(train_data) * epoch
             # progress = processed_lines / float(num_lines)
@@ -270,14 +270,14 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
-    parser.add_argument('--hidden_gcn_size', type=int, default=1024)
+    parser.add_argument('--hidden_gcn_size', type=int, default=512)
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
-    parser.add_argument('--weight_decay', type=float, default=1e-4)
+    parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
