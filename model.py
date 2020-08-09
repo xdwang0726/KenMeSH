@@ -25,29 +25,29 @@ class Embeddings_OOV(torch.nn.Module):
         return embed
 
 
-class ContentsExtractor(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
-        super(ContentsExtractor, self).__init__()
-
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.nKernel = nKernel
-        self.ksz = ksz
-
-        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-
-        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
-
-
-    def forward(self, input_seq):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-
-        embedded_seq = embedded_seq.unsqueeze(1)
-        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-        x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
-        x_concat = torch.cat(x_maxpool, 1)
-
-        return x_concat
+# class ContentsExtractor(nn.Module):
+#     def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
+#         super(ContentsExtractor, self).__init__()
+#
+#         self.vocab_size = vocab_size
+#         self.embedding_dim = embedding_dim
+#         self.nKernel = nKernel
+#         self.ksz = ksz
+#
+#         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+#
+#         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
+#
+#
+#     def forward(self, input_seq):
+#         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+#
+#         embedded_seq = embedded_seq.unsqueeze(1)
+#         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+#         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
+#         x_concat = torch.cat(x_maxpool, 1)
+#
+#         return x_concat
 
 
 # Using PyTorch Geometric
@@ -105,21 +105,21 @@ class LabelNet(nn.Module):
         return x
 
 
-class MeSH_GCN_Old(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
-        super(MeSH_GCN_Old, self).__init__()
-        # gcn_out = len(ksz) * nKernel
-
-        self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
-        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
-
-    def forward(self, input_seq, g, features):
-        x_feature = self.cnn(input_seq)
-        label_feature = self.gcn(g, features)
-        label_feature = torch.transpose(label_feature, 0, 1)
-        x = torch.matmul(x_feature, label_feature)
-        x = torch.sigmoid(x)
-        return x
+# class MeSH_GCN_Old(nn.Module):
+#     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+#         super(MeSH_GCN_Old, self).__init__()
+#         # gcn_out = len(ksz) * nKernel
+#
+#         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
+#         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+#
+#     def forward(self, input_seq, g, features):
+#         x_feature = self.cnn(input_seq)
+#         label_feature = self.gcn(g, features)
+#         label_feature = torch.transpose(label_feature, 0, 1)
+#         x = torch.matmul(x_feature, label_feature)
+#         x = torch.sigmoid(x)
+#         return x
 
 
 class MeSH_GCN(nn.Module):
@@ -158,10 +158,12 @@ class MeSH_GCN(nn.Module):
         # label-wise attention (mapping different parts of the document representation to different labels)
         # print('w', self.transform.weight.shape)
         #print('b', self.transform.bias.shape)
-        x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in x_conv]
+        x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
+                 x_conv]  # [bs, (n_words-ks+1), embedding_sz]
         #print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
-        atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in x_doc]
+        atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in
+                 x_doc]  # []bs, (n_words-ks+1), n_labels]
         #print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
 
         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
