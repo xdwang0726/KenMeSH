@@ -158,7 +158,7 @@ class MeSH_GCN(nn.Module):
         # label-wise attention (mapping different parts of the document representation to different labels)
         print('w', self.transform.weight.shape)
         print('b', self.transform.bias.shape)
-        x_doc = [torch.tanh(torch.matmul(self.transform(line.transpose(1, 2)))) for line in
+        x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
                  x_conv]  # [bs, (n_words-ks+1), embedding_sz]
         print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
