@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 500:
+        if i <= 100:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -268,14 +268,14 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
-    parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--device', default='cpu', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=512)
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=8)
+    parser.add_argument('--batch_sz', type=int, default=2)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--weight_decay', type=float, default=0)
@@ -284,8 +284,8 @@ def main():
 
     args = parser.parse_args()
 
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # device = torch.device(args.device)
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    device = torch.device(args.device)
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
