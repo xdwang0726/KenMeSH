@@ -193,8 +193,9 @@ class MeSH_GCN(nn.Module):
 
             return result
 
-        x = element_wise_mul(x_feature, label_feature)
-        #print('x_final', x.shape)
+        # x = element_wise_mul(x_feature, label_feature)
+        x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0)
+        print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
 
