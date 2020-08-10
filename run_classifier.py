@@ -268,7 +268,7 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
-    parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--device', default='cpu', type=str)
     parser.add_argument('--nKernel', type=int, default=128)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=512)
@@ -284,7 +284,8 @@ def main():
 
     args = parser.parse_args()
 
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    device = torch.device(args.device)
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
