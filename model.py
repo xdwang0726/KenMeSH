@@ -158,7 +158,7 @@ class MeSH_GCN(nn.Module):
         # label-wise attention (mapping different parts of the document representation to different labels)
         print('w', self.transform.weight.shape)
         print('b', self.transform.bias.shape)
-        x_doc = [torch.tanh(torch.matmul(line.transpose(1, 2), self.transform.weight.transpose(0, 1))) for line in
+        x_doc = [torch.tanh(torch.matmul(self.transform(line.transpose(1, 2)))) for line in
                  x_conv]  # [bs, (n_words-ks+1), embedding_sz]
         print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
 
@@ -182,7 +182,7 @@ class MeSH_GCN(nn.Module):
         #print('label2', label_feature.shape)
 
         def element_wise_mul(m1, m2):
-            result = torch.zeros(0).to('cuda')
+            result = torch.zeros(0).to('cpu')
             for i in range(m1.shape[1]):
                 v1 = m1[:, i, :]
                 v2 = m2[:, i]
