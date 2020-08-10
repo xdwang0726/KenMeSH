@@ -173,10 +173,10 @@ class MeSH_GCN(nn.Module):
         print('x_concat', x_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        #print('x_feature', x_feature.shape)
+        print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
-        #print('label', label_feature.shape)
+        print('label', label_feature.shape)
         label_feature = torch.transpose(label_feature, 0, 1)
 
         #print('label2', label_feature.shape)
