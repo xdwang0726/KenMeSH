@@ -180,14 +180,14 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             print('loss', loss)
             loss.backward()
             print('6')
-            # optimizer.step()
-            # processed_lines = i + len(train_data) * epoch
-            # progress = processed_lines / float(num_lines)
-            # if processed_lines % 128 == 0:
-            #     sys.stderr.write(
-            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
-            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            # print('6')
+            optimizer.step()
+            processed_lines = i + len(train_data) * epoch
+            progress = processed_lines / float(num_lines)
+            if processed_lines % 32 == 0:
+                sys.stderr.write(
+                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
+                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
+            print('6')
         # Adjust the learning rate
         print('7')
         lr_scheduler.step()
