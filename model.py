@@ -189,7 +189,8 @@ class MeSH_GCN(nn.Module):
                 v1 = m1[:, i, :]
                 v2 = m2[:, i]
                 v = torch.matmul(v1, v2).unsqueeze(1)
-                # print('v', v.device)
+                print('v', v.device)
+                print('result', result.device)
                 result = torch.cat((result, v), dim=1).to('cpu')
                 #print('result', result.device)
             result.to('cuda')
