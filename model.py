@@ -184,13 +184,13 @@ class MeSH_GCN(nn.Module):
         def element_wise_mul(m1, m2):
             m1.to('cpu')
             m2.to('cpu')
-            result = torch.zeros(0)
+            result = torch.zeros(0).to('cpu')
             for i in range(m1.shape[1]):
                 v1 = m1[:, i, :]
                 v2 = m2[:, i]
                 v = torch.matmul(v1, v2).unsqueeze(1)
                 # print('v', v.device)
-                result = torch.cat((result, v), dim=1)
+                result = torch.cat((result, v), dim=1).to('cpu')
                 #print('result', result.device)
             result.to('cuda')
             return result
