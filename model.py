@@ -181,23 +181,23 @@ class MeSH_GCN(nn.Module):
 
         #print('label2', label_feature.shape)
 
-        def element_wise_mul(m1, m2):
-            m1.to('cpu')
-            m2.to('cpu')
-            result = torch.zeros(0).to('cpu')
-            for i in range(m1.shape[1]):
-                v1 = m1[:, i, :]
-                v2 = m2[:, i]
-                v = torch.matmul(v1, v2).unsqueeze(1).to('cpu')
-                print('v', v.device)
-                print('result', result.device)
-                result = torch.cat((result, v), dim=1)
-                #print('result', result.device)
-            result.to('cuda')
-            return result
+        # def element_wise_mul(m1, m2):
+        #     m1.to('cpu')
+        #     m2.to('cpu')
+        #     result = torch.zeros(0).to('cpu')
+        #     for i in range(m1.shape[1]):
+        #         v1 = m1[:, i, :]
+        #         v2 = m2[:, i]
+        #         v = torch.matmul(v1, v2).unsqueeze(1).to('cpu')
+        #         print('v', v.device)
+        #         print('result', result.device)
+        #         result = torch.cat((result, v), dim=1)
+        #         #print('result', result.device)
+        #     result.to('cuda')
+        #     return result
 
-        x = element_wise_mul(x_feature, label_feature)
-        # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
+        # x = element_wise_mul(x_feature, label_feature)
+        x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
         print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
