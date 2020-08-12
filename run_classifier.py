@@ -170,6 +170,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
             # print train output
             pred = output.data.cpu().numpy()
+            print('pred_index', pred.argsort()[::-1][:, :10])
             top_10_pred = top_k_predicted(test_label, pred, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
             print('predicted train', i, top_10_mesh, '\n')
