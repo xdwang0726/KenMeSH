@@ -278,7 +278,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=2)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
@@ -303,7 +303,8 @@ def main():
     model.to(device)
     G.to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
 
