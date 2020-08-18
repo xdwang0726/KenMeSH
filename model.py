@@ -123,7 +123,7 @@ class LabelNet(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_class, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
         # gcn_out = len(ksz) * nKernel
 
@@ -146,6 +146,9 @@ class MeSH_GCN(nn.Module):
         nn.init.zeros_(self.content_final.bias)
 
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+
+        self.dropout = nn.Dropout(0.5)
+        self.fc = nn.Linear(400, num_class)
 
     def forward(self, input_seq, g, features):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -175,8 +178,8 @@ class MeSH_GCN(nn.Module):
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
         print('x_feature', x_feature.shape)
 
-        label_feature = self.gcn(g, features)
-        print('label', label_feature.shape)
+        # label_feature = self.gcn(g, features)
+        # print('label', label_feature.shape)
         # label_feature = torch.transpose(label_feature, 0, 1)
 
         #print('label2', label_feature.shape)
@@ -198,8 +201,12 @@ class MeSH_GCN(nn.Module):
 
         # x = element_wise_mul(x_feature, label_feature)
         # x = torch.diagonal(torch.matmul(x_f eature, label_feature), offset=0).transpose(0, 1)
-        x = torch.sum(x_feature * label_feature, dim=2)
-        print('x_final', x.shape)
+        # x = torch.sum(x_feature * label_feature, dim=2)
+        # print('x_final', x.shape)
+
+        # fully connected layer
+        x = self.dropout(x_feature)
+        x = self.fc(x)
         x = torch.sigmoid(x)
         return x
 
