@@ -148,7 +148,7 @@ class MeSH_GCN(nn.Module):
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
         self.dropout = nn.Dropout(0.5)
-        self.fc = nn.Linear(400, num_class)
+        self.fc = nn.Linear(600, num_class)
 
     def forward(self, input_seq, g, features):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -175,8 +175,8 @@ class MeSH_GCN(nn.Module):
         x_concat = torch.cat(x_content, dim=1)
         print('x_concat', x_concat.shape)
 
-        x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
+        # x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+        # print('x_feature', x_feature.shape)
 
         # label_feature = self.gcn(g, features)
         # print('label', label_feature.shape)
@@ -205,7 +205,7 @@ class MeSH_GCN(nn.Module):
         # print('x_final', x.shape)
 
         # fully connected layer
-        x = self.dropout(x_feature)
+        x = self.dropout(x_concat)
         x = self.fc(x)
         print('x_final', x.shape)
         x = torch.sigmoid(x)

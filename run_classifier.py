@@ -295,7 +295,7 @@ def main():
                                                                           args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, 29368, args.embedding_dim)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
