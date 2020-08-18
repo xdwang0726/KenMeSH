@@ -207,6 +207,7 @@ class MeSH_GCN(nn.Module):
         # fully connected layer
         x = self.dropout(x_feature)
         x = self.fc(x)
+        print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
 
