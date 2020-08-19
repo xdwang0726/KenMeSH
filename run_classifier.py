@@ -165,7 +165,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            output = model(text, G, G.ndata['feat'])
+            # output = model(text, G, G.ndata['feat'])
+            output = model(text)
             print('4')
 
             # print train output
