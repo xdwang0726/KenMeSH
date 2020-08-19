@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_GCN, ContentsExtractor
+from model import MeSH_GCN_Old, ContentsExtractor
 from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -157,17 +157,17 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
     print("Training....")
     for epoch in range(num_epochs):
-        print('1')
+        # print('1')
         for i, (text, label) in enumerate(train_data):
-            print('2')
-            print('3')
+            # print('2')
+            # print('3')
             print('train_original', i, label, '\n')
             test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            # output = model(text, G, G.ndata['feat'])
-            output = model(text)
-            print('4')
+            output = model(text, G, G.ndata['feat'])
+            # output = model(text)
+            # print('4')
 
             # print train output
             pred = output.data.cpu().numpy()
@@ -176,12 +176,12 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             top_10_mesh = mlb.inverse_transform(top_10_pred)
             print('predicted train', i, top_10_mesh, '\n')
 
-            print('5')
+            # print('5')
             optimizer.zero_grad()
             loss = criterion(output, label)
             print('loss', loss)
             loss.backward()
-            print('6')
+            # print('6')
             optimizer.step()
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
@@ -189,11 +189,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            print('6')
+            # print('6')
         # Adjust the learning rate
-        print('7')
+        # print('7')
         lr_scheduler.step()
-        print('8')
+        # print('8')
 
 
 def test(test_dataset, model, G, batch_sz, device, mlb):
@@ -296,8 +296,8 @@ def main():
                                                                           args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-    model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
+    model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))

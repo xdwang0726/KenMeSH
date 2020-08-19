@@ -40,7 +40,7 @@ class ContentsExtractor(nn.Module):
 
         self.dropout = nn.Dropout(0.5)
 
-        self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
+        # self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
 
     def forward(self, input_seq):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -51,8 +51,8 @@ class ContentsExtractor(nn.Module):
         x_concat = torch.cat(x_maxpool, 1)
 
         x = self.dropout(x_concat)
-        x = self.fc(x)
-        x = torch.sigmoid(x)
+        # x = self.fc(x)
+        # x = torch.sigmoid(x)
 
         return x
 
@@ -112,103 +112,103 @@ class LabelNet(nn.Module):
         return x
 
 
-# class MeSH_GCN_Old(nn.Module):
-#     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
-#         super(MeSH_GCN_Old, self).__init__()
-#         # gcn_out = len(ksz) * nKernel
-#
-#         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
-#         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
-#
-#     def forward(self, input_seq, g, features):
-#         x_feature = self.cnn(input_seq)
-#         label_feature = self.gcn(g, features)
-#         label_feature = torch.transpose(label_feature, 0, 1)
-#         x = torch.matmul(x_feature, label_feature)
-#         x = torch.sigmoid(x)
-#         return x
-
-
-class MeSH_GCN(nn.Module):
+class MeSH_GCN_Old(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
-        super(MeSH_GCN, self).__init__()
+        super(MeSH_GCN_Old, self).__init__()
         # gcn_out = len(ksz) * nKernel
 
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.nKernel = nKernel
-        self.ksz = ksz
-
-        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-
-        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
-        # self.convs = nn.ModuleList(nn.Conv1d(embedding_dim, nKernel, k) for k in ksz)
-
-        self.transform = nn.Linear(nKernel, embedding_dim)
-        nn.init.xavier_uniform_(self.transform.weight)
-        nn.init.zeros_(self.transform.bias)
-
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
-        nn.init.xavier_normal_(self.content_final.weight)
-        nn.init.zeros_(self.content_final.bias)
-
+        self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
     def forward(self, input_seq, g, features):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        # print('embedding', embedded_seq.shape)
-        embedded_seq = embedded_seq.unsqueeze(1)
-        #print('embedding2', embedded_seq.shape)
-        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-        # x_conv = [F.relu(conv(embedded_seq)) for conv in self.convs]
-        print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
-        # label-wise attention (mapping different parts of the document representation to different labels)
-        print('w', self.transform.weight.shape)
-        print('b', self.transform.bias.shape)
-        x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
-                 x_conv]  # [bs, (n_words-ks+1), embedding_sz]
-        print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
-
-        atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in
-                 x_doc]  # []bs, (n_words-ks+1), n_labels]
-        print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
-
-        x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
-        print('x_content', x_content[0].shape, x_content[1].shape, x_content[2].shape)
-
-        x_concat = torch.cat(x_content, dim=1)
-        print('x_concat', x_concat.shape)
-
-        x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
-
+        x_feature = self.cnn(input_seq)
         label_feature = self.gcn(g, features)
-        print('label', label_feature.shape)
         label_feature = torch.transpose(label_feature, 0, 1)
-
-        #print('label2', label_feature.shape)
-
-        # def element_wise_mul(m1, m2):
-        #     m1.to('cpu')
-        #     m2.to('cpu')
-        #     result = torch.zeros(0).to('cpu')
-        #     for i in range(m1.shape[1]):
-        #         v1 = m1[:, i, :]
-        #         v2 = m2[:, i]
-        #         v = torch.matmul(v1, v2).unsqueeze(1).to('cpu')
-        #         print('v', v.device)
-        #         print('result', result.device)
-        #         result = torch.cat((result, v), dim=1)
-        #         #print('result', result.device)
-        #     result.to('cuda')
-        #     return result
-
-        # x = element_wise_mul(x_feature, label_feature)
-        # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
-        x = torch.sum(x_feature * label_feature, dim=2)
-        print('x_final', x.shape)
+        x = torch.matmul(x_feature, label_feature)
         x = torch.sigmoid(x)
         return x
+
+
+# class MeSH_GCN(nn.Module):
+#     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+#         super(MeSH_GCN, self).__init__()
+#         # gcn_out = len(ksz) * nKernel
+#
+#         self.vocab_size = vocab_size
+#         self.embedding_dim = embedding_dim
+#         self.nKernel = nKernel
+#         self.ksz = ksz
+#
+#         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+#
+#         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
+#         # self.convs = nn.ModuleList(nn.Conv1d(embedding_dim, nKernel, k) for k in ksz)
+#
+#         self.transform = nn.Linear(nKernel, embedding_dim)
+#         nn.init.xavier_uniform_(self.transform.weight)
+#         nn.init.zeros_(self.transform.bias)
+#
+#         self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+#         nn.init.xavier_normal_(self.content_final.weight)
+#         nn.init.zeros_(self.content_final.bias)
+#
+#         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+#
+#     def forward(self, input_seq, g, features):
+#         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+#         # print('embedding', embedded_seq.shape)
+#         embedded_seq = embedded_seq.unsqueeze(1)
+#         #print('embedding2', embedded_seq.shape)
+#         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+#         # x_conv = [F.relu(conv(embedded_seq)) for conv in self.convs]
+#         print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
+#         # label-wise attention (mapping different parts of the document representation to different labels)
+#         print('w', self.transform.weight.shape)
+#         print('b', self.transform.bias.shape)
+#         x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
+#                  x_conv]  # [bs, (n_words-ks+1), embedding_sz]
+#         print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
+#
+#         atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in
+#                  x_doc]  # []bs, (n_words-ks+1), n_labels]
+#         print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
+#
+#         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
+#         print('x_content', x_content[0].shape, x_content[1].shape, x_content[2].shape)
+#
+#         x_concat = torch.cat(x_content, dim=1)
+#         print('x_concat', x_concat.shape)
+#
+#         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+#         print('x_feature', x_feature.shape)
+#
+#         label_feature = self.gcn(g, features)
+#         print('label', label_feature.shape)
+#         label_feature = torch.transpose(label_feature, 0, 1)
+#
+#         #print('label2', label_feature.shape)
+#
+#         # def element_wise_mul(m1, m2):
+#         #     m1.to('cpu')
+#         #     m2.to('cpu')
+#         #     result = torch.zeros(0).to('cpu')
+#         #     for i in range(m1.shape[1]):
+#         #         v1 = m1[:, i, :]
+#         #         v2 = m2[:, i]
+#         #         v = torch.matmul(v1, v2).unsqueeze(1).to('cpu')
+#         #         print('v', v.device)
+#         #         print('result', result.device)
+#         #         result = torch.cat((result, v), dim=1)
+#         #         #print('result', result.device)
+#         #     result.to('cuda')
+#         #     return result
+#
+#         # x = element_wise_mul(x_feature, label_feature)
+#         # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
+#         x = torch.sum(x_feature * label_feature, dim=2)
+#         print('x_final', x.shape)
+#         x = torch.sigmoid(x)
+#         return x
 
 
 class RGCNLayer(nn.Module):
