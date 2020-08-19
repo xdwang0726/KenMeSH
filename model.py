@@ -25,29 +25,36 @@ class Embeddings_OOV(torch.nn.Module):
         return embed
 
 
-# class ContentsExtractor(nn.Module):
-#     def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
-#         super(ContentsExtractor, self).__init__()
-#
-#         self.vocab_size = vocab_size
-#         self.embedding_dim = embedding_dim
-#         self.nKernel = nKernel
-#         self.ksz = ksz
-#
-#         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-#
-#         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
-#
-#
-#     def forward(self, input_seq):
-#         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-#
-#         embedded_seq = embedded_seq.unsqueeze(1)
-#         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-#         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
-#         x_concat = torch.cat(x_maxpool, 1)
-#
-#         return x_concat
+class ContentsExtractor(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, num_class, embedding_dim=200):
+        super(ContentsExtractor, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.nKernel = nKernel
+        self.ksz = ksz
+
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+
+        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
+
+        self.dropout = nn.Dropout(0.5)
+
+        self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
+
+    def forward(self, input_seq):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+
+        embedded_seq = embedded_seq.unsqueeze(1)
+        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
+        x_concat = torch.cat(x_maxpool, 1)
+
+        x = self.dropout(x_concat)
+        x = self.fc(x)
+        x = torch.sigmoid(x)
+
+        return x
 
 
 # Using PyTorch Geometric
@@ -123,7 +130,7 @@ class LabelNet(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_class, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
         # gcn_out = len(ksz) * nKernel
 
@@ -146,9 +153,6 @@ class MeSH_GCN(nn.Module):
         nn.init.zeros_(self.content_final.bias)
 
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
-
-        self.dropout = nn.Dropout(0.5)
-        self.fc = nn.Linear(600, num_class)
 
     def forward(self, input_seq, g, features):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -175,12 +179,12 @@ class MeSH_GCN(nn.Module):
         x_concat = torch.cat(x_content, dim=1)
         print('x_concat', x_concat.shape)
 
-        # x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        # print('x_feature', x_feature.shape)
+        x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+        print('x_feature', x_feature.shape)
 
-        # label_feature = self.gcn(g, features)
-        # print('label', label_feature.shape)
-        # label_feature = torch.transpose(label_feature, 0, 1)
+        label_feature = self.gcn(g, features)
+        print('label', label_feature.shape)
+        label_feature = torch.transpose(label_feature, 0, 1)
 
         #print('label2', label_feature.shape)
 
@@ -200,13 +204,8 @@ class MeSH_GCN(nn.Module):
         #     return result
 
         # x = element_wise_mul(x_feature, label_feature)
-        # x = torch.diagonal(torch.matmul(x_f eature, label_feature), offset=0).transpose(0, 1)
-        # x = torch.sum(x_feature * label_feature, dim=2)
-        # print('x_final', x.shape)
-
-        # fully connected layer
-        x = self.dropout(x_concat)
-        x = self.fc(x)
+        # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
+        x = torch.sum(x_feature * label_feature, dim=2)
         print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
