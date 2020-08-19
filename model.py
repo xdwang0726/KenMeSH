@@ -40,7 +40,7 @@ class ContentsExtractor(nn.Module):
 
         self.dropout = nn.Dropout(0.5)
 
-        # self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
+        self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
 
     def forward(self, input_seq):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -51,8 +51,8 @@ class ContentsExtractor(nn.Module):
         x_concat = torch.cat(x_maxpool, 1)
 
         x = self.dropout(x_concat)
-        # x = self.fc(x)
-        # x = torch.sigmoid(x)
+        x = self.fc(x)
+        x = torch.sigmoid(x)
 
         return x
 
