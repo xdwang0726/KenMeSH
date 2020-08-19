@@ -118,7 +118,7 @@ class MeSH_GCN_Old(nn.Module):
         # gcn_out = len(ksz) * nKernel
 
         self.cnn = ContentsExtractor(vocab_size, nKernel, ksz, embedding_dim)
-        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+        self.gcn = LabelNet(hidden_gcn_size, embedding_dim * 2, embedding_dim)
 
     def forward(self, input_seq, g, features):
         x_feature = self.cnn(input_seq)
