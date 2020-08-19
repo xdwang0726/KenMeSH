@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 200000:
+        if i <= 2000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -161,25 +161,25 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         for i, (text, label) in enumerate(train_data):
             # print('2')
             # print('3')
-            print('train_original', i, label, '\n')
-            test_label = mlb.fit_transform(label)
-            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            # print('train_original', i, label, '\n')
+            # test_label = mlb.fit_transform(label)
+            # label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
             # output = model(text)
             # print('4')
 
             # print train output
-            pred = output.data.cpu().numpy()
-            print('pred_index', pred.argsort()[::-1][:, :10])
-            top_10_pred = top_k_predicted(test_label, pred, 10)
-            top_10_mesh = mlb.inverse_transform(top_10_pred)
-            print('predicted train', i, top_10_mesh, '\n')
+            # pred = output.data.cpu().numpy()
+            # print('pred_index', pred.argsort()[::-1][:, :10])
+            # top_10_pred = top_k_predicted(test_label, pred, 10)
+            # top_10_mesh = mlb.inverse_transform(top_10_pred)
+            # print('predicted train', i, top_10_mesh, '\n')
 
             # print('5')
             optimizer.zero_grad()
             loss = criterion(output, label)
-            print('loss', loss)
+            # print('loss', loss)
             loss.backward()
             # print('6')
             optimizer.step()
@@ -317,10 +317,10 @@ def main():
     print('Finish training!')
     # testing
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device, mlb)
-    print('predicted:', results, '\n')
+    # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
-    print('test_golden_truth', test_labels)
+    # print('test_golden_truth', test_labels)
 
     pred = results.data.cpu().numpy()
 
@@ -328,7 +328,7 @@ def main():
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
-    print('test_top_10:', top_5_mesh, '\n')
+    # print('test_top_10:', top_5_mesh, '\n')
     top_5_mesh = [list(item) for item in top_5_mesh]
 
     pickle.dump(pred, open(args.results, "wb"))
