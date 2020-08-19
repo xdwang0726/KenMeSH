@@ -165,8 +165,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            output = model(text, G, G.ndata['feat'])
-            # output = model(text)
+            # output = model(text, G, G.ndata['feat'])
+            output = model(text)
             # print('4')
 
             # print train output
@@ -187,7 +187,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             progress = processed_lines / float(num_lines)
             if processed_lines % 32 == 0:
                 sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}".format(
+                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
             # print('6')
         # Adjust the learning rate
@@ -207,7 +207,8 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G, G.ndata['feat'])
+            # output = model(text, G, G.ndata['feat']
+            output = model(text)
             pred = torch.cat((pred, output), dim=0)
 
             results = pred.data.cpu().numpy()
@@ -296,8 +297,8 @@ def main():
                                                                           args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-    # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
+    # model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
 
     model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
