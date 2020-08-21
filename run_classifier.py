@@ -157,17 +157,13 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
     print("Training....")
     for epoch in range(num_epochs):
-        # print('1')
         for i, (text, label) in enumerate(train_data):
-            # print('2')
-            # print('3')
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
             output = model(text, G, G.ndata['feat'])
             # output = model(text)
-            # print('4')
 
             # print train output
             # pred = output.data.cpu().numpy()
@@ -176,24 +172,19 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # top_10_mesh = mlb.inverse_transform(top_10_pred)
             # print('predicted train', i, top_10_mesh, '\n')
 
-            # print('5')
             optimizer.zero_grad()
             loss = criterion(output, label)
             # print('loss', loss)
             loss.backward()
-            # print('6')
             optimizer.step()
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
-            if processed_lines % 32 == 0:
+            if processed_lines % 128 == 0:
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            # print('6')
         # Adjust the learning rate
-        # print('7')
         lr_scheduler.step()
-        # print('8')
 
 
 def test(test_dataset, model, G, batch_sz, device, mlb):
@@ -208,6 +199,10 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
+            idx = output.argsort()[::-1][:, :10]
+            print('pred_index', idx)
+            prob = [output[i] for i in idx]
+            print('probability:', prob)
             # output = model(text)
 
             results = output.data.cpu().numpy()
@@ -282,6 +277,7 @@ def main():
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1)
+    parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
@@ -308,7 +304,7 @@ def main():
     G.to(device)
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
 
