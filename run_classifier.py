@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 200:
+        if i <= 200000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -201,18 +201,17 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
             output = model(text, G, G.ndata['feat'])
             # output = model(text)
 
-            results = output.data.cpu().numpy()
-            print(type(results), results.shape)
-            idx = results.argsort()[::-1][:, :10]
-            print(idx)
-            prob = [results[0][i] for i in idx]
-            print('probability:', prob)
-            top_10_pred = top_k_predicted(flattened, results, 10)
-            top_10_mesh = mlb.inverse_transform(top_10_pred)
-            print('predicted_test', top_10_mesh, '\n')
+            # results = output.data.cpu().numpy()
+            # print(type(results), results.shape)
+            # idx = results.argsort()[::-1][:, :10]
+            # print(idx)
+            # prob = [results[0][i] for i in idx]
+            # print('probability:', prob)
+            # top_10_pred = top_k_predicted(flattened, results, 10)
+            # top_10_mesh = mlb.inverse_transform(top_10_pred)
+            # print('predicted_test', top_10_mesh, '\n')
 
             pred = torch.cat((pred, output), dim=0)
-    # flattened = [val for sublist in ori_label for val in sublist]
     print('###################DONE#########################')
     return pred, flattened
 
