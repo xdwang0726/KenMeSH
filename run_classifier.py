@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_GCN_Old, ContentsExtractor
+from model import MeSH_GCN, ContentsExtractor
 from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -298,7 +298,7 @@ def main():
                                                                           args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
     # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
