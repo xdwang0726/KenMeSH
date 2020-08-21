@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 2000000:
+        if i <= 1000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -165,8 +165,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            # output = model(text, G, G.ndata['feat'])
-            output = model(text)
+            output = model(text, G, G.ndata['feat'])
+            # output = model(text)
             # print('4')
 
             # print train output
@@ -280,7 +280,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
