@@ -205,7 +205,7 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
             print(type(results), results.shape)
             idx = results.argsort()[::-1][:, :10]
             print(idx)
-            prob = [results[i] for i in idx]
+            prob = [results[0][i] for i in idx]
             print('probability:', prob)
             top_10_pred = top_k_predicted(flattened, results, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
