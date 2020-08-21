@@ -165,8 +165,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            output = model(text, G, G.ndata['feat'])
-            # output = model(text)
+            # output = model(text, G, G.ndata['feat'])
+            output = model(text)
             # print('4')
 
             # print train output
@@ -207,8 +207,8 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            # output = model(text, G, G.ndata['feat']
-            output = model(text)
+            output = model(text, G, G.ndata['feat'])
+            # output = model(text)
             pred = torch.cat((pred, output), dim=0)
 
             results = pred.data.cpu().numpy()
