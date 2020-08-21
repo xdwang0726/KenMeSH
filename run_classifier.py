@@ -199,13 +199,12 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
-            idx = output.argsort()[::-1][:, :10]
-            print('pred_index', idx)
-            prob = [output[i] for i in idx]
-            print('probability:', prob)
             # output = model(text)
 
             results = output.data.cpu().numpy()
+            idx = results.argsort()[::-1][:, :10]
+            prob = [output[i] for i in idx]
+            print('probability:', prob)
             top_10_pred = top_k_predicted(flattened, results, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
             print('predicted_test', top_10_mesh, '\n')
