@@ -202,7 +202,9 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
             # output = model(text)
 
             results = output.data.cpu().numpy()
+            print(type(results))
             idx = results.argsort()[::-1][:, :10]
+            print()
             prob = [results[i] for i in idx]
             print('probability:', prob)
             top_10_pred = top_k_predicted(flattened, results, 10)
