@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 10000:
+        if i <= 200000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -165,8 +165,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            # output = model(text, G, G.ndata['feat'])
-            output = model(text)
+            output = model(text, G, G.ndata['feat'])
+            # output = model(text)
             # print('4')
 
             # print train output
@@ -209,12 +209,13 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
             # output = model(text)
-            pred = torch.cat((pred, output), dim=0)
 
-            results = pred.data.cpu().numpy()
+            results = output.data.cpu().numpy()
             top_10_pred = top_k_predicted(flattened, results, 10)
             top_10_mesh = mlb.inverse_transform(top_10_pred)
             print('predicted_test', top_10_mesh, '\n')
+
+            pred = torch.cat((pred, output), dim=0)
     # flattened = [val for sublist in ori_label for val in sublist]
     print('###################DONE#########################')
     return pred, flattened
@@ -297,8 +298,8 @@ def main():
                                                                           args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    # model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-    model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
+    model = MeSH_GCN_Old(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
