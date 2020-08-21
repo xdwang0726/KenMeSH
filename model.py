@@ -184,7 +184,7 @@ class MeSH_GCN(nn.Module):
 
         label_feature = self.gcn(g, features)
         print('label', label_feature.shape)
-        label_feature = torch.transpose(label_feature, 0, 1)
+        # label_feature = torch.transpose(label_feature, 0, 1)
 
         # print('label2', label_feature.shape)
 
