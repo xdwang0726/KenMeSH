@@ -264,8 +264,7 @@ class RGCNLayer(nn.Module):
                 # for input layer, matrix multiply can be converted to be
                 # an embedding lookup using source node id
                 embed = weight.view(-1, self.out_feat)
-                print('device', edges.data['rel_type'].device, edges.src['id'])
-                edges = edges.to('cuda')
+                print('device', edges.data['rel_type'].device, edges.src['id'].device)
                 index = edges.data['rel_type'] * self.in_feat + edges.src['id']
                 return {'msg': embed[index] * edges.data['norm']}
         else:
