@@ -265,6 +265,7 @@ class RGCNLayer(nn.Module):
                 # an embedding lookup using source node id
                 embed = weight.view(-1, self.out_feat)
                 edges.src['id'].to('cuda')
+                print(edges.src['id'].device)
                 index = edges.data['rel_type'] * self.in_feat + edges.src['id']
                 return {'msg': embed[index] * edges.data['norm']}
         else:
