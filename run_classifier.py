@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_GCN, ContentsExtractor
+from model import MeSH_GCN, MeSH_RGCN
 from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -111,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # G = build_MeSH_graph(edges, node_count, label_embedding)
 
     print('prepare dataset and labels graph done!')
-    return mlb, vocab, train_dataset, test_dataset, vectors, G
+    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -162,8 +162,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.to(device), label.to(device)
-            output = model(text, G, G.ndata['feat'])
-            # output = model(text)
+            # output = model(text, G, G.ndata['feat'])
+            output = model(text, G)
 
             # print train output
             # pred = output.data.cpu().numpy()
@@ -198,8 +198,8 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G, G.ndata['feat'])
-            # output = model(text)
+            # output = model(text, G, G.ndata['feat'])
+            output = model(text, G)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -289,12 +289,13 @@ def main():
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
-                                                                          args.test_path, args.meSH_pair_path,
-                                                                          args.word2vec_path, args.graph)
+    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
+                                                                                     args.test_path, args.meSH_pair_path,
+                                                                                     args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))

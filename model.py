@@ -1,3 +1,5 @@
+from functools import partial
+
 import dgl.function as fn
 import torch
 import torch.nn as nn
@@ -283,7 +285,7 @@ class RGCNLayer(nn.Module):
 
 
 class RGCNLabelNet(nn.Module):
-    def __init__(self, num_nodes, h_dim, out_dim, num_rels,
+    def __init__(self, num_nodes, h_dim, out_dim, num_rels=2,
                  num_bases=-1, num_hidden_layers=1):
         super(RGCNLabelNet, self).__init__()
         self.num_nodes = num_nodes
@@ -334,11 +336,16 @@ class RGCNLabelNet(nn.Module):
             g.ndata['id'] = self.features
         for layer in self.layers:
             layer(g)
-        return g.ndata.pop('h')
+
+        x = g.ndata.pop('h')
+        print('rgcn', x.shape)
+        x = torch.cat([x, g.ndata['feat']], dim=1)
+        print('concat_rgcn', x.shape)
+        return x
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_nodes, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -359,9 +366,9 @@ class MeSH_RGCN(nn.Module):
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
 
-        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+        self.rgcn = RGCNLabelNet(num_nodes, hidden_gcn_size, embedding_dim)
 
-    def forward(self, input_seq, g, features):
+    def forward(self, input_seq, g):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         # print('embedding', embedded_seq.shape)
         embedded_seq = embedded_seq.unsqueeze(1)
@@ -389,8 +396,8 @@ class MeSH_RGCN(nn.Module):
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
         # print('x_feature', x_feature.shape)
 
-        label_feature = self.gcn(g, features)
-        # print('label', label_feature.shape)
+        label_feature = self.rgcn(g)
+        print('label', label_feature.shape)
         # label_feature = torch.transpose(label_feature, 0, 1)
 
         # print('label2', label_feature.shape)
@@ -413,6 +420,6 @@ class MeSH_RGCN(nn.Module):
         # x = element_wise_mul(x_feature, label_feature)
         # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
         x = torch.sum(x_feature * label_feature, dim=2)
-        # print('x_final', x.shape)
+        print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
