@@ -179,6 +179,8 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     edges = edge_cooccurrence + edges_parent_children
     edge_type = [0] * len(edge_cooccurrence) + [1] * len(edges_parent_children)
     edge_type = torch.from_numpy(np.array(edge_type))
+    edge_norm = [1] * len(edges)
+    edge_norm = torch.from_numpy(np.array(edge_norm)).float()
 
     print('get label embeddings')
     label_embedding = torch.zeros(0)
@@ -192,10 +194,10 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
         key_embedding = torch.mean(input=key_embedding, dim=0, keepdim=True)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
-    return edges, edge_type, node_count, label_embedding
+    return edges, edge_type, edge_norm, node_count, label_embedding
 
 
-def build_MeSH_RGCNgraph(edge_list, edge_type, nodes, label_embedding):
+def build_MeSH_RGCNgraph(edge_list, edge_type, edge_norm, nodes, label_embedding):
     print('start building the graph')
     g = dgl.DGLGraph()
     # add nodes into the graph
@@ -208,6 +210,8 @@ def build_MeSH_RGCNgraph(edge_list, edge_type, nodes, label_embedding):
     # add relation type to the graph
     print('add relation type into the graph')
     g.edata.update({'rel_type': edge_type})
+    # add edge norm to the graph
+    g.edata.update({'norm': edge_norm})
     # add node features into the graph
     print('add node features into the graph')
     g.ndata['feat'] = label_embedding
