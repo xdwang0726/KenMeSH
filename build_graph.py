@@ -2,10 +2,18 @@ import dgl
 import ijson
 import numpy as np
 import pandas as pd
+import spacy
 import torch
 from tqdm import tqdm
 
-from utils import tokenize
+
+def tokenize(text):
+    tokens = []
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(text)
+    for token in doc:
+        tokens.append(token.text)
+    return tokens
 
 
 def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
