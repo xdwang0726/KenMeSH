@@ -294,6 +294,10 @@ def main():
     vocab_size = len(vocab)
     model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
 
+    if torch.cuda.device_count() > 1:
+        print("num of GPUs:", torch.cuda.device_count())
+        model = nn.DataParallel(model)
+
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
