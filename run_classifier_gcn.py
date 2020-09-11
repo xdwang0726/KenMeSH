@@ -280,7 +280,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
     parser.add_argument('--fp16', default=True, type=bool)
-    parser.add_argument('--fp16_opt_level', type=str, default='O1')
+    parser.add_argument('--fp16_opt_level', type=str, default='O0')
 
     args = parser.parse_args()
 
