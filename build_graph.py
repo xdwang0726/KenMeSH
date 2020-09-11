@@ -161,6 +161,7 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     # get co-occurrence edges
     edge_frame = cooccurrence_matrix.div(num, axis='index')
     edge_frame = (edge_frame >= threshold) * 1  # replacing each element larger than threshold by 1 else 0
+    edge_frame[:] = np.where(np.arange(len(edge_frame))[:, None] >= np.arange(len(edge_frame)), np.nan, edge_frame)
     edge_index = np.argwhere(edge_frame.values == 1)
     train_mesh_list = list(cooccurrence_matrix)
     edge_cooccurrence = []
