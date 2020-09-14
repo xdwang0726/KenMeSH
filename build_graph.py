@@ -145,23 +145,14 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     cooccurrence_matrix = cooccurrence_matrix.fillna(0)  # replace all nan value to 0
 
     # calculate the occurrence times of each label in the training set
-    label_counts = {}
-    for doc in label_id:
-        for label in doc:
-            if label in label_counts:
-                label_counts[label] += 1
-            else:
-                label_counts[label] = 1
-    labels = list(label_counts.keys())
-    for key in labels:
-        if label_counts.get(key) == None:
-            label_counts[key] = 0
-    num = list(label_counts.values())
+    num_label = cooccurrence_matrix.sum(axis=1)
+    num = num_label.tolist()
 
     # get co-occurrence edges
     edge_frame = cooccurrence_matrix.div(num, axis='index')
     edge_frame = (edge_frame >= threshold) * 1  # replacing each element larger than threshold by 1 else 0
-    edge_frame[:] = np.where(np.arange(len(edge_frame))[:, None] >= np.arange(len(edge_frame)), np.nan, edge_frame)
+    # remove the lower half of the matrix
+    # edge_frame[:] = np.where(np.arange(len(edge_frame))[:, None] >= np.arange(len(edge_frame)), np.nan, edge_frame)
     edge_index = np.argwhere(edge_frame.values == 1)
     train_mesh_list = list(cooccurrence_matrix)
     edge_cooccurrence = []
@@ -180,8 +171,8 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     edges = edge_cooccurrence + edges_parent_children
     edge_type = [0] * len(edge_cooccurrence) + [1] * len(edges_parent_children)
     edge_type = torch.from_numpy(np.array(edge_type))
-    edge_norm = [1] * len(edges)
-    edge_norm = torch.from_numpy(np.array(edge_norm)).unsqueeze(1).float()
+    # edge_norm = [1] * len(edges)
+    # edge_norm = torch.from_numpy(np.array(edge_norm)).unsqueeze(1).float()
 
     print('get label embeddings')
     label_embedding = torch.zeros(0)
@@ -195,10 +186,10 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
         key_embedding = torch.mean(input=key_embedding, dim=0, keepdim=True)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
-    return edges, edge_type, edge_norm, node_count, label_embedding
+    return edges, edge_type, node_count, label_embedding
 
 
-def build_MeSH_RGCNgraph(edge_list, edge_type, edge_norm, nodes, label_embedding):
+def build_MeSH_RGCNgraph(edge_list, edge_type, nodes, label_embedding):
     print('start building the graph')
     g = dgl.DGLGraph()
     # add nodes into the graph
@@ -212,7 +203,8 @@ def build_MeSH_RGCNgraph(edge_list, edge_type, edge_norm, nodes, label_embedding
     print('add relation type into the graph')
     g.edata.update({'rel_type': edge_type, })
     # add edge norm to the graph
-    g.edata.update({'norm': edge_norm})
+    g = dgl.to_homogeneous(g, edata=['norm'])
+    # g.edata.update({'norm': edge_norm})
     # add node features into the graph
     print('add node features into the graph')
     g.ndata['feat'] = label_embedding
