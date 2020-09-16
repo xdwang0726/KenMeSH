@@ -285,8 +285,7 @@ def main():
 
     args = parser.parse_args()
 
-    torch.distributed.init_process_group(backend='nccl', init_method='tcp://localhost:23456', rank=args.local_rank,
-                                         world_size=1)
+    # torch.distributed.init_process_group(backend='nccl', init_method='tcp://localhost:23456', rank=args.local_rank, world_size=1)
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
