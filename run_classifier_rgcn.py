@@ -285,7 +285,8 @@ def main():
 
     args = parser.parse_args()
 
-    # torch.distributed.init_process_group(backend='nccl', init_method='tcp://localhost:23456', rank=args.local_rank, world_size=1)
+    torch.distributed.init_process_group(backend='nccl', init_method='tcp://localhost:23456', rank=args.local_rank,
+                                         world_size=1)
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
@@ -300,7 +301,7 @@ def main():
     # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
     model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
-    torch.distributed.init_process_group(backend="nccl")
+    # torch.distributed.init_process_group(backend="nccl")
     model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
