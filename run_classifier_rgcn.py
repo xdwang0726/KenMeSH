@@ -307,6 +307,7 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
+    print('vocab_size:', vocab_size)
     # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
     model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
@@ -318,6 +319,7 @@ def main():
 
     model.to(device)
     if len(device_ids) > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
     G.to(device)
 
