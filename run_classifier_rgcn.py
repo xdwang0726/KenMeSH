@@ -294,9 +294,8 @@ def main():
 
     # torch.cuda.set_device(args.local_rank)
     # torch.distributed.init_process_group(backend='nccl', rank=args.local_rank, world_size=1)
-    device_ids = [os.environ['CUDA_VISIBLE_DEVICES']]
-    ngpus_per_node = len(device_ids)
-    print('num of gpus per node:', ngpus_per_node)
+    device_ids = [0, 1]
+    print('num of gpus per node:', os.environ['CUDA_VISIBLE_DEVICES'])
 
     # device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
     # device = torch.device(args.device)
