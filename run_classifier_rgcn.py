@@ -285,8 +285,12 @@ def main():
 
     args = parser.parse_args()
 
-    torch.distributed.init_process_group(backend='nccl', init_method='tcp://localhost:23456', rank=args.local_rank,
-                                         world_size=1)
+    print(args.local_rank)
+    torch.distributed.init_process_group(backend='nccl')
+    device_ids = [os.environ['CUDA_VISIBLE_DEVICES']]
+    ngpus_per_node = len(device_ids)
+    print('num of gpus per node:', ngpus_per_node)
+
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
@@ -302,12 +306,14 @@ def main():
     model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
     # torch.distributed.init_process_group(backend="nccl")
-    model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
+
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
+    if len(device_ids) > 1:
+        model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
     G.to(device)
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
