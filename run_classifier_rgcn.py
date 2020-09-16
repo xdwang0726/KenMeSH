@@ -319,10 +319,11 @@ def main():
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
+    G.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
-    G.to(device)
+    print('model parallel done!')
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
