@@ -7,18 +7,19 @@ import sys
 import ijson
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.distributed as dist
+import torch.nn as nn
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_GCN, MeSH_RGCN
-from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
+from model import MeSH_RGCN
+from utils import MeSH_indexing
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
@@ -152,7 +153,7 @@ def generate_batch(batch):
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
-                            num_workers=num_workers)
+                            num_workers=num_workers, sampler=DistributedSampler(train_dataset))
 
     num_lines = num_epochs * len(train_data)
 
@@ -318,7 +319,7 @@ def main():
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
-    if len(device_ids) > 1:
+    if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
     G.to(device)
