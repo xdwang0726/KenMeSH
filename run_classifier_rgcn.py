@@ -151,7 +151,7 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, num_workers, optimizer, lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
                             num_workers=num_workers, sampler=DistributedSampler(train_dataset))
 
@@ -163,7 +163,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label, G = text.to(device), label.to(device), G.to(device)
+            text, label, G = text.cuda(non_blocking=True), label.cuda(non_blocking=True), G.cuda(non_blocking=True)
             # output = model(text, G, G.ndata['feat'])
             output = model(text, G)
 
@@ -270,7 +270,7 @@ def main():
     parser.add_argument('--save-model-path')
 
     parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--local_rank', default=0, type=int, help='node rank for distributed training')
+    parser.add_argument('--local_rank', default=-1, type=int, help='node rank for distributed training')
 
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
@@ -288,14 +288,14 @@ def main():
     args = parser.parse_args()
 
     print(args.local_rank)
-    dist.init_process_group(backend='nccl', init_method='file:///mnt/nfs/sharedfile', world_size=1, rank=0)
-    local_rank = torch.distributed.get_rank()
-    torch.cuda.set_device(local_rank)
-    device = torch.device("cuda", local_rank)
+    # dist.init_process_group(backend='nccl', init_method='file:///mnt/nfs/sharedfile', world_size=1, rank=0)
+    dist.init_process_group(backend='nccl')
+    torch.cuda.set_device(args.local_rank)
+    device = torch.device("cuda")
 
     # torch.cuda.set_device(args.local_rank)
     # torch.distributed.init_process_group(backend='nccl', rank=args.local_rank, world_size=1)
-    device_ids = [0, 1]
+    # device_ids = [0, 1]
     print('num of gpus per node:', os.environ['CUDA_VISIBLE_DEVICES'])
 
     # device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
@@ -318,12 +318,12 @@ def main():
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
-    G.to(device)
+    model.cuda()
+    G.cuda()
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[0,
-                                                                             1])  # device_ids will include all GPU devices by default
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[
+            args.local_rank])  # device_ids will include all GPU devices by default
     print('model parallel done!')
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -334,7 +334,7 @@ def main():
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
