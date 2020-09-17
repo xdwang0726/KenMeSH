@@ -151,7 +151,7 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, num_workers, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch,
                             num_workers=num_workers, sampler=DistributedSampler(train_dataset))
 
@@ -163,7 +163,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, num_wor
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label, G = text.cuda(non_blocking=True), label.cuda(non_blocking=True), G.cuda(non_blocking=True)
+            text, label, G = text.cuda(non_blocking=True), label.cuda(non_blocking=True), G.to(device)
             # output = model(text, G, G.ndata['feat'])
             output = model(text, G)
 
@@ -334,7 +334,7 @@ def main():
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, args.num_workers, optimizer,
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
