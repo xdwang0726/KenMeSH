@@ -413,7 +413,7 @@ class MeSH_RGCN(nn.Module):
 
     def forward(self, input_seq, g):
         input_seq = input_seq.to(self.dev0)
-        x_feature = attenCNN(input_seq)
+        x_feature = self.content_feature(input_seq)
         x_feature = x_feature.to(self.dev1)
 
         g = g.to(self.dev1)
