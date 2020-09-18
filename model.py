@@ -407,7 +407,7 @@ class MeSH_RGCN(nn.Module):
         self.dev0 = dev0
         self.dev1 = dev1
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200).to(dev0)
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim=200).to(dev0)
 
         self.rgcn = RGCNLabelNet(num_nodes, hidden_gcn_size, embedding_dim).to(dev1)
 
