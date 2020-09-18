@@ -292,8 +292,8 @@ def main():
     dist.init_process_group(backend='nccl')
     torch.cuda.set_device(args.local_rank)
     device = torch.device("cuda")
-    dev0 = 0
-    dev1 = 1
+    dev0 = 'cuda:0'
+    dev1 = 'cuda:1'
 
     # torch.cuda.set_device(args.local_rank)
     # torch.distributed.init_process_group(backend='nccl', rank=args.local_rank, world_size=1)
