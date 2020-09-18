@@ -292,6 +292,8 @@ def main():
     dist.init_process_group(backend='nccl')
     torch.cuda.set_device(args.local_rank)
     device = torch.device("cuda")
+    dev0 = 0
+    dev1 = 1
 
     # torch.cuda.set_device(args.local_rank)
     # torch.distributed.init_process_group(backend='nccl', rank=args.local_rank, world_size=1)
@@ -310,7 +312,8 @@ def main():
     vocab_size = len(vocab)
     print('vocab_size:', vocab_size)
     # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, dev0, dev1,
+                      args.embedding_dim)
     # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
     # torch.distributed.init_process_group(backend="nccl")
 
