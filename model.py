@@ -83,7 +83,7 @@ class attenCNN(nn.Module):
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
 
-    def forward(self, input_seq):
+    def forward(self, input_seq, g):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         # print('embedding', embedded_seq.shape)
         embedded_seq = embedded_seq.unsqueeze(1)
@@ -413,7 +413,8 @@ class MeSH_RGCN(nn.Module):
 
     def forward(self, input_seq, g):
         input_seq = input_seq.to(self.dev0)
-        x_feature = self.content_feature(input_seq)
+        g = g.to(self.dev0)
+        x_feature = self.content_feature(input_seq, g)
         x_feature = x_feature.to(self.dev1)
 
         g = g.to(self.dev1)
