@@ -319,7 +319,7 @@ def main():
 
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model.attenCNN.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.cuda()
     G.to(device)
