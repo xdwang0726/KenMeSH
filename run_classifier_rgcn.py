@@ -165,7 +165,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.cuda(non_blocking=True), label.cuda(non_blocking=True), G.to(device)
             # output = model(text, G, G.ndata['feat'])
-            output = model(text, G)
+            output = model(text, G.ndata['feat'], G)
 
             # print train output
             # pred = output.data.cpu().numpy()
@@ -201,7 +201,7 @@ def test(test_dataset, model, G, batch_sz, device, mlb):
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             # output = model(text, G, G.ndata['feat'])
-            output = model(text, G)
+            output = model(text, G.ndata['feat'], G)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
