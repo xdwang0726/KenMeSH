@@ -328,7 +328,7 @@ def main():
     G.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = torch.nn.parallel.DistributedDataParallel(model, find_unused_parameters=True)
+        model = torch.nn.parallel.DistributedDataParallel(model)
         # device_ids will include all GPU devices by default
     print('model parallel done!')
 
