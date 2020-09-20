@@ -400,8 +400,8 @@ class MeSH_RGCN(nn.Module):
         input_seq = input_seq.to(self.dev0)
         g_node_feature = g_node_feature.to(self.dev0)
         x_feature = self.content_feature(input_seq, g_node_feature)
-        x_feature = x_feature.to(self.dev1)
 
+        x_feature = x_feature.to(self.dev1)
         g = g.to(self.dev1)
         label_feature = self.rgcn(g)
         print('label', label_feature.shape)
