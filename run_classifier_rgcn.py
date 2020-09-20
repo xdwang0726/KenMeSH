@@ -151,7 +151,8 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, dev0, dev1, num_workers, optimizer,
+          lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch,
                             num_workers=num_workers, sampler=DistributedSampler(train_dataset))
 
@@ -163,7 +164,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label, G = text.cuda(non_blocking=True), label.cuda(non_blocking=True), G.to(device)
+            text, G.ndata['feat'] = text.to(dev0), G.ndata['feat'].to(dev0)
+            G, label = G.to(dev1), label.to(dev1)
             # output = model(text, G, G.ndata['feat'])
             output = model(text, G.ndata['feat'], G)
 
@@ -189,13 +191,14 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test_dataset, model, G, batch_sz, device):
+def test(test_dataset, model, G, batch_sz, dev0, dev1):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
-    pred = torch.zeros(0).to(device)
+    pred = torch.zeros(0).to(dev1)
     ori_label = []
     print('Testing....')
     for text, label in test_data:
-        text = text.to(device)
+        text, G.ndata['feat'] = text.to(dev0), G.ndata['feat'].to(dev0)
+        G = G.to(dev1)
         print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
@@ -325,8 +328,7 @@ def main():
     G.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[
-            args.local_rank])  # device_ids will include all GPU devices by default
+        model = torch.nn.parallel.DistributedDataParallel(model)  # device_ids will include all GPU devices by default
     print('model parallel done!')
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -337,11 +339,12 @@ def main():
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, dev0, dev1, args.num_workers,
+          optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, dev0, dev1)
     # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)

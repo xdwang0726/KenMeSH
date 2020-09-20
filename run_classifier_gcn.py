@@ -185,7 +185,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test_dataset, model, G, batch_sz, device, mlb):
+def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
@@ -328,7 +328,7 @@ def main():
           lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device, mlb)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
     # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
