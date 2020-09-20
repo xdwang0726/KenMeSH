@@ -328,8 +328,8 @@ def main():
     G.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[0,
-                                                                             1])  # device_ids will include all GPU devices by default
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[0, 1])
+        # device_ids will include all GPU devices by default
     print('model parallel done!')
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
