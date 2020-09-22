@@ -273,7 +273,10 @@ def main():
     parser.add_argument('--save-model-path')
 
     parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--world_size', type=int, default=2)
     parser.add_argument('--local_rank', default=0, type=int, help='node rank for distributed training')
+    parser.add_argument('--master-ip', type=str, default='127.0.0.1', help='master ip address')
+    parser.add_argument('--master-port', type=str, default='12345', help='master port')
 
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
@@ -291,8 +294,10 @@ def main():
     args = parser.parse_args()
 
     print(args.local_rank)
+
     # dist.init_process_group(backend='nccl', init_method='file:///mnt/nfs/sharedfile', world_size=1, rank=0)
-    dist.init_process_group(backend='nccl')
+    dist_init_method = 'tcp://{master_ip}:{master_port}'.format(master_ip=args.master_ip, master_port=args.master_port)
+    dist.init_process_group(backend='nccl', init_method=dist_init_method, world_size=args.world_size, rank=[0, 1])
     torch.cuda.set_device(args.local_rank)
     device = torch.device("cuda")
     dev0 = torch.device('cuda:0')
@@ -330,7 +335,7 @@ def main():
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = torch.nn.parallel.DistributedDataParallel(model)
         # device_ids will include all GPU devices by default
-    print('model parallel done!')
+        print('model parallel done!')
 
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
