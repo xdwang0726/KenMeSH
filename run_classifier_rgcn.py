@@ -297,7 +297,7 @@ def main():
 
     # dist.init_process_group(backend='nccl', init_method='file:///mnt/nfs/sharedfile', world_size=1, rank=0)
     dist_init_method = 'tcp://{master_ip}:{master_port}'.format(master_ip=args.master_ip, master_port=args.master_port)
-    dist.init_process_group(backend='nccl', init_method=dist_init_method, world_size=args.world_size, rank=0)
+    dist.init_process_group(backend='nccl', world_size=args.world_size, rank=0)
     torch.cuda.set_device(args.local_rank)
     device = torch.device("cuda")
     dev0 = torch.device('cuda:0')
