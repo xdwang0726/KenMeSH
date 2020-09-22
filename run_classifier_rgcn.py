@@ -275,8 +275,8 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--world_size', type=int, default=2)
     parser.add_argument('--local_rank', default=0, type=int, help='node rank for distributed training')
-    parser.add_argument('--master-ip', type=str, default='127.0.0.1', help='master ip address')
-    parser.add_argument('--master-port', type=str, default='12345', help='master port')
+    # parser.add_argument('--master-ip', type=str, default='127.0.0.1', help='master ip address')
+    # parser.add_argument('--master-port', type=str, default='12345', help='master port')
 
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
