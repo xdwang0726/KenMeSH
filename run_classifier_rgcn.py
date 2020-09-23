@@ -151,8 +151,8 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, dev0, dev1, num_workers, optimizer,
-          lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
+          lr_scheduler, n_gpus):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch,
                             num_workers=num_workers, sampler=DistributedSampler(train_dataset))
 
@@ -161,26 +161,15 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, dev0, d
     print("Training....")
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
-            # print('train_original', i, label, '\n')
-            # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, G.ndata['feat'] = text.to(dev0), G.ndata['feat'].to(dev0)
-            G, label = G.to(dev1), label.to(dev1)
-            # output = model(text, G, G.ndata['feat'])
+            text, label, G = text.to(device), label.to(device), G.to(device)
             output = model(text, G.ndata['feat'], G)
-
-            # print train output
-            # pred = output.data.cpu().numpy()
-            # print('pred_index', pred.argsort()[::-1][:, :10])
-            # top_10_pred = top_k_predicted(test_label, pred, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted train', i, top_10_mesh, '\n')
 
             optimizer.zero_grad()
             loss = criterion(output, label)
-            # print('loss', loss)
             loss.backward()
             optimizer.step()
+
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
@@ -190,47 +179,27 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, dev0, d
         # Adjust the learning rate
         lr_scheduler.step()
 
+        if n_gpus > 1:
+            torch.distributed.barrier()
 
-def test(test_dataset, model, G, batch_sz, dev0, dev1):
+
+def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
-    pred = torch.zeros(0).to(dev1)
+    pred = torch.zeros(0).to(device)
     ori_label = []
     print('Testing....')
     for text, label in test_data:
-        text, G.ndata['feat'] = text.to(dev0), G.ndata['feat'].to(dev0)
-        G = G.to(dev1)
+        text = text.to(device)
         print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             # output = model(text, G, G.ndata['feat'])
             output = model(text, G.ndata['feat'], G)
-
-            # results = output.data.cpu().numpy()
-            # print(type(results), results.shape)
-            # idx = results.argsort()[::-1][:, :10]
-            # print(idx)
-            # prob = [results[0][i] for i in idx]
-            # print('probability:', prob)
-            # top_10_pred = top_k_predicted(flattened, results, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted_test', top_10_mesh, '\n')
-
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
 
-
-# predicted binary labels
-# find the top k labels in the predicted label set
-# def top_k_predicted(predictions, k):
-#     predicted_label = np.zeros(predictions.shape)
-#     for i in range(len(predictions)):
-#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
-#         for j in top_k_index:
-#             predicted_label[i][j] = 1
-#     predicted_label = predicted_label.astype(np.int64)
-#     return predicted_label
 
 def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
@@ -272,11 +241,10 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
+    parser.add_argument('--gpu', type=str, default=['0', '1'], help="Comma separated list of GPU device IDs.")
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--world_size', type=int, default=2)
     parser.add_argument('--local_rank', default=0, type=int, help='node rank for distributed training')
-    # parser.add_argument('--master-ip', type=str, default='127.0.0.1', help='master ip address')
-    # parser.add_argument('--master-port', type=str, default='12345', help='master port')
 
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
@@ -293,7 +261,68 @@ def main():
 
     args = parser.parse_args()
 
-    print(args.local_rank)
+    devices = list(map(int, args.gpu.split(',')))
+    n_gpus = len(devices)
+
+    # Start up distributed training, if enabled.
+    dev_id = devices[proc_id]
+    if n_gpus > 1:
+        dist_init_method = 'tcp://{master_ip}:{master_port}'.format(master_ip='127.0.0.1', master_port='12345')
+        world_size = n_gpus
+        torch.distributed.init_process_group(backend="nccl",
+                                             init_method=dist_init_method,
+                                             world_size=world_size,
+                                             rank=proc_id)
+    torch.cuda.set_device(dev_id)
+
+    # unpack data
+    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
+                                                                                     args.test_path,
+                                                                                     args.meSH_pair_path,
+                                                                                     args.word2vec_path, args.graph)
+    vocab_size = len(vocab)
+    print('vocab_size:', vocab_size)
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, dev0, dev1,
+                      args.embedding_dim)
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model = model.to(dev_id)
+
+    if n_gpus > 1:
+        model = torch.nn.parallel.DistributedDataParallel(model)
+
+    # define optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    criterion = nn.BCELoss()
+
+    # training
+    print("Start training!")
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, devices, args.num_workers,
+          optimizer, lr_scheduler, n_gpus)
+    print('Finish training!')
+    # testing
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, devices)
+
+    if n_gpus == 1:
+        run(0, n_gpus, args, devices, data)
+    else:
+        procs = []
+        for proc_id in range(n_gpus):
+            p = mp.Process(target=thread_wrapped_func(run),
+                           args=(proc_id, n_gpus, args, devices, data))
+            p.start()
+            procs.append(p)
+        for p in procs:
+            p.join()
+
+
+
+
+
+
+
+
+
 
     # dist.init_process_group(backend='nccl', init_method='file:///mnt/nfs/sharedfile', world_size=1, rank=0)
     # dist_init_method = 'tcp://{master_ip}:{master_port}'.format(master_ip=args.master_ip, master_port=args.master_port)
@@ -331,7 +360,10 @@ def main():
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.cuda()
+    # Create csr/coo/csc formats before launching training processes with multi-gpu.
+    G.create_formats_()
     G.to(device)
+
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = torch.nn.parallel.DistributedDataParallel(model)
