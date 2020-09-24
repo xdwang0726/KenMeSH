@@ -99,7 +99,7 @@ class attenCNN(nn.Module):
 
 
 class CorNetBlock(nn.Module):
-    def __init__(self, context_size, output_size, cornet_act='sigmoid', **kwargs):
+    def __init__(self, context_size, output_size):
         super(CorNetBlock, self).__init__()
         self.dstbn2cntxt = nn.Linear(output_size, context_size)
         self.cntxt2dstbn = nn.Linear(context_size, output_size)
