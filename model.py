@@ -304,6 +304,7 @@ class CorGCN(nn.Module):
         label_feature = self.gcn(g, g_node_feature)
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
+        cor_logit = torch.sigmoid(cor_logit)
         return cor_logit
 
 
