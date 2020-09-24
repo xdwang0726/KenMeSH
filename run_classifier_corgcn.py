@@ -341,8 +341,8 @@ def main():
 
     pickle.dump(pred, open(args.results, "wb"))
 
-    print("\rSaving model to {}".format(args.save_model_path))
-    torch.save(model.to('cpu'), args.save_model_path)
+    # print("\rSaving model to {}".format(args.save_model_path))
+    # torch.save(model.to('cpu'), args.save_model_path)
 
     # precision @k
     test_labelsIndex = getLabelIndex(test_label_transform)
