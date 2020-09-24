@@ -296,7 +296,9 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
+    model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim,
+                   cornet_dim=1000,
+                   n_cornet_blocks=2)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)

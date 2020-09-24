@@ -297,7 +297,7 @@ class CorGCN(nn.Module):
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
-        self.cornet = CorGCN(output_size, cornet_dim=1000, n_cornet_blocks=2)
+        self.cornet = CorGCN(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
