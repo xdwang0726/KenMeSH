@@ -152,7 +152,7 @@ def generate_batch(batch):
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
-          lr_scheduler, n_gpus):
+          lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch,
                             num_workers=num_workers, sampler=DistributedSampler(train_dataset))
 
@@ -261,8 +261,9 @@ def main():
 
     args = parser.parse_args()
 
-    devices = list(map(int, args.gpu.split(',')))
-    n_gpus = len(devices)
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # devices = list(map(int, args.gpu.split(',')))
+    # n_gpus = len(devices)
 
     # Start up distributed training, if enabled.
     # dev_id = devices[proc_id]
@@ -284,8 +285,8 @@ def main():
     print('vocab_size:', vocab_size)
     model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model = model.to(devices)
-    G.to(devices)
+    model = model.to(device)
+    G.to(device)
 
     # if n_gpus > 1:
     #     model = torch.nn.parallel.DistributedDataParallel(model)
@@ -297,11 +298,11 @@ def main():
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, devices, args.num_workers,
-          optimizer, lr_scheduler, n_gpus)
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers,
+          optimizer, lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, devices)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
 
     # if n_gpus == 1:
     #     run(0, n_gpus, args, devices, data)
