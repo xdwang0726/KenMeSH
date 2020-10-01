@@ -382,7 +382,7 @@ class RGCNLayer(nn.Module):
 
 
 class BaseRGCN(nn.Module):
-    def __init__(self, num_nodes, h_dim, num_rels=2, num_bases=None,
+    def __init__(self, num_nodes, h_dim, num_rels=2, num_bases=0,
                  num_hidden_layers=1, dropout=0,
                  use_self_loop=False, use_cuda=True):
         super(BaseRGCN, self).__init__()
