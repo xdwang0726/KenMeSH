@@ -4,7 +4,7 @@ import dgl.function as fn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from dgl.nn.pytorch import RelGraphConv
 
 #from torch_geometric.nn import GCNConv
 
@@ -116,10 +116,10 @@ class CorNetBlock(nn.Module):
 
 
 class CorNet(nn.Module):
-    def __init__(self, output_size, cornet_dim=1000, n_cornet_blocks=2, **kwargs):
+    def __init__(self, output_size, cornet_dim=1000, n_cornet_blocks=2):
         super(CorNet, self).__init__()
         self.intlv_layers = nn.ModuleList(
-            [CorNetBlock(cornet_dim, output_size, **kwargs) for _ in range(n_cornet_blocks)])
+            [CorNetBlock(cornet_dim, output_size) for _ in range(n_cornet_blocks)])
         for layer in self.intlv_layers:
             nn.init.xavier_uniform_(layer.dstbn2cntxt.weight)
             nn.init.xavier_uniform_(layer.cntxt2dstbn.weight)
@@ -381,91 +381,90 @@ class RGCNLayer(nn.Module):
         g.update_all(message_func, fn.sum(msg='msg', out='h'), apply_func)
 
 
-class RGCNLabelNet(nn.Module):
-    def __init__(self, num_nodes, h_dim, out_dim, num_rels=2,
-                 num_bases=-1, num_hidden_layers=1):
-        super(RGCNLabelNet, self).__init__()
+class BaseRGCN(nn.Module):
+    def __init__(self, num_nodes, h_dim, num_rels=2, num_bases=None,
+                 num_hidden_layers=1, dropout=0,
+                 use_self_loop=False, use_cuda=True):
+        super(BaseRGCN, self).__init__()
         self.num_nodes = num_nodes
         self.h_dim = h_dim
-        self.out_dim = out_dim
         self.num_rels = num_rels
-        self.num_bases = num_bases
+        self.num_bases = None if num_bases < 0 else num_bases
         self.num_hidden_layers = num_hidden_layers
+        self.dropout = dropout
+        self.use_self_loop = use_self_loop
+        self.use_cuda = use_cuda
 
         # create rgcn layers
         self.build_model()
 
-        # create initial features
-        self.features = self.create_features()
-
-    # def build_model(self):
-    #     self.layers = nn.ModuleList()
-    #     # input to hidden
-    #     i2h = self.build_input_layer()
-    #     self.layers.append(i2h)
-    #     # hidden to hidden
-    #     for _ in range(self.num_hidden_layers):
-    #         h2h = self.build_hidden_layer()
-    #         self.layers.append(h2h)
-    #     # hidden to output
-    #     h2o = self.build_output_layer()
-    #     self.layers.append(h2o)
-
     def build_model(self):
         self.layers = nn.ModuleList()
-        for _ in range(self.num_hidden_layers):
-            rgcn_layer = RGCNLayer(self.h_dim, self.num_rels, activation=F.relu, gated=self.gated)
-            self.layers.append(rgcn_layer)
+        # i2h
+        i2h = self.build_input_layer()
+        if i2h is not None:
+            self.layers.append(i2h)
+        # h2h
+        for idx in range(self.num_hidden_layers):
+            h2h = self.build_hidden_layer(idx)
+            self.layers.append(h2h)
+        # h2o
+        h2o = self.build_output_layer()
+        if h2o is not None:
+            self.layers.append(h2o)
 
-    # initialize feature for each node
-    # def create_features(self):
-    #     features = torch.arange(self.num_nodes)
-    #     return features
-    #
-    # def build_input_layer(self):
-    #     return RGCNLayer(self.num_nodes, self.h_dim, self.num_rels, self.num_bases,
-    #                      activation=F.relu, is_input_layer=True)
-    #
-    # def build_hidden_layer(self):
-    #     return RGCNLayer(self.h_dim, self.h_dim, self.num_rels, self.num_bases,
-    #                      activation=F.relu)
-    #
-    # def build_output_layer(self):
-    #     return RGCNLayer(self.h_dim, self.out_dim, self.num_rels, self.num_bases,
-    #                      activation=partial(F.softmax, dim=1))
+    def build_input_layer(self):
+        return None
 
-    def forward(self, g):
-        if self.features is not None:
-            g.ndata['id'] = self.features
+    def build_hidden_layer(self, idx):
+        raise NotImplementedError
+
+    def build_output_layer(self):
+        return None
+
+    def forward(self, g, h, r, norm):
+        # h is node feature
+        # r is edge type
         for layer in self.layers:
-            layer(g)
+            h = layer(g, h, r, norm)
+        return h
 
-        x = g.ndata.pop('h')
-        print('rgcn', x.shape)
-        x = torch.cat([x, g.ndata['feat']], dim=1)
-        print('concat_rgcn', x.shape)
-        return x
+
+class EntityClassify(BaseRGCN):
+    def create_features(self):
+        features = torch.arange(self.num_nodes)
+        if self.use_cuda:
+            features = features.cuda()
+        return features
+
+    def build_input_layer(self):
+        return RelGraphConv(self.num_nodes, self.h_dim, self.num_rels, "basis",
+                            self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
+                            dropout=self.dropout)
+
+    def build_hidden_layer(self, idx):
+        return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
+                            self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
+                            dropout=self.dropout)
+
+    def build_output_layer(self):
+        return RelGraphConv(self.h_dim, self.num_nodes, self.num_rels, "basis",
+                            self.num_bases, activation=None,
+                            self_loop=self.use_self_loop)
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_nodes, dev0, dev1, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_nodes, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
 
-        self.dev0 = dev0
-        self.dev1 = dev1
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim=200).to(dev0)
-
-        self.rgcn = RGCNLabelNet(num_nodes, hidden_gcn_size, embedding_dim).to(dev1)
+        self.rgcn = EntityClassify(num_nodes, hidden_gcn_size)
 
     def forward(self, input_seq, g_node_feature, g):
-        input_seq = input_seq.to(self.dev0)
-        g_node_feature = g_node_feature.to(self.dev0)
         x_feature = self.content_feature(input_seq, g_node_feature)
 
-        x_feature = x_feature.to(self.dev1)
-        g = g.to(self.dev1)
-        label_feature = self.rgcn(g)
+        label_feature = self.rgcn(g, g.ndata['feat'], g.edata['rel_type'], g.edata['norm'])
         print('label', label_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)

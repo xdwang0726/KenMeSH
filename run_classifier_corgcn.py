@@ -14,6 +14,8 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
+# import EarlyStopping
+from pytorchtools import EarlyStopping
 
 from model import CorGCN
 from utils import MeSH_indexing
@@ -148,12 +150,14 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler,
+          patience):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
                             num_workers=num_workers)
 
     num_lines = num_epochs * len(train_data)
 
+    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
