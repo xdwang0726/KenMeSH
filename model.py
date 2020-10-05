@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch import RelGraphConv
+from dgl.nn.pytorch.conv import SAGEConv
 
 #from torch_geometric.nn import GCNConv
 
@@ -471,3 +472,26 @@ class MeSH_RGCN(nn.Module):
         print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
+
+
+class CorGraphSage(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, output_size, embedding_dim=200, cornet_dim=1000,
+                 n_cornet_blocks=2):
+        super(CorGraphSage, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.nKernel = nKernel
+        self.ksz = ksz
+        self.output_size = output_size
+
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
+        self.graphsage = SAGEConv(output_size, output_size, aggregator_type='pool')
+        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
+
+    def forward(self, input_seq, g_node_feature, g):
+        x_feature = self.content_feature(input_seq, g_node_feature)
+        label_feature = self.graphsage(g, g_node_feature)
+        x = torch.sum(x_feature * label_feature, dim=2)
+        cor_logit = self.cornet(x)
+        cor_logit = torch.sigmoid(cor_logit)
+        return cor_logit
