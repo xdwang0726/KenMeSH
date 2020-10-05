@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 # import EarlyStopping
-from pytorchtools import EarlyStopping
+# from pytorchtools import EarlyStopping
 
 from model import CorGCN
 from utils import MeSH_indexing
@@ -157,7 +157,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
     num_lines = num_epochs * len(train_data)
 
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
+    #    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):

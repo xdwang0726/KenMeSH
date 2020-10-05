@@ -485,12 +485,12 @@ class CorGraphSage(nn.Module):
         self.output_size = output_size
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
-        self.graphsage = SAGEConv(output_size, output_size, aggregator_type='pool')
+        self.graphsage = SAGEConv(embedding_dim, output_size, aggregator_type='pool')
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        print('feat', g_node_feature.shape)
+        # print('feat', g_node_feature.shape)
         label_feature = self.graphsage(g, g_node_feature)
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
