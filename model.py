@@ -476,8 +476,40 @@ class MeSH_RGCN(nn.Module):
         return x
 
 
+class GraphSAGE(nn.Module):
+    def __init__(self,
+                 in_feats,
+                 n_hidden,
+                 n_classes,
+                 n_layers=2,
+                 activation=F.relu(),
+                 dropout=0.5,
+                 aggregator_type='pool'):
+        super(GraphSAGE, self).__init__()
+        self.layers = nn.ModuleList()
+        self.dropout = nn.Dropout(dropout)
+        self.activation = activation
+
+        # input layer
+        self.layers.append(SAGEConv(in_feats, n_hidden, aggregator_type))
+        # hidden layers
+        for i in range(n_layers - 1):
+            self.layers.append(SAGEConv(n_hidden, n_hidden, aggregator_type))
+        # output layer
+        self.layers.append(SAGEConv(n_hidden, n_classes, aggregator_type))  # activation None
+
+    def forward(self, graph, inputs):
+        h = self.dropout(inputs)
+        for l, layer in enumerate(self.layers):
+            h = layer(graph, h)
+            if l != len(self.layers) - 1:
+                h = self.activation(h)
+                h = self.dropout(h)
+        return h
+
+
 class CorGraphSage(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, output_size, embedding_dim=200, cornet_dim=1000,
+    def __init__(self, vocab_size, nKernel, ksz, hidden_graphsage_size, output_size, embedding_dim=200, cornet_dim=1000,
                  n_cornet_blocks=2):
         super(CorGraphSage, self).__init__()
 
@@ -487,7 +519,7 @@ class CorGraphSage(nn.Module):
         self.output_size = output_size
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
-        self.graphsage = SAGEConv(embedding_dim, embedding_dim * 2, aggregator_type='pool')
+        self.graphsage = GraphSAGE(embedding_dim, hidden_graphsage_size, output_size)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, g_node_feature, g):

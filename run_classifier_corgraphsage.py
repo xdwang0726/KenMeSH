@@ -276,7 +276,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
@@ -296,7 +296,7 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = CorGraphSage(vocab_size, args.nKernel, args.ksz, num_nodes, args.embedding_dim,
+    model = CorGraphSage(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim,
                          cornet_dim=1000,
                          n_cornet_blocks=2)
     # if torch.cuda.device_count() > 1:
