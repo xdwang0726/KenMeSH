@@ -490,6 +490,7 @@ class CorGraphSage(nn.Module):
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
+        print('feat', g_node_feature.shape)
         label_feature = self.graphsage(g, g_node_feature)
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
