@@ -529,6 +529,7 @@ class CorGraphSage(nn.Module):
         # print('x_feature', x_feature.shape)
         # print('label', label_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
+        print('x', x, x.shape)
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
         return cor_logit

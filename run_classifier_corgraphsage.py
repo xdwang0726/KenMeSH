@@ -175,7 +175,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
             optimizer.zero_grad()
             loss = criterion(output, label)
-            # print('loss', loss)
+            print('loss', loss)
             loss.backward()
             optimizer.step()
             processed_lines = i + len(train_data) * epoch
