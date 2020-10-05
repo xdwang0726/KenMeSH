@@ -201,10 +201,11 @@ def build_MeSH_RGCNgraph(edge_list, edge_type, nodes, label_embedding):
     g.add_edges(src, dst)
     # add relation type to the graph
     print('add relation type into the graph')
-    g.edata.update({'rel_type': edge_type, })
+    # g.edata.update({'rel_type': edge_type, })
+    g.edata.update({'rel_type': edge_type})
     # add edge norm to the graph
-    g = dgl.to_homogeneous(g, edata=['norm'])
-    # g.edata.update({'norm': edge_norm})
+    # g = dgl.to_homogeneous(g, edata=['norm'])
+    g.edata.update({'norm': edge_norm})
     # add node features into the graph
     print('add node features into the graph')
     g.ndata['feat'] = label_embedding
