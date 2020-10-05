@@ -519,7 +519,7 @@ class CorGraphSage(nn.Module):
         self.output_size = output_size
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
-        self.graphsage = GraphSAGE(embedding_dim, hidden_graphsage_size, output_size)
+        self.graphsage = GraphSAGE(embedding_dim, hidden_graphsage_size, embedding_dim)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, g_node_feature, g):
