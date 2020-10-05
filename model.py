@@ -482,7 +482,7 @@ class GraphSAGE(nn.Module):
                  n_hidden,
                  n_classes,
                  n_layers=2,
-                 activation=F.relu(),
+                 activation=F.relu,
                  dropout=0.5,
                  aggregator_type='pool'):
         super(GraphSAGE, self).__init__()
