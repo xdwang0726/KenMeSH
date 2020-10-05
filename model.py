@@ -481,7 +481,7 @@ class GraphSAGE(nn.Module):
                  in_feats,
                  n_hidden,
                  n_classes,
-                 n_layers=2,
+                 n_layers=1,
                  activation=F.relu,
                  dropout=0.5,
                  aggregator_type='pool'):
