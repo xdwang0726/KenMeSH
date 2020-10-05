@@ -303,6 +303,8 @@ class CorGCN(nn.Module):
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
         label_feature = self.gcn(g, g_node_feature)
+        print('x_feature', x_feature.shape)
+        print('label', label_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
