@@ -481,10 +481,10 @@ class GraphSAGE(nn.Module):
                  in_feats,
                  n_hidden,
                  n_classes,
-                 n_layers=1,
+                 n_layers=2,
                  activation=F.relu,
                  dropout=0.5,
-                 aggregator_type='pool'):
+                 aggregator_type='lstm'):
         super(GraphSAGE, self).__init__()
         self.layers = nn.ModuleList()
         self.dropout = nn.Dropout(dropout)
