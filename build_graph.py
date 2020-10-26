@@ -76,7 +76,6 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
     #     embedded_key = embedding(torch.LongTensor(key_seq))  # size: (seq_len, embedding_sz)
     #     embedding = torch.mean(input=embedded_key, dim=0, keepdim=True)
     #     label_embedding = torch.cat((label_embedding, embedding), dim=0)
-
     return edges, node_count, label_embedding
 
 
@@ -119,8 +118,7 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
             mapping_id[key] = value.strip()
 
     # count number of nodes and get parent and children edges
-    print('count number of nodes and get edges of the graph')
-    node_count = len(mapping_id)
+    print('count number of nodes and get edges of the graph', len(mapping_id))
     values = list(mapping_id.values())
 
     # count the co-occurrence between MeSH
@@ -155,22 +153,28 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     # edge_frame[:] = np.where(np.arange(len(edge_frame))[:, None] >= np.arange(len(edge_frame)), np.nan, edge_frame)
     edge_index = np.argwhere(edge_frame.values == 1)
     train_mesh_list = list(cooccurrence_matrix)
-    edge_cooccurrence = []
+    edge_cooccurrence = list()
     for i in edge_index:
         item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
-        idex_item = (values.index(item[0]), values.index(item[1]))
-        edge_cooccurrence.append(idex_item)
+        index_item = torch.tensor([values.index(item[0]), values.index(item[1])])
+        edge_cooccurrence.append(index_item)
 
-    edges_parent_children = []
+    cooccurrence_dic = {('mesh', 'cooccurrence', 'mesh'): edge_cooccurrence}
+
+    edges_parent_children = tuple()
     with open(parent_children_file, 'r') as f:
         for line in f:
             item = tuple(line.strip().split(" "))
-            index_item = (values.index(item[0]), values.index(item[1]))
-            edges_parent_children.append(index_item)
+            index_item = torch.tensor([values.index(item[0]), values.index(item[1])])
+            edges_parent_children = edges_parent_children + (index_item,)
 
-    edges = edge_cooccurrence + edges_parent_children
-    edge_type = [0] * len(edge_cooccurrence) + [1] * len(edges_parent_children)
-    edge_type = torch.from_numpy(np.array(edge_type))
+    parent_children_dic = {('mesh', 'hierarchy', 'mesh'): edges_parent_children}
+
+    # updated data_dic
+    parent_children_dic.update(cooccurrence_dic)
+
+    # edge_type = [0] * len(edge_cooccurrence) + [1] * len(edges_parent_children)
+    # edge_type = torch.from_numpy(np.array(edge_type))
     # edge_norm = [1] * len(edges)
     # edge_norm = torch.from_numpy(np.array(edge_norm)).unsqueeze(1).float()
 
@@ -186,27 +190,11 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
         key_embedding = torch.mean(input=key_embedding, dim=0, keepdim=True)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
-    return edges, edge_type, node_count, label_embedding
+    return parent_children_dic, label_embedding
 
 
-def build_MeSH_RGCNgraph(edge_list, edge_type, nodes, label_embedding):
+def build_MeSH_RGCNgraph(edge_dic, label_embedding):
     print('start building the graph')
-    g = dgl.DGLGraph()
-    # add nodes into the graph
-    print('add nodes into the graph')
-    g.add_nodes(nodes)
-    # add edges, directional graph
-    print('add edges into the graph')
-    src, dst = tuple(zip(*edge_list))
-    g.add_edges(src, dst)
-    # add relation type to the graph
-    print('add relation type into the graph')
-    # g.edata.update({'rel_type': edge_type, })
-    g.edata.update({'rel_type': edge_type})
-    # add edge norm to the graph
-    # g = dgl.to_homogeneous(g, edata=['norm'])
-    g.edata.update({'norm': edge_norm})
-    # add node features into the graph
-    print('add node features into the graph')
+    g = dgl.heterograph(edge_dic)
     g.ndata['feat'] = label_embedding
     return g
