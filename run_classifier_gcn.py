@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 300000:
+        if i <= 10000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -161,7 +161,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
-            output = model(text, G.ndata['feat'], G)
+            output = model(text, G, G.ndata['feat'])
 
             # print train output
             # pred = output.data.cpu().numpy()
@@ -196,7 +196,7 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G.ndata['feat'], G)
+            output = model(text, G, G.ndata['feat'])
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
