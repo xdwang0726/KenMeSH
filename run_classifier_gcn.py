@@ -185,6 +185,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
+        print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
 def test(test_dataset, model, G, batch_sz, device):
