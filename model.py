@@ -259,6 +259,7 @@ class MeSH_GCN(nn.Module):
         # print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
+        print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         # print('label', label_feature.shape)
         # label_feature = torch.transpose(label_feature, 0, 1)
 
