@@ -255,7 +255,7 @@ class MeSH_GCN(nn.Module):
         # print('x_concat', x_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         # print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
@@ -283,6 +283,7 @@ class MeSH_GCN(nn.Module):
         # x = element_wise_mul(x_feature, label_feature)
         # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
         x = torch.sum(x_feature * label_feature, dim=2)
+        print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         # print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
