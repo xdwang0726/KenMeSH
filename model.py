@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch import RelGraphConv
 from dgl.nn.pytorch.conv import SAGEConv
+from dgl.nn import RelGraphConv
 
 #from torch_geometric.nn import GCNConv
 
@@ -254,6 +255,7 @@ class MeSH_GCN(nn.Module):
         # print('x_concat', x_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+        print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         # print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, features)
@@ -311,163 +313,18 @@ class CorGCN(nn.Module):
         return cor_logit
 
 
-class RGCNLayer(nn.Module):
-    def __init__(self, in_feat, out_feat, num_rels, num_bases=-1, bias=None,
-                 activation=None, is_input_layer=False):
-        super(RGCNLayer, self).__init__()
-        self.in_feat = in_feat
-        self.out_feat = out_feat
-        self.num_rels = num_rels
-        self.num_bases = num_bases
-        self.bias = bias
-        self.activation = activation
-        self.is_input_layer = is_input_layer
-
-        # sanity check
-        if self.num_bases <= 0 or self.num_bases > self.num_rels:
-            self.num_bases = self.num_rels
-
-        # weight bases in equation (3)
-        self.weight = nn.Parameter(torch.Tensor(self.num_bases, self.in_feat,
-                                                self.out_feat))
-        if self.num_bases < self.num_rels:
-            # linear combination coefficients in equation (3)
-            self.w_comp = nn.Parameter(torch.Tensor(self.num_rels, self.num_bases))
-
-        # add bias
-        if self.bias:
-            self.bias = nn.Parameter(torch.Tensor(out_feat))
-
-        # init trainable parameters
-        nn.init.xavier_uniform_(self.weight,
-                                gain=nn.init.calculate_gain('relu'))
-        if self.num_bases < self.num_rels:
-            nn.init.xavier_uniform_(self.w_comp,
-                                    gain=nn.init.calculate_gain('relu'))
-        if self.bias:
-            nn.init.xavier_uniform_(self.bias,
-                                    gain=nn.init.calculate_gain('relu'))
-
-    def forward(self, g):
-        if self.num_bases < self.num_rels:
-            # generate all weights from bases (equation (3))
-            weight = self.weight.view(self.in_feat, self.num_bases, self.out_feat)
-            weight = torch.matmul(self.w_comp, weight).view(self.num_rels,
-                                                            self.in_feat, self.out_feat)
-        else:
-            weight = self.weight
-
-        if self.is_input_layer:
-            def message_func(edges):
-                # for input layer, matrix multiply can be converted to be
-                # an embedding lookup using source node id
-                embed = weight.view(-1, self.out_feat)
-                edges_src = edges.src['id'].to('cuda')
-                print('edge_data', len(edges.data['rel_type']))
-                index = edges.data['rel_type'] * self.in_feat + edges_src
-                return {'msg': embed[index] * edges.data['norm']}
-        else:
-            def message_func(edges):
-                w = weight[edges.data['rel_type']]
-                msg = torch.bmm(edges.src['h'].unsqueeze(1), w).squeeze()
-                msg = msg * edges.data['norm']
-                return {'msg': msg}
-
-        def apply_func(nodes):
-            h = nodes.data['h']
-            if self.bias:
-                h = h + self.bias
-            if self.activation:
-                h = self.activation(h)
-            return {'h': h}
-
-        g.update_all(message_func, fn.sum(msg='msg', out='h'), apply_func)
-
-
-class BaseRGCN(nn.Module):
-    def __init__(self, num_nodes, h_dim, num_rels=2, num_bases=0,
-                 num_hidden_layers=1, dropout=0,
-                 use_self_loop=False, use_cuda=True):
-        super(BaseRGCN, self).__init__()
-        self.num_nodes = num_nodes
-        self.h_dim = h_dim
-        self.num_rels = num_rels
-        self.num_bases = None if num_bases < 0 else num_bases
-        self.num_hidden_layers = num_hidden_layers
-        self.dropout = dropout
-        self.use_self_loop = use_self_loop
-        self.use_cuda = use_cuda
-
-        # create rgcn layers
-        self.build_model()
-
-    def build_model(self):
-        self.layers = nn.ModuleList()
-        # i2h
-        i2h = self.build_input_layer()
-        if i2h is not None:
-            self.layers.append(i2h)
-        # h2h
-        for idx in range(self.num_hidden_layers):
-            h2h = self.build_hidden_layer(idx)
-            self.layers.append(h2h)
-        # h2o
-        h2o = self.build_output_layer()
-        if h2o is not None:
-            self.layers.append(h2o)
-
-    def build_input_layer(self):
-        return None
-
-    def build_hidden_layer(self, idx):
-        raise NotImplementedError
-
-    def build_output_layer(self):
-        return None
-
-    def forward(self, g, h, r, norm):
-        # h is node feature
-        # r is edge type
-        for layer in self.layers:
-            h = layer(g, h, r, norm)
-        return h
-
-
-class EntityClassify(BaseRGCN):
-    def create_features(self):
-        features = torch.arange(self.num_nodes)
-        if self.use_cuda:
-            features = features.cuda()
-        return features
-
-    def build_input_layer(self):
-        return RelGraphConv(self.num_nodes, self.h_dim, self.num_rels, "basis",
-                            self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            dropout=self.dropout)
-
-    def build_hidden_layer(self, idx):
-        return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
-                            self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            dropout=self.dropout)
-
-    def build_output_layer(self):
-        return RelGraphConv(self.h_dim, self.num_nodes, self.num_rels, "basis",
-                            self.num_bases, activation=None,
-                            self_loop=self.use_self_loop)
-
-
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, num_nodes, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, num_nodes, device, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
 
-        self.rgcn = EntityClassify(num_nodes, hidden_gcn_size)
+        self.rgcn = EntityClassify(device, num_nodes, hidden_rgcn_size, embedding_dim)
 
-    def forward(self, input_seq, g_node_feature, g):
+    def forward(self, input_seq, g_node_feature, blocks, feats):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
-        label_feature = self.rgcn(g, g.ndata['feat'], g.edata['rel_type'], g.edata['norm'])
+        label_feature = self.rgcn(blocks, feats)
         print('label', label_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
