@@ -315,18 +315,90 @@ class CorGCN(nn.Module):
         return cor_logit
 
 
+class BaseRGCN(nn.Module):
+    def __init__(self, num_nodes, h_dim, out_dim, num_rels=2, num_bases=-1,
+                 num_hidden_layers=1, dropout=0,
+                 use_self_loop=False, use_cuda=True, low_mem=True):
+        super(BaseRGCN, self).__init__()
+        self.num_nodes = num_nodes
+        self.h_dim = h_dim
+        self.out_dim = out_dim
+        self.num_rels = num_rels
+        self.num_bases = None if num_bases < 0 else num_bases
+        self.num_hidden_layers = num_hidden_layers
+        self.dropout = dropout
+        self.use_self_loop = use_self_loop
+        self.use_cuda = use_cuda
+        self.low_mem = low_mem
+
+        # create rgcn layers
+        self.build_model()
+
+    def build_model(self):
+        self.layers = nn.ModuleList()
+        # i2h
+        i2h = self.build_input_layer()
+        if i2h is not None:
+            self.layers.append(i2h)
+        # h2h
+        for idx in range(self.num_hidden_layers):
+            h2h = self.build_hidden_layer(idx)
+            self.layers.append(h2h)
+        # h2o
+        h2o = self.build_output_layer()
+        if h2o is not None:
+            self.layers.append(h2o)
+
+    def build_input_layer(self):
+        return None
+
+    def build_hidden_layer(self, idx):
+        raise NotImplementedError
+
+    def build_output_layer(self):
+        return None
+
+    def forward(self, g, h, r, norm):
+        for layer in self.layers:
+            h = layer(g, h, r, norm)
+        return h
+
+
+class EntityClassify(BaseRGCN):
+    def create_features(self):
+        features = torch.arange(self.num_nodes)
+        if self.use_cuda:
+            features = features.cuda()
+        return features
+
+    def build_input_layer(self):
+        return RelGraphConv(self.num_nodes, self.h_dim, self.num_rels, "basis",
+                            self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
+                            low_mem=self.low_mem, dropout=self.dropout)
+
+    def build_hidden_layer(self, idx):
+        return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
+                            self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
+                            low_mem=self.low_mem, dropout=self.dropout)
+
+    def build_output_layer(self):
+        return RelGraphConv(self.h_dim, self.out_dim, self.num_rels, "basis",
+                            self.num_bases, activation=None,
+                            self_loop=self.use_self_loop, low_mem=self.low_mem)
+
+
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, num_nodes, device, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, num_nodes, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
 
-        self.rgcn = EntityClassify(device, num_nodes, hidden_rgcn_size, embedding_dim)
+        self.rgcn = EntityClassify(num_nodes, hidden_rgcn_size, embedding_dim)
 
-    def forward(self, input_seq, g_node_feature, blocks, feats):
+    def forward(self, input_seq, g_node_feature, g, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
-        label_feature = self.rgcn(blocks, feats)
+        label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         print('label', label_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)

@@ -3,23 +3,22 @@ import logging
 import os
 import pickle
 import sys
-import time
 
-import dgl
 import ijson
 import numpy as np
 import torch
 import torch.nn as nn
+import dgl
+from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.nn.parallel import DistributedDataParallel
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
-from model import MeSH_RGCN, RelGraphEmbedLayer
+from model import MeSH_GCN
 from utils import MeSH_indexing
-import torch.multiprocessing as mp
+from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
@@ -36,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 20000:
+        if i <= 10000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -72,7 +71,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         test_text.append(text)
         test_label.append(label)
 
-
     logging.info("Finish loading test data")
 
     print('load and prepare Mesh')
@@ -105,65 +103,15 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     # Prepare label features
     print('Load graph')
-    G = dgl.load_graphs(graph_file)[0][0]
+    G = load_graphs(graph_file)[0][0]
 
     print('graph', G.ndata['feat'].shape)
 
+    # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
+    # G = build_MeSH_graph(edges, node_count, label_embedding)
+
     print('prepare dataset and labels graph done!')
     return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G
-
-
-class NeighborSampler:
-    """Neighbor sampler
-    Parameters
-    ----------
-    g : DGLHeterograph
-        Full graph
-    target_idx : tensor
-        The target training node IDs in g
-    fanouts : list of int
-        Fanout of each hop starting from the seed nodes. If a fanout is None,
-        sample full neighbors.
-    """
-
-    def __init__(self, g, target_idx, fanouts):
-        self.g = g
-        self.target_idx = target_idx
-        self.fanouts = fanouts
-
-    """Do neighbor sample
-    Parameters
-    ----------
-    seeds :
-        Seed nodes
-    Returns
-    -------
-    tensor
-        Seed nodes, also known as target nodes
-    blocks
-        Sampled subgraphs
-    """
-
-    def sample_blocks(self, seeds):
-        blocks = []
-        etypes = []
-        norms = []
-        ntypes = []
-        seeds = torch.tensor(seeds).long()
-        cur = self.target_idx[seeds]
-        for fanout in self.fanouts:
-            if fanout is None or fanout == -1:
-                frontier = dgl.in_subgraph(self.g, cur)
-            else:
-                frontier = dgl.sampling.sample_neighbors(self.g, cur, fanout)
-            etypes = self.g.edata[dgl.ETYPE][frontier.edata[dgl.EID]]
-            block = dgl.to_block(frontier, cur)
-            block.srcdata[dgl.NTYPE] = self.g.ndata[dgl.NTYPE][block.srcdata[dgl.NID]]
-            block.srcdata['type_id'] = self.g.ndata[dgl.NID][block.srcdata[dgl.NID]]
-            block.edata['etype'] = etypes
-            cur = block.srcdata[dgl.NID]
-            blocks.insert(0, block)
-        return seeds, blocks
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -176,205 +124,90 @@ def weight_matrix(vocab, vectors, dim=200):
     return torch.from_numpy(weight_matrix)
 
 
-def train(model, embed_layer, data_loader, node_feats):
-    model.eval()
-    embed_layer.eval()
-    eval_logits = []
-    eval_seeds = []
+def generate_batch(batch):
+    """
+    Output:
+        text: the text entries in the data_batch are packed into a list and
+            concatenated as a single tensor for the input of nn.EmbeddingBag.
+        cls: a tensor saving the labels of individual text entries.
+    """
+    # check if the dataset if train or test
+    if len(batch[0]) == 2:
+        label = [entry[0] for entry in batch]
 
-    with torch.no_grad():
-        for sample_data in tqdm(data_loader):
-            torch.cuda.empty_cache()
-            seeds, blocks = sample_data
-            feats = feats = embed_layer(blocks[0].srcdata[dgl.NID],
-                                        blocks[0].srcdata[dgl.NTYPE],
-                                        blocks[0].srcdata['type_id'],
-                                        node_feats)
-            logits = model(blocks, feats)
-            eval_logits.append(logits.cpu().detach())
-            eval_seeds.append(seeds.cpu().detach())
-    eval_logits = torch.cat(eval_logits)
-    eval_seeds = torch.cat(eval_seeds)
-    return eval_logits, eval_seeds
+        # padding according to the maximum sequence length in batch
+        text = [entry[1] for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text, label
 
-
-def run(proc_id, n_gpus, args, devices, queue=None):
-    dev_id = devices[proc_id]
-
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
-                                                                                     args.test_path,
-                                                                                     args.meSH_pair_path,
-                                                                                     args.word2vec_path, args.graph)
-    vocab_size = len(vocab)
-    node_feats = G.ndata['feat']
-    num_of_ntype = 1
-    num_rels = 2
-
-    fanouts = [int(fanout) for fanout in args.fanout.split(',')]
-    category_id = 0
-    node_ids = torch.arange(G.number_of_nodes())
-    node_tids = g.ndata[dgl.NTYPE]
-    loc = (node_tids == category_id)
-    target_idx = node_ids[loc]
-
-    train_sampler = NeighborSampler(G, target_idx, fanouts)
-    train_data = DataLoader(train_dataset, batch_size=args.batch_size, collate_fn=train_sampler.sample_blocks,
-                            shuffle=True,
-                            num_workers=args.num_workers)
-
-    test_sampler = NeighborSampler(G, target_idx, [None] * args.n_layers)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=test_sampler.sample_blocks,
-                             shuffle=False,
-                             num_workers=args.num_workers)
-
-    if n_gpus > 1:
-        dist_init_method = 'tcp://{master_ip}:{master_port}'.format(
-            master_ip='127.0.0.1', master_port='12345')
-        world_size = n_gpus
-        backend = 'nccl'
-
-        # using sparse embedding or usig mix_cpu_gpu model (embedding model can not be stored in GPU)
-        if args.sparse_embedding or args.mix_cpu_gpu:
-            backend = 'gloo'
-        torch.distributed.init_process_group(backend=backend,
-                                             init_method=dist_init_method,
-                                             world_size=world_size,
-                                             rank=dev_id)
-
-        # node features
-        # None for one-hot feature, if not none, it should be the feature tensor.
-        #
-    embed_layer = RelGraphEmbedLayer(dev_id,
-                                     g.number_of_nodes(),
-                                     node_tids,
-                                     num_of_ntype,
-                                     node_feats,
-                                     args.n_hidden,
-                                     sparse_emb=args.sparse_embedding)
-
-    # create model
-    # all model params are in device.
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_rgcn_size, num_nodes, dev_id, embedding_dim=200)
-
-    if dev_id >= 0 and n_gpus == 1:
-        torch.cuda.set_device(dev_id)
-        model.cuda(dev_id)
-        # embedding layer may not fit into GPU, then use mix_cpu_gpu
-        if args.mix_cpu_gpu is False:
-            embed_layer.cuda(dev_id)
-
-    if n_gpus > 1:
-        model.cuda(dev_id)
-        if args.mix_cpu_gpu:
-            embed_layer = DistributedDataParallel(embed_layer, device_ids=None, output_device=None)
-        else:
-            embed_layer.cuda(dev_id)
-            embed_layer = DistributedDataParallel(embed_layer, device_ids=[dev_id], output_device=dev_id)
-        model = DistributedDataParallel(model, device_ids=[dev_id], output_device=dev_id)
-
-    if dev_id >= 0 and n_gpus == 1:
-        torch.cuda.set_device(dev_id)
-        model.cuda(dev_id)
-        # embedding layer may not fit into GPU, then use mix_cpu_gpu
-        if args.mix_cpu_gpu is False:
-            embed_layer.cuda(dev_id)
-
-    if n_gpus > 1:
-        model.cuda(dev_id)
-        if args.mix_cpu_gpu:
-            embed_layer = DistributedDataParallel(embed_layer, device_ids=None, output_device=None)
-        else:
-            embed_layer.cuda(dev_id)
-            embed_layer = DistributedDataParallel(embed_layer, device_ids=[dev_id], output_device=dev_id)
-        model = DistributedDataParallel(model, device_ids=[dev_id], output_device=dev_id)
-
-    # optimizer
-    if args.sparse_embedding:
-        dense_params = list(model.parameters())
-        if args.node_feats:
-            if n_gpus > 1:
-                dense_params += list(embed_layer.module.embeds.parameters())
-            else:
-                dense_params += list(embed_layer.embeds.parameters())
-        optimizer = torch.optim.Adam(dense_params, lr=args.lr, weight_decay=args.l2norm)
-        if n_gpus > 1:
-            emb_optimizer = torch.optim.SparseAdam(embed_layer.module.node_embeds.parameters(), lr=args.lr)
-        else:
-            emb_optimizer = torch.optim.SparseAdam(embed_layer.node_embeds.parameters(), lr=args.lr)
+        text = [entry[0] for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text
     else:
-        all_params = list(model.parameters()) + list(embed_layer.parameters())
-        optimizer = torch.optim.Adam(all_params, lr=args.lr, weight_decay=args.l2norm)
+        text = [entry for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text
 
-    # training loop
-    print("start training...")
-    forward_time = []
-    backward_time = []
 
-    num_lines = args.num_epochs * len(train_data)
-    for epoch in range(args.num_epochs):
-        model.train()
-        embed_layer.train()
+def train(train_dataset, model, mlb, G, edge_type, edge_norm, batch_sz, num_epochs, criterion, device, num_workers,
+          optimizer, lr_scheduler):
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
+                            num_workers=num_workers)
 
-        for i, sample_data in enumerate(train_data):
-            seeds, blocks = sample_data
-            t0 = time.time()
-            feats = embed_layer(blocks[0].srcdata[dgl.NID],
-                                blocks[0].srcdata[dgl.NTYPE],
-                                blocks[0].srcdata['type_id'],
-                                node_feats)
-            logits = model(blocks, feats)
-            loss = nn.BCELoss(logits, labels[seeds])
-            t1 = time.time()
+    num_lines = num_epochs * len(train_data)
+
+    print("Training....")
+    for epoch in range(num_epochs):
+        for i, (text, label) in enumerate(train_data):
+            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            text, label, G = text.to(device), label.to(device), G.to(device)
+            output = model(text, G.ndata['feat'], G, edge_type, edge_norm)
+            print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+
             optimizer.zero_grad()
-            if args.sparse_embedding:
-                emb_optimizer.zero_grad()
-
+            loss = criterion(output, label)
+            # print('loss', loss)
             loss.backward()
             optimizer.step()
-            if args.sparse_embedding:
-                emb_optimizer.step()
-            t2 = time.time()
-
-            forward_time.append(t1 - t0)
-            backward_time.append(t2 - t1)
-
+            print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
-                        progress * 100, loss))
-
-        if n_gpus > 1:
-            torch.distributed.barrier()
-
-        # only process 0 will do the evaluation
-        if (queue is not None) or (proc_id == 0):
-            test_logits, test_seeds = evaluate(model, embed_layer, test_loader, node_feats)
-            if queue is not None:
-                queue.put((test_logits, test_seeds))
-
-            # gather evaluation result from multiple processes
-            if proc_id == 0:
-                if queue is not None:
-                    test_logits = []
-                    test_seeds = []
-                    for i in range(n_gpus):
-                        log = queue.get()
-                        test_l, test_s = log
-                        test_logits.append(test_l)
-                        test_seeds.append(test_s)
-                    test_logits = torch.cat(test_logits)
-                    test_seeds = torch.cat(test_seeds)
-                test_loss = nn.BCELoss(test_logits, labels[test_seeds].cpu()).item()
-                test_acc = torch.sum(test_logits.argmax(dim=1) == labels[test_seeds].cpu()).item() / len(test_seeds)
-                print("Test Accuracy: {:.4f} | Test loss: {:.4f}".format(test_acc, test_loss))
-                print()
-        # sync for test
-        if n_gpus > 1:
-            torch.distributed.barrier()
+                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
+        # Adjust the learning rate
+        lr_scheduler.step()
+        print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
+def test(test_dataset, model, G, edge_type, edge_norm, batch_sz, device):
+    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
+    pred = torch.zeros(0).to(device)
+    ori_label = []
+    print('Testing....')
+    for text, label in test_data:
+        text = text.to(device)
+        print('test_orig', label, '\n')
+        ori_label.append(label)
+        flattened = [val for sublist in ori_label for val in sublist]
+        with torch.no_grad():
+            output = model(text, G.ndata['feat'], G, edge_type, edge_norm)
+            pred = torch.cat((pred, output), dim=0)
+    print('###################DONE#########################')
+    return pred, flattened
+
+
+# predicted binary labels
+# find the top k labels in the predicted label set
+# def top_k_predicted(predictions, k):
+#     predicted_label = np.zeros(predictions.shape)
+#     for i in range(len(predictions)):
+#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+#         for j in top_k_index:
+#             predicted_label[i][j] = 1
+#     predicted_label = predicted_label.astype(np.int64)
+#     return predicted_label
 
 def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
@@ -416,197 +249,78 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
-    parser.add_argument('--gpu', type=str, default=['0', '1'], help="Comma separated list of GPU device IDs.")
     parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--world_size', type=int, default=2)
-    parser.add_argument('--local_rank', default=0, type=int, help='node rank for distributed training')
-
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
-    parser.add_argument('--hidden_rgcn_size', type=int, default=200)
+    parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
+
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=2)
+    parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
+    # parser.add_argument('--fp16', default=True, type=bool)
+    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
+
     args = parser.parse_args()
 
-    device = list(map(int, args.gpu.split(',')))
+    n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # device = torch.device(args.device)
+    logging.info('Device:'.format(device))
 
-    # unpack data
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
-                                                                                     args.test_path, args.meSH_pair_pat
-    args.word2vec_path, args.graph)
+    # Get dataset and label graph & Load pre-trained embeddings
+    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, hg = prepare_dataset(args.train_path,
+                                                                                      args.test_path,
+                                                                                      args.meSH_pair_path,
+                                                                                      args.word2vec_path, args.graph)
+
     vocab_size = len(vocab)
-    print('vocab_size:', vocab_size)
+    num_rels = len(hg.canonical_etypes)
+    print('number of relations:', num_rels)
 
-    node_feats = G.ndata['feat']
-    num_of_ntype = 1
-    num_rels = 2
+    # calculate norm for each edge type and store in edge
+    for canonical_etype in hg.canonical_etypes:
+        u, v, eid = hg.all_edges(form='all', etype=canonical_etype)
+        _, inverse_index, count = torch.unique(v, return_inverse=True, return_counts=True)
+        degrees = count[inverse_index]
+        norm = torch.ones(eid.shape[0]).float() / degrees.float()
+        norm = norm.unsqueeze(1)
+        hg.edges[canonical_etype].data['norm'] = norm
 
-    # calculate norm
-    if args.global_norm is False:
-        for canonical_etype in G.canonical_etypes:
-            u, v, eid = G.all_edges(form='all', etype=canonical_etype)
-            _, inverse_index, count = torch.unique(v, return_inverse=True, return_counts=True)
-            degrees = count[inverse_index]
-            norm = torch.ones(eid.shape[0]) / degrees
-            norm = norm.unsqueeze(1)
-            G.edges[canonical_etype].data['norm'] = norm
+    g = dgl.to_homogeneous(hg, edata=['norm'])
+    num_nodes2 = g.number_of_nodes()
+    print("Warning:", num_nodes == num_nodes2)
 
-    g = dgl.to_homogeneous(G, edata=['norm'])
+    node_ids = torch.arange(num_nodes)
+    edge_norm = g.edata['norm']
+    edge_type = g.edata[dgl.ETYPE].long()
 
-    g.ndata[dgl.NTYPE].share_memory_()
-    g.edata[dgl.ETYPE].share_memory_()
-    g.edata['norm'].share_memory_()
-    node_ids = torch.arange(g.number_of_nodes())
-
-    g.create_formats_()
-
-    n_gpus = len(device)
-    if n_gpus == 1:
-        run(0, n_gpus, args, device, (g,))
-    else:
-        queue = mp.Queue(n_gpus)
-        procs = []
-        num_train_examples =
-        num_test_examples =
-        train_seeds = torch.randperm(num_train_examples)
-        test_seeds = torch.randperm(num_test_examples)
-        train_seeds_per_proc = num_train_examples // n_gpus
-        test_seeds_per_proc = num_test_examples // n_gpus
-        for proc_id in range(n_gpus):
-            # we have multi-gpu for training and testing
-            # so split trian set, valid set and test set into num-of-gpu parts.
-            proc_train_seeds = train_seeds[proc_id * train_seeds_per_proc:
-                                           (proc_id + 1) * train_seeds_per_proc \
-                                               if (proc_id + 1) * train_seeds_per_proc < num_train_examples \
-                                               else num_train_examples]
-            proc_test_seeds = test_seeds[proc_id * test_seeds_per_proc:
-                                         (proc_id + 1) * test_seeds_per_proc \
-                                             if (proc_id + 1) * test_seeds_per_proc < num_test_examples \
-                                             else num_test_examples]
-            p = mp.Process(target=run, args=(proc_id, n_gpus, args, devices,
-                                             (g, node_feats, num_of_ntype, num_nodes, num_rels, target_idx,
-                                              train_idx, val_idx, test_idx, labels),
-                                             (proc_train_seeds, proc_test_seeds),
-                                             queue))
-
-            p.start()
-            procs.append(p)
-        for p in procs:
-            p.join()
-
-
-
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model = model.to(device)
-    G.to(device)
 
-    # if n_gpus > 1:
-    #     model = torch.nn.parallel.DistributedDataParallel(model)
+    model.to(device)
+    g.to(device)
 
-    # define optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers,
-          optimizer, lr_scheduler)
+    train(train_dataset, model, mlb, g, edge_type, edge_norm, args.batch_sz, args.num_epochs, criterion, device,
+          args.num_workers, optimizer,
+          lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
-
-    # if n_gpus == 1:
-    #     run(0, n_gpus, args, devices, data)
-    # else:
-    #     procs = []
-    #     for proc_id in range(n_gpus):
-    #         p = mp.Process(target=thread_wrapped_func(run),
-    #                        args=(proc_id, n_gpus, args, devices, data))
-    #         p.start()
-    #         procs.append(p)
-    #     for p in procs:
-    #         p.join()
-
-
-
-
-
-
-
-
-
-
-    # dist.init_process_group(backend='nccl', init_method='file:///mnt/nfs/sharedfile', world_size=1, rank=0)
-    # dist_init_method = 'tcp://{master_ip}:{master_port}'.format(master_ip=args.master_ip, master_port=args.master_port)
-    # dist.init_process_group(backend='nccl', world_size=args.world_size, rank=0)
-    # dist.init_process_group(backend='nccl')
-    # torch.cuda.set_device(args.local_rank)
-    # device = torch.device("cuda")
-    # dev0 = torch.device('cuda:0')
-    # dev1 = torch.device('cuda:1')
-
-    # torch.cuda.set_device(args.local_rank)
-    # torch.distributed.init_process_group(backend='nccl', rank=args.local_rank, world_size=1)
-    # device_ids = [0, 1]
-    # print('num of gpus per node:', os.environ['CUDA_VISIBLE_DEVICES'])
-    #
-    # # device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
-    # # device = torch.device(args.device)
-    # logging.info('Device:'.format(device))
-    #
-    # # Get dataset and label graph & Load pre-trained embeddings
-    # num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
-    #                                                                                  args.test_path, args.meSH_pair_path,
-    #                                                                                  args.word2vec_path, args.graph)
-    #
-    # vocab_size = len(vocab)
-    # print('vocab_size:', vocab_size)
-    # # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
-    # model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, dev0, dev1,
-    #                   args.embedding_dim)
-    # # model = ContentsExtractor(vocab_size, args.nKernel, args.ksz, 29368, 200)
-    # # torch.distributed.init_process_group(backend="nccl")
-    #
-    #
-    # # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    #
-    # model.cuda()
-    # # Create csr/coo/csc formats before launching training processes with multi-gpu.
-    # G.create_formats_()
-    # G.to(devices)
-    #
-    # if torch.cuda.device_count() > 1:
-    #     print("Let's use", torch.cuda.device_count(), "GPUs!")
-    #     model = torch.nn.parallel.DistributedDataParallel(model)
-    #     # device_ids will include all GPU devices by default
-    #     print('model parallel done!')
-    #
-    # # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    # # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    # criterion = nn.BCELoss()
-    #
-    # # training
-    # print("Start training!")
-    # train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, dev0, dev1, args.num_workers,
-    #       optimizer,
-    #       lr_scheduler)
-    # print('Finish training!')
-    # # testing
-    # results, test_labels = test(test_dataset, model, G, args.batch_sz, dev0, dev1)
-    # # print('predicted:', results, '\n')
+    results, test_labels = test(test_dataset, model, g, edge_type, edge_norm, args.batch_sz, device)
+    # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
     # print('test_golden_truth', test_labels)
