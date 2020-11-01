@@ -9,7 +9,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import dgl
-from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
@@ -103,7 +102,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     # Prepare label features
     print('Load graph')
-    G = load_graphs(graph_file)[0][0]
+    G = dgl.load_graphs(graph_file)[0][0]
 
     print('graph', G.ndata['feat'].shape)
 
