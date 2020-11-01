@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_GCN
+from model import MeSH_RGCN
 from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -293,14 +293,12 @@ def main():
         hg.edges[canonical_etype].data['norm'] = norm
 
     g = dgl.to_homogeneous(hg, edata=['norm'])
-    num_nodes2 = g.number_of_nodes()
-    print("Warning:", num_nodes == num_nodes2)
 
     node_ids = torch.arange(num_nodes)
     edge_norm = g.edata['norm']
     edge_type = g.edata[dgl.ETYPE].long()
 
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
