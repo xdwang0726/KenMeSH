@@ -283,7 +283,7 @@ class MeSH_GCN(nn.Module):
         # x = element_wise_mul(x_feature, label_feature)
         # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
         x = torch.sum(x_feature * label_feature, dim=2)
-        print()
+        print("beore allocated 3")
         print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         # print('x_final', x.shape)
         x = torch.sigmoid(x)
