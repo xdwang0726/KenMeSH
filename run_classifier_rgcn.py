@@ -148,7 +148,8 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, edge_type, edge_norm, batch_sz, num_epochs, criterion, device, num_workers,
+def train(train_dataset, model, mlb, G, feats, edge_type, edge_norm, batch_sz, num_epochs, criterion, device,
+          num_workers,
           optimizer, lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
                             num_workers=num_workers)
@@ -160,7 +161,7 @@ def train(train_dataset, model, mlb, G, edge_type, edge_norm, batch_sz, num_epoc
         for i, (text, label) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
-            output = model(text, G.ndata['feat'], G, edge_type, edge_norm)
+            output = model(text, G, feats, edge_type, edge_norm)
             print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
             optimizer.zero_grad()
@@ -180,7 +181,7 @@ def train(train_dataset, model, mlb, G, edge_type, edge_norm, batch_sz, num_epoc
         print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
-def test(test_dataset, model, G, edge_type, edge_norm, batch_sz, device):
+def test(test_dataset, model, G, feats, edge_type, edge_norm, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
@@ -191,7 +192,7 @@ def test(test_dataset, model, G, edge_type, edge_norm, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G.ndata['feat'], G, edge_type, edge_norm)
+            output = model(text, G, feats, edge_type, edge_norm)
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
@@ -297,6 +298,7 @@ def main():
     node_ids = torch.arange(num_nodes)
     edge_norm = g.edata['norm']
     edge_type = g.edata[dgl.ETYPE].long()
+    feats = g.ndata['feat']
 
     model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
@@ -311,12 +313,12 @@ def main():
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, g, edge_type, edge_norm, args.batch_sz, args.num_epochs, criterion, device,
+    train(train_dataset, model, mlb, g, feats, edge_type, edge_norm, args.batch_sz, args.num_epochs, criterion, device,
           args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, g, edge_type, edge_norm, args.batch_sz, device)
+    results, test_labels = test(test_dataset, model, g, feats, edge_type, edge_norm, args.batch_sz, device)
     # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)

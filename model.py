@@ -394,10 +394,12 @@ class MeSH_RGCN(nn.Module):
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
 
+
         self.rgcn = EntityClassify(num_nodes, hidden_rgcn_size, embedding_dim)
 
-    def forward(self, input_seq, g_node_feature, g, edge_type, edge_norm):
+    def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
+        print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         print('label', label_feature.shape)
