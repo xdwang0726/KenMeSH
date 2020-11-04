@@ -302,7 +302,7 @@ def main():
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
-    g.to('cuda')
+    g.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
