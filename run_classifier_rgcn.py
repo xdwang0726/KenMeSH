@@ -275,10 +275,11 @@ def main():
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
     # check cuda
     use_cuda = n_gpu >= 0 and torch.cuda.is_available()
+    print('use_cuda', use_cuda)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
     # device = torch.device('cuda:0')
-    logging.info('Device:'.format(device))
+    print('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, hg = prepare_dataset(args.train_path,
