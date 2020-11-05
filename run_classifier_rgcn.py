@@ -315,7 +315,7 @@ def main():
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
         model.cuda()
-        g = g.to('cuda%d' % args.gpu)
+        g = g.to('cuda:%d' % args.gpu)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
