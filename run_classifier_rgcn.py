@@ -311,12 +311,12 @@ def main():
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     if use_cuda:
-        torch.cuda.set_device(args.gpu)
+        torch.cuda.set_device(torch.cuda.current_device())
         feats = feats.cuda()
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
         model.cuda()
-        g = g.to('cuda:%d' % args.gpu)
+        g = g.to('cuda:%d' % torch.cuda.current_device())
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
