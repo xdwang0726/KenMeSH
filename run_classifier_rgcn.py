@@ -160,8 +160,7 @@ def train(train_dataset, model, mlb, G, feats, edge_type, edge_norm, batch_sz, n
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label, G, feats, edge_type, edge_norm = text.to(device), label.to(device), G.to(device), feats.to(
-                device), edge_type.to(device), edge_norm.to(device)
+            text, label = text.to(device), label.to(device)
             output = model(text, G, feats, edge_type, edge_norm)
             print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
@@ -264,6 +263,9 @@ def main():
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
+    parser.add_argument('--gpu', type=int, default=0)
+
+
 
     # parser.add_argument('--fp16', default=True, type=bool)
     # parser.add_argument('--fp16_opt_level', type=str, default='O0')
@@ -271,9 +273,11 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # check cuda
+    use_cuda = n_gpu >= 0 and torch.cuda.is_available()
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
-    device = torch.device('cuda:0')
+    # device = torch.device('cuda:0')
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
@@ -305,8 +309,13 @@ def main():
     model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
-    g.to(device)
+    if use_cuda:
+        torch.cuda.set_device(args.gpu)
+        feats = feats.cuda()
+        edge_type = edge_type.cuda()
+        edge_norm = edge_norm.cuda()
+        model.cuda()
+        g = g.to('cuda%d' % args.gpu)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
