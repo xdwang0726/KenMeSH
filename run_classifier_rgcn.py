@@ -271,8 +271,9 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
+    device = 'cuda:0'
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
