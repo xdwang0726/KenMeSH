@@ -110,7 +110,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # G = build_MeSH_graph(edges, node_count, label_embedding)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G
+    return mlb, vocab, train_dataset, test_dataset, vectors, G
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -249,7 +249,7 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
-    parser.add_argument('--device', default='cuda', type=str)
+    # parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
@@ -272,20 +272,20 @@ def main():
 
     args = parser.parse_args()
 
-    n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    # check cuda
-    use_cuda = n_gpu >= 0 and torch.cuda.is_available()
-    print('use_cuda', use_cuda)
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
+    # # check cuda
+    # use_cuda = n_gpu >= 0 and torch.cuda.is_available()
+    # print('use_cuda', use_cuda)
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
     # device = torch.device('cuda:0')
     print('Device:', device)
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, hg = prepare_dataset(args.train_path,
-                                                                                      args.test_path,
-                                                                                      args.meSH_pair_path,
-                                                                                      args.word2vec_path, args.graph)
+    mlb, vocab, train_dataset, test_dataset, vectors, hg = prepare_dataset(args.train_path,
+                                                                           args.test_path,
+                                                                           args.meSH_pair_path,
+                                                                           args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
     num_rels = len(hg.canonical_etypes)
@@ -302,19 +302,25 @@ def main():
 
     g = dgl.to_homogeneous(hg, edata=['norm'])
 
+    num_nodes = g.number_of_nodes()
+    print('number of nodes:', num_nodes)
     node_ids = torch.arange(num_nodes)
     edge_norm = g.edata['norm']
     edge_type = g.edata[dgl.ETYPE].long()
     feats = hg.ndata['feat']
+    print('hg', feats.shape())
 
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim)
-    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-
+    use_cuda = args.gpu >= 0 and torch.cuda.is_available()
     if use_cuda:
         torch.cuda.set_device(torch.cuda.current_device())
         feats = feats.cuda()
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
+
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+
+    if use_cuda:
         model.cuda()
         g = g.to('cuda:%d' % torch.cuda.current_device())
 

@@ -4,9 +4,9 @@ import dgl.function as fn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dgl.nn.pytorch import RelGraphConv
-from dgl.nn.pytorch.conv import SAGEConv
-from dgl.nn import RelGraphConv
+import dgl
+from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
+import dgl.nn as dglnn
 
 #from torch_geometric.nn import GCNConv
 
@@ -317,9 +317,9 @@ class CorGCN(nn.Module):
 
 
 class BaseRGCN(nn.Module):
-    def __init__(self, num_nodes, h_dim, out_dim, num_rels=2, num_bases=-1,
+    def __init__(self, num_nodes, h_dim, out_dim, num_rels, num_bases,
                  num_hidden_layers=1, dropout=0,
-                 use_self_loop=False, use_cuda=True, low_mem=True):
+                 use_self_loop=False, use_cuda=False):
         super(BaseRGCN, self).__init__()
         self.num_nodes = num_nodes
         self.h_dim = h_dim
@@ -330,7 +330,6 @@ class BaseRGCN(nn.Module):
         self.dropout = dropout
         self.use_self_loop = use_self_loop
         self.use_cuda = use_cuda
-        self.low_mem = low_mem
 
         # create rgcn layers
         self.build_model()
@@ -375,21 +374,21 @@ class EntityClassify(BaseRGCN):
     def build_input_layer(self):
         return RelGraphConv(self.num_nodes, self.h_dim, self.num_rels, "basis",
                             self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            low_mem=self.low_mem, dropout=self.dropout)
+                            dropout=self.dropout)
 
     def build_hidden_layer(self, idx):
         return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
                             self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            low_mem=self.low_mem, dropout=self.dropout)
+                            dropout=self.dropout)
 
     def build_output_layer(self):
         return RelGraphConv(self.h_dim, self.out_dim, self.num_rels, "basis",
                             self.num_bases, activation=None,
-                            self_loop=self.use_self_loop, low_mem=self.low_mem)
+                            self_loop=self.use_self_loop)
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, num_nodes, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
