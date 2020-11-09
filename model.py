@@ -77,7 +77,10 @@ class attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        # GCN
+        # self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        # RGCN
+        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
 
@@ -101,6 +104,7 @@ class attenCNN(nn.Module):
         print('x_concat', x_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+        print('x_fea', x_feature.shape)
         return x_feature
 
 
