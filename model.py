@@ -399,6 +399,7 @@ class MeSH_RGCN(nn.Module):
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
         print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        print('x_feature', x_feature.shape)
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         print('label', label_feature.shape)
