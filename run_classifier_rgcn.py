@@ -162,7 +162,7 @@ def train(train_dataset, model, mlb, G, feats, edge_type, edge_norm, batch_sz, n
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.cuda(), label.cuda()
             output = model(text, G, feats, edge_type, edge_norm)
-            print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+            print('Allocated4:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
             optimizer.zero_grad()
             loss = criterion(output, label)
