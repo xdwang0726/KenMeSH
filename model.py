@@ -319,7 +319,7 @@ class CorGCN(nn.Module):
 class BaseRGCN(nn.Module):
     def __init__(self, num_nodes, h_dim, out_dim, num_rels=2, num_bases=-1,
                  num_hidden_layers=1, dropout=0,
-                 use_self_loop=False, use_cuda=False):
+                 use_self_loop=False, use_cuda=True, low_mem=True):
         super(BaseRGCN, self).__init__()
         self.num_nodes = num_nodes
         self.h_dim = h_dim
@@ -330,6 +330,7 @@ class BaseRGCN(nn.Module):
         self.dropout = dropout
         self.use_self_loop = use_self_loop
         self.use_cuda = use_cuda
+        self.low_mem = low_mem
 
         # create rgcn layers
         self.build_model()
@@ -374,17 +375,17 @@ class EntityClassify(BaseRGCN):
     def build_input_layer(self):
         return RelGraphConv(self.num_nodes, self.h_dim, self.num_rels, "basis",
                             self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            dropout=self.dropout, low_mem=True)
+                            dropout=self.dropout, low_mem=self.low_mem)
 
     def build_hidden_layer(self, idx):
         return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
                             self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            dropout=self.dropout, low_mem=True)
+                            dropout=self.dropout, low_mem=self.low_mem)
 
     def build_output_layer(self):
         return RelGraphConv(self.h_dim, self.out_dim, self.num_rels, "basis",
                             self.num_bases, activation=None,
-                            self_loop=self.use_self_loop, low_mem=True)
+                            self_loop=self.use_self_loop, low_mem=self.low_mem)
 
 
 class MeSH_RGCN(nn.Module):
