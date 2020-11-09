@@ -279,7 +279,7 @@ def main():
     # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
     # device = torch.device('cuda:0')
-    print('Device:', device)
+    # print('Device:', device)
 
     # Get dataset and label graph & Load pre-trained embeddings
     mlb, vocab, train_dataset, test_dataset, vectors, hg = prepare_dataset(args.train_path,
