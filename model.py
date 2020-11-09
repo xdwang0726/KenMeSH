@@ -317,7 +317,7 @@ class CorGCN(nn.Module):
 
 
 class BaseRGCN(nn.Module):
-    def __init__(self, num_nodes, h_dim, out_dim, num_rels, num_bases,
+    def __init__(self, num_nodes, h_dim, out_dim, num_rels=2, num_bases=-1,
                  num_hidden_layers=1, dropout=0,
                  use_self_loop=False, use_cuda=False):
         super(BaseRGCN, self).__init__()
