@@ -374,17 +374,17 @@ class EntityClassify(BaseRGCN):
     def build_input_layer(self):
         return RelGraphConv(self.num_nodes, self.h_dim, self.num_rels, "basis",
                             self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            dropout=self.dropout)
+                            dropout=self.dropout, low_mem=True)
 
     def build_hidden_layer(self, idx):
         return RelGraphConv(self.h_dim, self.h_dim, self.num_rels, "basis",
                             self.num_bases, activation=F.relu, self_loop=self.use_self_loop,
-                            dropout=self.dropout)
+                            dropout=self.dropout, low_mem=True)
 
     def build_output_layer(self):
         return RelGraphConv(self.h_dim, self.out_dim, self.num_rels, "basis",
                             self.num_bases, activation=None,
-                            self_loop=self.use_self_loop)
+                            self_loop=self.use_self_loop, low_mem=True)
 
 
 class MeSH_RGCN(nn.Module):
