@@ -61,7 +61,7 @@ class ContentsExtractor(nn.Module):
 
 
 class attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, gcn_model=True, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, gcn_model, embedding_dim=200):
         super(attenCNN, self).__init__()
 
         self.vocab_size = vocab_size
