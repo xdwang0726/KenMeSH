@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_RGCN
+from model import CorRGCN
 from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -256,7 +256,7 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=8)
+    parser.add_argument('--batch_sz', type=int, default=2)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -265,21 +265,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.1)
     parser.add_argument('--gpu', type=int, default=0)
 
-
-
-    # parser.add_argument('--fp16', default=True, type=bool)
-    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
-
     args = parser.parse_args()
-
-    # n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    # # check cuda
-    # use_cuda = n_gpu >= 0 and torch.cuda.is_available()
-    # print('use_cuda', use_cuda)
-    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # device = torch.device(args.device)
-    # device = torch.device('cuda:0')
-    # print('Device:', device)
 
     # Get dataset and label graph & Load pre-trained embeddings
     mlb, vocab, train_dataset, test_dataset, vectors, hg = prepare_dataset(args.train_path,
@@ -317,7 +303,8 @@ def main():
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
 
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model = CorRGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, 'RGCN', args.embedding_dim,
+                    cornet_dim=1000, n_cornet_blocks=2)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     if use_cuda:

@@ -61,7 +61,7 @@ class ContentsExtractor(nn.Module):
 
 
 class attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200, model='GCN'):
         super(attenCNN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -77,10 +77,11 @@ class attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        # GCN
-        # self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        if model == 'GCN':
+            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
         # RGCN
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+        elif model == 'RGCN':
+            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
 
@@ -300,7 +301,7 @@ class MeSH_GCN(nn.Module):
 
 class CorGCN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, embedding_dim=200, cornet_dim=1000,
-                 n_cornet_blocks=2):
+                 n_cornet_blocks=2, model='GCN'):
         super(CorGCN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -308,8 +309,9 @@ class CorGCN(nn.Module):
         self.ksz = ksz
         self.hidden_gcn_size = hidden_gcn_size
         self.output_size = output_size
+        self.model = model
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim=200)
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, model=self.model, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
@@ -397,28 +399,58 @@ class EntityClassify(BaseRGCN):
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, model='RGCN', embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
+        self.model = model
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim, model=self.model)
 
         self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim, num_rels=2, num_bases=-1,
                                    dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         # print('x_feature', x_feature.shape)
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         # print('label', label_feature.shape)
-        print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
         x = torch.sum(x_feature * label_feature, dim=2)
         # print('x_final', x.shape)
-        print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         x = torch.sigmoid(x)
         return x
+
+
+class CorRGCN(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, output_size, model='RGCN', embedding_dim=200,
+                 cornet_dim=1000, n_cornet_blocks=2):
+        super(CorRGCN, self).__init__()
+        self.model = model
+
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim, model=self.model)
+
+        self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim, num_rels=2, num_bases=-1,
+                                   dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
+        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
+
+    def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
+        x_feature = self.content_feature(input_seq, g_node_feature)
+        # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        # print('x_feature', x_feature.shape)
+
+        label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
+        # print('label', label_feature.shape)
+        # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+
+        x = torch.sum(x_feature * label_feature, dim=2)
+        # print('x_final', x.shape)
+        # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        cor_logit = self.cornet(x)
+        cor_logit = torch.sigmoid(cor_logit)
+        return cor_logit
 
 
 class GraphSAGE(nn.Module):
@@ -455,15 +487,16 @@ class GraphSAGE(nn.Module):
 
 class CorGraphSage(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_graphsage_size, output_size, embedding_dim=200, cornet_dim=1000,
-                 n_cornet_blocks=2):
+                 n_cornet_blocks=2, model='GCN'):
         super(CorGraphSage, self).__init__()
 
         self.vocab_size = vocab_size
         self.nKernel = nKernel
         self.ksz = ksz
         self.output_size = output_size
+        self.model = model
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim, model=self.model)
         self.graphsage = GraphSAGE(embedding_dim, hidden_graphsage_size * 2, embedding_dim * 2)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
