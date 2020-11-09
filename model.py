@@ -90,11 +90,15 @@ class attenCNN(nn.Module):
         # label-wise attention (mapping different parts of the document representation to different labels)
         x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
                  x_conv]  # [bs, (n_words-ks+1), embedding_sz]
+        print('x_doc', x_doc[0].shape)
 
         atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
                  x_doc]  # []bs, (n_words-ks+1), n_labels]
+        print('x_atten', atten[0].shape)
         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
+        print('x_content', x_content[0].shape)
         x_concat = torch.cat(x_content, dim=1)
+        print('x_concat', x_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
         return x_feature
@@ -394,7 +398,7 @@ class MeSH_RGCN(nn.Module):
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
 
-        self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim * 2)
+        self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim)
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
