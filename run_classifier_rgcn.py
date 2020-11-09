@@ -308,7 +308,7 @@ def main():
     edge_norm = g.edata['norm']
     edge_type = g.edata[dgl.ETYPE].long()
     feats = hg.ndata['feat']
-    print('hg', feats.shape())
+    print('hg', type(feats))
 
     use_cuda = args.gpu >= 0 and torch.cuda.is_available()
     if use_cuda:
