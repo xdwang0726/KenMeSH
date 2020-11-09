@@ -61,13 +61,14 @@ class ContentsExtractor(nn.Module):
 
 
 class attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200, model='GCN'):
+    def __init__(self, vocab_size, nKernel, ksz, model, embedding_dim=200):
         super(attenCNN, self).__init__()
 
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.nKernel = nKernel
         self.ksz = ksz
+        self.model = model
 
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
@@ -77,11 +78,12 @@ class attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        if model == 'GCN':
+        if self.model == 'GCN':
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
         # RGCN
-        elif model == 'RGCN':
+        elif self.model == 'RGCN':
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
 
@@ -402,8 +404,9 @@ class MeSH_RGCN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, model='RGCN', embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
         self.model = model
+        self.embedding_dim = embedding_dim
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim, model=self.model)
+        self.content_feature = attenCNN(vocab_size, nKernel, ksz, model=self.model, embedding_dim=self.embedding_dim)
 
         self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim, num_rels=2, num_bases=-1,
                                    dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
