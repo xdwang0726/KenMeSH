@@ -256,7 +256,7 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=8)
+    parser.add_argument('--batch_sz', type=int, default=2)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
