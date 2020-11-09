@@ -394,7 +394,7 @@ class MeSH_RGCN(nn.Module):
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, embedding_dim)
 
-        self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim)
+        self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim * 2)
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
