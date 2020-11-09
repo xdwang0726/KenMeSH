@@ -163,7 +163,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
             output = model(text, G, G.ndata['feat'])
-            print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+            # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
             # print train output
             # pred = output.data.cpu().numpy()
@@ -177,7 +177,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # print('loss', loss)
             loss.backward()
             optimizer.step()
-            print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+            # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
@@ -186,7 +186,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
-        print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
 def test(test_dataset, model, G, batch_sz, device):
@@ -275,7 +275,7 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=2)
+    parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
