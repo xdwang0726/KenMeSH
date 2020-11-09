@@ -169,7 +169,7 @@ def train(train_dataset, model, mlb, G, feats, edge_type, edge_norm, batch_sz, n
             # print('loss', loss)
             loss.backward()
             optimizer.step()
-            print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+            # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
