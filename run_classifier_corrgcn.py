@@ -303,8 +303,8 @@ def main():
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
 
-    model = CorRGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, False, args.embedding_dim,
-                    cornet_dim=1000, n_cornet_blocks=2)
+    model = CorRGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, add_original_embedding=True,
+                    embedding_dim=args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     if use_cuda:

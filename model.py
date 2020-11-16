@@ -61,14 +61,14 @@ class ContentsExtractor(nn.Module):
 
 
 class attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, gcn_model=True, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding=True, embedding_dim=200):
         super(attenCNN, self).__init__()
 
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.nKernel = nKernel
         self.ksz = ksz
-        self.gcn_model = gcn_model
+        self.add_original_embedding = add_original_embedding
 
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
@@ -78,12 +78,12 @@ class attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        # GCN
-        if self.gcn_model:
-            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 3)
-        # RGCN
-        else:
+        # just graph embedding
+        if self.add_original_embedding:
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        # concatenate graph embedding together with original MeSH embeddings
+        else:
+            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
@@ -169,11 +169,6 @@ class LabelNet(nn.Module):
         x = self.gcn1(g, features)
         x = F.relu(x)
         x = self.gcn2(g, x)
-        # print('gcn_shape', x.shape)
-        # print('embedding_shape', g.ndata['feat'].shape)
-
-        # concat MeSH embeddings together with GCN result
-        x = torch.cat([x, g.ndata['feat']], dim=1)
         return x
 
 
@@ -195,7 +190,7 @@ class MeSH_GCN_Old(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding=True, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
         # gcn_out = len(ksz) * nKernel
 
@@ -203,6 +198,7 @@ class MeSH_GCN(nn.Module):
         self.embedding_dim = embedding_dim
         self.nKernel = nKernel
         self.ksz = ksz
+        self.add_original_embedding = add_original_embedding
 
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
@@ -232,7 +228,7 @@ class MeSH_GCN(nn.Module):
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
 
         gcn_label_feature = self.gcn(g, features)
-        label_feature = torch.cat((gcn_label_feature, features), dim=1)  # torch.Size([29368, 600])
+        label_feature = torch.cat((gcn_label_feature, features), dim=1)  # torch.Size([29368, 400])
         # print('concat', label_feature)
 
         x = torch.sum(x_feature * label_feature, dim=2)
@@ -242,7 +238,7 @@ class MeSH_GCN(nn.Module):
 
 class CorGCN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, embedding_dim=200, cornet_dim=1000,
-                 n_cornet_blocks=2, gcn_model=True):
+                 n_cornet_blocks=2, add_original_embedding=True):
         super(CorGCN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -250,7 +246,7 @@ class CorGCN(nn.Module):
         self.ksz = ksz
         self.hidden_gcn_size = hidden_gcn_size
         self.output_size = output_size
-        self.gcn_model = gcn_model
+        self.add_original_embedding = add_original_embedding
 
         self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.gcn_model, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
@@ -260,7 +256,7 @@ class CorGCN(nn.Module):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
         gcn_label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((gcn_label_feature, g_node_feature), dim=1)  # torch.Size([29368, 600])
+        label_feature = torch.cat((gcn_label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
@@ -341,9 +337,9 @@ class EntityClassify(BaseRGCN):
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, gcn_model=False, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, add_original_embedding=True, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
-        self.gcn_model = gcn_model
+        self.add_original_embedding = add_original_embedding
         self.embedding_dim = embedding_dim
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, self.gcn_model, embedding_dim=self.embedding_dim)
@@ -363,10 +359,11 @@ class MeSH_RGCN(nn.Module):
 
 
 class CorRGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, output_size, gcn_model=False, embedding_dim=200,
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, output_size, add_original_embedding=True,
+                 embedding_dim=200,
                  cornet_dim=1000, n_cornet_blocks=2):
         super(CorRGCN, self).__init__()
-        self.gcn_model = gcn_model
+        self.add_original_embedding = add_original_embedding
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, self.gcn_model, embedding_dim)
 

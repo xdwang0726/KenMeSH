@@ -317,7 +317,8 @@ def main():
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
 
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, False, args.embedding_dim)
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, add_original_embedding=True,
+                      embedding_dim=args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     if use_cuda:

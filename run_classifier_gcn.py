@@ -300,7 +300,8 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.embedding_dim)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, add_original_embedding=True,
+                     embedding_dim=args.embedding_dim)
 
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
