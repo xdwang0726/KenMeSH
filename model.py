@@ -254,12 +254,9 @@ class MeSH_GCN(nn.Module):
 
         gcn_label_feature = self.gcn(g, features)
         label_feature = torch.cat((gcn_label_feature, features), dim=1)  # torch.Size([29368, 600])
-        print('concat', label_feature)
+        # print('concat', label_feature)
 
         x = torch.sum(x_feature * label_feature, dim=2)
-        # print("before allocated 3")
-        # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
-        # print('x_final', x.shape)
         x = torch.sigmoid(x)
         return x
 
@@ -285,7 +282,6 @@ class CorGCN(nn.Module):
 
         gcn_label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((gcn_label_feature, g_node_feature), dim=1)  # torch.Size([29368, 600])
-        print('concat', label_feature)
 
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
