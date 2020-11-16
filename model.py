@@ -416,16 +416,12 @@ class MeSH_RGCN(nn.Module):
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
-        # print('x_feature', x_feature.shape)
-
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
-        # print('label', label_feature.shape)
-        # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        print('x_feature', x_feature.shape)
+        print('label', label_feature.shape)
+        print('concat', torch.cat((label_feature, g_node_feature), dim=1).shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
-        # print('x_final', x.shape)
-        # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         x = torch.sigmoid(x)
         return x
 
@@ -444,16 +440,14 @@ class CorRGCN(nn.Module):
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
-        # print('x_feature', x_feature.shape)
-
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
-        # print('label', label_feature.shape)
-        # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+
+        print('x_feature', x_feature.shape)
+        print('label', label_feature.shape)
+        print('concat', torch.cat((label_feature, g_node_feature), dim=1).shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
-        # print('x_final', x.shape)
-        # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
         return cor_logit
