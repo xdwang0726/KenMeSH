@@ -220,8 +220,9 @@ class MeSH_GCN(nn.Module):
 
 
 class CorGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, embedding_dim=200, cornet_dim=1000,
-                 n_cornet_blocks=2, add_original_embedding=True, dropout_layer=0.5):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, add_original_embedding,
+                 embedding_dim=200, cornet_dim=1000,
+                 n_cornet_blocks=2, dropout_layer=0.5):
         super(CorGCN, self).__init__()
 
         self.vocab_size = vocab_size
