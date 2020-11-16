@@ -239,7 +239,6 @@ class CorGCN(nn.Module):
                                         self.atten_dropout, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
-        self.dropout = nn.Dropout(self.dropout_layer)
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
@@ -344,7 +343,6 @@ class MeSH_RGCN(nn.Module):
 
         self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim, num_rels=2, num_bases=-1,
                                    dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
-        self.dropout = nn.Dropout(self.dropout_layer)
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
