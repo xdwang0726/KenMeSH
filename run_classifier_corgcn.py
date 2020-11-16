@@ -272,6 +272,7 @@ def main():
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
+    parser.add_argument('--add_original_embedding', type=bool, default=True)
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
@@ -297,7 +298,7 @@ def main():
 
     vocab_size = len(vocab)
     model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim,
-                   cornet_dim=1000, n_cornet_blocks=2, add_original_embedding=True)
+                   cornet_dim=1000, n_cornet_blocks=2, add_original_embedding=args.add_original_embedding)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)

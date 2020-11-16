@@ -254,6 +254,7 @@ def main():
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
+    parser.add_argument('--add_original_embedding', type=bool, default=True)
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
@@ -317,7 +318,8 @@ def main():
         edge_type = edge_type.cuda()
         edge_norm = edge_norm.cuda()
 
-    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, add_original_embedding=True,
+    model = MeSH_RGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size,
+                      add_original_embedding=args.add_original_embedding,
                       embedding_dim=args.embedding_dim)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
