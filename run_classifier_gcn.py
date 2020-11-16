@@ -310,7 +310,7 @@ def main():
     #     model = nn.DataParallel(model)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G.to(device)
