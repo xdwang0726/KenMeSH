@@ -86,7 +86,7 @@ class attenCNN(nn.Module):
         # else:
         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
@@ -374,7 +374,7 @@ class CorRGCN(nn.Module):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        # label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         # if self.add_original_embedding:
         #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
