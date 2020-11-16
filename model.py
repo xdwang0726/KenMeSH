@@ -86,7 +86,7 @@ class attenCNN(nn.Module):
         # else:
         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
@@ -215,8 +215,8 @@ class MeSH_GCN(nn.Module):
         label_feature = self.gcn(g, g_node_feature)
         # if self.add_original_embedding:
         #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        print('concat', label_feature)
-
+        # print('concat', label_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
         return x
@@ -242,10 +242,9 @@ class CorGCN(nn.Module):
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        print('x', x_feature.shape)
-        label_feature = self.gcn(g, g_node_feature)
-        print('label', label_feature.shape)
 
+        label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         # if self.add_original_embedding:
         #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         #     print('concat', label_feature.shape)
@@ -348,8 +347,9 @@ class MeSH_RGCN(nn.Module):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
-        if self.add_original_embedding:
-            label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        # if self.add_original_embedding:
+        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
@@ -374,8 +374,9 @@ class CorRGCN(nn.Module):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
-        if self.add_original_embedding:
-            label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        # if self.add_original_embedding:
+        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
         x = torch.sum(x_feature * label_feature, dim=2)
 
