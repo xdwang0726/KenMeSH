@@ -247,11 +247,10 @@ class CorGCN(nn.Module):
         print('Expected', self.add_original_embedding)
 
         if self.add_original_embedding:
-            # label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-            # print('concat', label_feature.shape)
-            print('True')
+            label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+            print('concat', label_feature.shape)
         else:
-            print("Flase")
+            None
 
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
