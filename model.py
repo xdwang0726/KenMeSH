@@ -78,13 +78,14 @@ class attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        print('atten', self.add_original_embedding)
         # just graph embedding
-        if self.add_original_embedding:
-            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
-        # concatenate graph embedding together with original MeSH embeddings
-        else:
-            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+        # if self.add_original_embedding:
+        #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        # # concatenate graph embedding together with original MeSH embeddings
+        # else:
+        #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+
+        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
@@ -211,9 +212,9 @@ class MeSH_GCN(nn.Module):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
         label_feature = self.gcn(g, g_node_feature)
-        if self.add_original_embedding:
-            label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        # print('concat', label_feature)
+        # if self.add_original_embedding:
+        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        print('concat', label_feature)
 
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
@@ -245,13 +246,12 @@ class CorGCN(nn.Module):
         print('x', x_feature.shape)
         label_feature = self.gcn(g, g_node_feature)
         print('label', label_feature.shape)
-        print('Expected', self.add_original_embedding)
 
-        if self.add_original_embedding:
-            label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-            print('concat', label_feature.shape)
-        else:
-            None
+        # if self.add_original_embedding:
+        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        #     print('concat', label_feature.shape)
+        # else:
+        #     None
 
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
