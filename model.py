@@ -61,7 +61,7 @@ class ContentsExtractor(nn.Module):
 
 
 class attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding=True, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, embedding_dim=200):
         super(attenCNN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -248,9 +248,9 @@ class CorGCN(nn.Module):
 
         if self.add_original_embedding:
             label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+            print('concat', label_feature.shape)
         else:
             None
-        print('concat', label_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
