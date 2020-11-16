@@ -190,7 +190,8 @@ class MeSH_GCN_Old(nn.Module):
 
 
 class MeSH_GCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding=True, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding=True, embedding_dim=200,
+                 dropout_layer=0.5):
         super(MeSH_GCN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -198,10 +199,12 @@ class MeSH_GCN(nn.Module):
         self.ksz = ksz
         self.hidden_gcn_size = hidden_gcn_size
         self.add_original_embedding = add_original_embedding
+        self.dropout_layer = dropout_layer
 
         self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
                                         embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+        self.dropout = nn.Dropout(self.dropout_layer)
 
     def forward(self, input_seq, g, g_node_feature):
         x_feature = self.content_feature(input_seq, g_node_feature)
@@ -218,7 +221,7 @@ class MeSH_GCN(nn.Module):
 
 class CorGCN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, embedding_dim=200, cornet_dim=1000,
-                 n_cornet_blocks=2, add_original_embedding=True):
+                 n_cornet_blocks=2, add_original_embedding=True, dropout_layer=0.5):
         super(CorGCN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -227,11 +230,13 @@ class CorGCN(nn.Module):
         self.hidden_gcn_size = hidden_gcn_size
         self.output_size = output_size
         self.add_original_embedding = add_original_embedding
+        self.dropout_layer = dropout_layer
 
         self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
                                         embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
+        self.dropout = nn.Dropout(self.dropout_layer)
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
@@ -239,7 +244,7 @@ class CorGCN(nn.Module):
         label_feature = self.gcn(g, g_node_feature)
         if self.add_original_embedding:
             label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-
+        print('shape', label_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
@@ -319,16 +324,19 @@ class EntityClassify(BaseRGCN):
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, add_original_embedding=True, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, add_original_embedding=True, embedding_dim=200,
+                 dropout_layer=0.5):
         super(MeSH_RGCN, self).__init__()
         self.add_original_embedding = add_original_embedding
         self.embedding_dim = embedding_dim
+        self.dropout_layer = dropout_layer
 
         self.content_feature = attenCNN(vocab_size, nKernel, ksz, self.add_original_embedding,
                                         embedding_dim=self.embedding_dim)
 
         self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim, num_rels=2, num_bases=-1,
                                    dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
+        self.dropout = nn.Dropout(self.dropout_layer)
 
     def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
         x_feature = self.content_feature(input_seq, g_node_feature)
