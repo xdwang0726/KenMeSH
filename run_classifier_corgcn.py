@@ -272,7 +272,7 @@ def main():
     parser.add_argument('--ksz', type=list, default=[3, 4, 5])
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
-    parser.add_argument('--add_original_embedding', type=bool, default=False)
+    parser.add_argument('--add_original_embedding')
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
