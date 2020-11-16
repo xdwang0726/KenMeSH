@@ -243,6 +243,7 @@ class CorGCN(nn.Module):
         x_feature = self.content_feature(input_seq, g_node_feature)
 
         label_feature = self.gcn(g, g_node_feature)
+        print('Expected', self.add_original_embedding)
         if self.add_original_embedding:
             label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         print('shape', label_feature.shape)
