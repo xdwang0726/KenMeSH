@@ -79,7 +79,7 @@ class attenCNN(nn.Module):
         nn.init.zeros_(self.transform.bias)
 
         if self.gcn_model:
-            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+            self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 3)
         # RGCN
         else:
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
@@ -234,7 +234,7 @@ class MeSH_GCN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 3)
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
 
@@ -242,59 +242,20 @@ class MeSH_GCN(nn.Module):
 
     def forward(self, input_seq, g, features):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        # print('embedding', embedded_seq.shape)
         embedded_seq = embedded_seq.unsqueeze(1)
-        # print('embedding2', embedded_seq.shape)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-        # x_conv = [F.relu(conv(embedded_seq)) for conv in self.convs]
-        # print(x_conv[0].shape, x_conv[1].shape, x_conv[2].shape)
-        # label-wise attention (mapping different parts of the document representation to different labels)
-        # print('w', self.transform.weight.shape)
-        # print('b', self.transform.bias.shape)
         x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
                  x_conv]  # [bs, (n_words-ks+1), embedding_sz]
-        # print("x", x_doc[0].shape, x_doc[1].shape, x_doc[2].shape)
-
         atten = [torch.softmax(torch.matmul(x, g.ndata['feat'].transpose(0, 1)), dim=1) for x in
                  x_doc]  # []bs, (n_words-ks+1), n_labels]
-        # print('atten', atten[0].shape, atten[1].shape, atten[2].shape)
-
         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
-        # print('x_content', x_content[0].shape, x_content[1].shape, x_content[2].shape)
-
         x_concat = torch.cat(x_content, dim=1)
-        # print('x_concat', x_concat.shape)
-
         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
-        # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
-        # print('x_feature', x_feature.shape)
 
-        label_feature = self.gcn(g, features)
-        # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
-        # print('label', label_feature.shape)
-        # label_feature = torch.transpose(label_feature, 0, 1)
+        gcn_label_feature = self.gcn(g, features)
+        label_feature = torch.cat((gcn_label_feature, features), dim=1)  # torch.Size([29368, 600])
+        print('concat', label_feature)
 
-        # print('label2', label_feature.shape)
-
-        # def element_wise_mul(m1, m2):
-        #     m1.to('cpu')
-        #     m2.to('cpu')
-        #     result = torch.zeros(0).to('cpu')
-        #     for i in range(m1.shape[1]):
-        #         v1 = m1[:, i, :]
-        #         v2 = m2[:, i]
-        #         v = torch.matmul(v1, v2).unsqueeze(1).to('cpu')
-        #         print('v', v.device)
-        #         print('result', result.device)
-        #         result = torch.cat((result, v), dim=1)
-        #         #print('result', result.device)
-        #     result.to('cuda')
-        #     return result
-        print('x_feature', x_feature.shape)
-        print('label', label_feature.shape)
-        print('concat', torch.cat((label_feature, features), dim=1).shape)
-        # x = element_wise_mul(x_feature, label_feature)
-        # x = torch.diagonal(torch.matmul(x_feature, label_feature), offset=0).transpose(0, 1)
         x = torch.sum(x_feature * label_feature, dim=2)
         # print("before allocated 3")
         # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
@@ -321,10 +282,11 @@ class CorGCN(nn.Module):
 
     def forward(self, input_seq, g_node_feature, g):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        label_feature = self.gcn(g, g_node_feature)
-        print('x_feature', x_feature.shape)
-        print('label', label_feature.shape)
-        print('concat', torch.cat((label_feature, g_node_feature), dim=1).shape)
+
+        gcn_label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((gcn_label_feature, g_node_feature), dim=1)  # torch.Size([29368, 600])
+        print('concat', label_feature)
+
         x = torch.sum(x_feature * label_feature, dim=2)
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
