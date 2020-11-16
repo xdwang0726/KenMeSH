@@ -82,7 +82,7 @@ class attenCNN(nn.Module):
         if self.add_original_embedding:
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
         # concatenate graph embedding together with original MeSH embeddings
-        else:
+        elif not self.add_original_embedding:
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
         nn.init.xavier_normal_(self.content_final.weight)
@@ -249,7 +249,7 @@ class CorGCN(nn.Module):
         if self.add_original_embedding:
             label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
             print('concat', label_feature.shape)
-        else:
+        elif not self.add_original_embedding:
             None
 
         x = torch.sum(x_feature * label_feature, dim=2)
