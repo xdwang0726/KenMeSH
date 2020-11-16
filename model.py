@@ -78,6 +78,7 @@ class attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
+        print('atten', self.add_original_embedding)
         # just graph embedding
         if self.add_original_embedding:
             self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
