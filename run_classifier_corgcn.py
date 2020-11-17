@@ -71,7 +71,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         ids = obj["pmid"]
-        heading = obj['title']
+        heading = obj["title"].strip()
         text = obj["abstract"].strip()
         label = obj['meshId']
         test_pmid.append(ids)
