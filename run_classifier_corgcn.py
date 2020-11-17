@@ -17,7 +17,7 @@ from tqdm import tqdm
 # import EarlyStopping
 # from pytorchtools import EarlyStopping
 
-from model import CorGCN
+from model import CorGCN, MeSH_GCN_Multi
 # from utils import MeSH_indexing
 from utils_multi import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
@@ -309,13 +309,12 @@ def main():
 
     vocab_size = len(vocab)
     print('arg', args.add_original_embedding)
-    model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.add_original_embedding,
+    # model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.add_original_embedding,
+    #                args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
+    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes,
+                           args.add_original_embedding,
                    args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
-    # if torch.cuda.device_count() > 1:
-    #     print("num of GPUs:", torch.cuda.device_count())
-    #     model = nn.DataParallel(model)
 
-    # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)

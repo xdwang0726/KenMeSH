@@ -18,6 +18,7 @@ def main():
     objects = ijson.items(f, 'articles.item')
 
     pmid = []
+    title = []
     all_text = []
     label = []
     label_id = []
@@ -26,10 +27,12 @@ def main():
     for obj in tqdm(objects):
         try:
             ids = obj["pmid"].strip()
+            heading = obj['title'].strip()
             text = obj["abstractText"].strip()
             original_label = obj["meshMajor"]
             mesh_id = obj['meshId']
             pmid.append(ids)
+            title.append(heading)
             all_text.append(text)
             label.append(original_label)
             label_id.append(mesh_id)
@@ -58,6 +61,7 @@ def main():
         if id in pmid:
             data_point['pmid'] = id
             idx = pmid.index(id)
+            data_point['title'] = title[idx]
             data_point['abstract'] = all_text[idx]
             data_point['meshMajor'] = label[idx]
             data_point['meshId'] = label_id[idx]
