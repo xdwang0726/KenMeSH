@@ -41,10 +41,12 @@ def main():
     for obj in tqdm(objects):
         data_point = {}
         try:
-            ids = obj["pmid"]
-            text = obj["abstractText"].strip()
+            ids = obj['pmid']
+            title = obj['title']
+            text = obj['abstractText'].strip()
             label = obj["meshMajor"]
             data_point['pmid'] = ids
+            data_point['title'] = title
             data_point['abstractText'] = text
             data_point['meshMajor'] = label
             data_point['meshId'] = from_mesh2id(label, mapping_id)

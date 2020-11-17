@@ -18,7 +18,8 @@ from tqdm import tqdm
 # from pytorchtools import EarlyStopping
 
 from model import CorGCN
-from utils import MeSH_indexing
+# from utils import MeSH_indexing
+from utils_multi import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
 
@@ -29,6 +30,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     objects = ijson.items(f, 'articles.item')
 
     pmid = []
+    title = []
     all_text = []
     label = []
     label_id = []
@@ -39,10 +41,12 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         if i <= 10000:
             try:
                 ids = obj["pmid"]
+                heading = obj['title']
                 text = obj["abstractText"].strip()
                 original_label = obj["meshMajor"]
                 mesh_id = obj['meshId']
                 pmid.append(ids)
+                title.append(heading)
                 all_text.append(text)
                 label.append(original_label)
                 label_id.append(mesh_id)
@@ -59,6 +63,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_objects = ijson.items(f_t, 'documents.item')
 
     test_pmid = []
+    test_title = []
     test_text = []
     test_label = []
 
@@ -66,9 +71,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         ids = obj["pmid"]
+        heading = obj['title']
         text = obj["abstract"].strip()
         label = obj['meshId']
         test_pmid.append(ids)
+        test_title.append(heading)
         test_text.append(text)
         test_label.append(label)
 
@@ -90,7 +97,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label)
+    train_dataset, test_dataset = MeSH_indexing(all_text, title, label_id, test_text, test_title, test_label)
 
     # build vocab
     print('building vocab')
@@ -159,9 +166,12 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     #    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
-        for i, (text, label) in enumerate(train_data):
+        for i, (text, title, label) in enumerate(train_data):
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
+            print('text', text)
+            print('title', title)
+            print('label', label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
             output = model(text, G.ndata['feat'], G)
