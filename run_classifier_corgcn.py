@@ -176,8 +176,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         for i, (label, abstract, title) in enumerate(train_data):
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
-            print('text', abstract)
-            print('title', title)
+            print('text', len(abstract[0]))
+            print('title', len(title[0]))
             print('label', label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
