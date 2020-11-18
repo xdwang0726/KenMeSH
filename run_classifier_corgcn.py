@@ -315,9 +315,8 @@ def main():
     print('arg', args.add_original_embedding)
     # model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.add_original_embedding,
     #                args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
-    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes,
-                           args.add_original_embedding,
-                   args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
+    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
+                           args.atten_dropout, embedding_dim=args.embedding_dim)
 
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
