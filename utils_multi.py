@@ -13,7 +13,7 @@ def _text_iterator(text, title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         texts = tokenizer(text)
-        print('title', type(title), type(title[i]), title[i])
+        print(len(text), len(title))
         title = tokenizer(title[i])
         if yield_label:
             label = labels[i]
