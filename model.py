@@ -1,14 +1,8 @@
-from functools import partial
-
 import dgl.function as fn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import dgl
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
-import dgl.nn as dglnn
-
-#from torch_geometric.nn import GCNConv
 
 
 class Embeddings_OOV(torch.nn.Module):
@@ -153,23 +147,23 @@ class multichannle_attenCNN(nn.Module):
         abstract_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in
                          self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         title_conv = [F.relu(conv(embedded_title)).squeeze(3) for conv in self.convs]
-        print('conv', abstract_conv.shape, title_conv.shape)
+        print('conv', abstract_conv[0].shape, title_conv[0].shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
                     abstract_conv]  # [bs, (n_words-ks+1), embedding_sz]
         title = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
                  title_conv]
-        print('content', abstract.shape, title.shape)
+        print('content', abstract[0].shape, title[0].shape)
 
         abstract_atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
                           abstract]  # []bs, (n_words-ks+1), n_labels]
         title_atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
                        title]
-        print('atten', abstract_atten.shape, title_atten.shape)
+        print('atten', abstract_atten[0].shape, title_atten[0].shape)
 
         abstract_content = [torch.matmul(abstract_conv[i], att) for i, att in enumerate(abstract_atten)]
         title_content = [torch.matmul(title_conv[i], att) for i, att in enumerate(title_atten)]
-        print('content_feature', abstract_content.shape, title_content.shape)
+        print('content_feature', abstract_content[0].shape, title_content[0].shape)
 
         abstract_concat = torch.cat(abstract_content, dim=1)
         title_concat = torch.cat(title_content, dim=1)
