@@ -9,6 +9,17 @@ from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
 
 
+def _vocab_iterator(text, title, labels=None, ngrams=1, yield_label=False):
+    tokenizer = get_tokenizer('basic_english')
+    for i, text in enumerate(text):
+        texts = tokenizer(text + title[i])
+        if yield_label:
+            label = labels[i]
+            yield label, ngrams_iterator(texts, ngrams)
+        else:
+            yield ngrams_iterator(texts, ngrams)
+
+
 def _text_iterator(text, title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
@@ -69,7 +80,7 @@ class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
              vocab: Vocabulary object used for dataset.
              data: a list of label/tokens tuple. tokens are a tensor after numericalizing the string tokens.
                    label is a list of list.
-                 [([label], tokens1), (label2, tokens2), (label2, tokens3)]
+                 [([label1], ab_tokens1, title_tokens1), ([label2], ab_tokens2, title_tokens2), ([label3], ab_tokens3, title_tokens3)]
              label: a set of the labels.
                  {label1, label2}
         """
@@ -99,7 +110,7 @@ def _setup_datasets(train_text, train_title, train_labels, test_text, test_title
                     include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_text_iterator(train_text, train_title, train_labels, ngrams))
+        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, train_title, train_labels, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
