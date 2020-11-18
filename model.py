@@ -303,7 +303,7 @@ class MeSH_GCN_Multi(nn.Module):
                                                      self.atten_dropout, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
-    def forward(self, input_seq, input_title, g, g_node_feature):
+    def forward(self, input_seq, input_title, g_node_feature, g):
         x_feature = self.content_feature(input_seq, input_title, g_node_feature)
 
         label_feature = self.gcn(g, g_node_feature)
