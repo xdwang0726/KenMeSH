@@ -295,7 +295,7 @@ class MeSH_GCN(nn.Module):
 class MeSH_GCN_Multi(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding, atten_dropout,
                  embedding_dim=200):
-        super(MeSH_GCN, self).__init__()
+        super(MeSH_GCN_Multi, self).__init__()
 
         self.vocab_size = vocab_size
         self.nKernel = nKernel
