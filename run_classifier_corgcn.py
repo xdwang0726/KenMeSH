@@ -54,7 +54,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                 print(obj["pmid"].strip())
         else:
             break
-    print('title', title[0], type(title), type(title[0]))
     print("Finish loading training data")
     logging.info("Finish loading training data")
 
