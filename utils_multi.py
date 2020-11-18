@@ -11,15 +11,14 @@ from tqdm import tqdm
 
 def _text_iterator(text, title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
-    print('length', len(text), len(title))
     for i, text in enumerate(text):
         texts = tokenizer(text)
-        title = tokenizer(title[i])
+        heading = tokenizer(title[i])
         if yield_label:
             label = labels[i]
-            yield label, ngrams_iterator(texts, ngrams), ngrams_iterator(title, ngrams)
+            yield label, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
         else:
-            yield ngrams_iterator(texts, ngrams), ngrams_iterator(title, ngrams)
+            yield ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
 
 
 def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
