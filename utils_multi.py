@@ -100,7 +100,7 @@ def _setup_datasets(train_text, train_title, train_labels, test_text, test_title
                     include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_text_iterator(train_text, train_labels, ngrams))
+        vocab = build_vocab_from_iterator(_text_iterator(train_text, train_title, train_labels, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
