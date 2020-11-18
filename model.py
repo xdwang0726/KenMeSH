@@ -130,7 +130,7 @@ class multichannle_attenCNN(nn.Module):
         # else:
         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
 
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        self.content_final = nn.Linear(len(self.ksz) * self.nKernel * 2, embedding_dim * 2)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
