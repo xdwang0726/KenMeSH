@@ -54,6 +54,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                 print(obj["pmid"].strip())
         else:
             break
+    print('check if title and abstract are coresponded')
+    if len(all_text) == len(title):
+        print('True')
+    else:
+        print(len(all_text), len(title))
     print("Finish loading training data")
     logging.info("Finish loading training data")
 
