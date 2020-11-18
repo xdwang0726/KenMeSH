@@ -175,7 +175,7 @@ class multichannle_attenCNN(nn.Module):
         title_concat = torch.cat(title_content, dim=1)
         print('concat', abstract_concat.shape, title_concat.shape)
 
-        x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+        x_feature = nn.functional.relu(self.content_final(abstract_concat.transpose(1, 2)))
 
         return x_feature
 
