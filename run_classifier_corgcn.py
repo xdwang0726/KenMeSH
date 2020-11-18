@@ -17,9 +17,8 @@ from tqdm import tqdm
 # import EarlyStopping
 # from pytorchtools import EarlyStopping
 
-from model import CorGCN, MeSH_GCN_Multi
-# from utils import MeSH_indexing
-from utils_multi import MeSH_indexing
+from model import CorGCN
+from utils import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
 
@@ -30,7 +29,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     objects = ijson.items(f, 'articles.item')
 
     pmid = []
-    title = []
     all_text = []
     label = []
     label_id = []
@@ -41,12 +39,10 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         if i <= 10000:
             try:
                 ids = obj["pmid"]
-                heading = obj['title'].strip()
                 text = obj["abstractText"].strip()
                 original_label = obj["meshMajor"]
                 mesh_id = obj['meshId']
                 pmid.append(ids)
-                title.append(heading)
                 all_text.append(text)
                 label.append(original_label)
                 label_id.append(mesh_id)
@@ -54,11 +50,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                 print(obj["pmid"].strip())
         else:
             break
-    print('check if title and abstract are coresponded')
-    if len(all_text) == len(title):
-        print('True')
-    else:
-        print(len(all_text), len(title))
+
     print("Finish loading training data")
     logging.info("Finish loading training data")
 
@@ -67,7 +59,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_objects = ijson.items(f_t, 'documents.item')
 
     test_pmid = []
-    test_title = []
     test_text = []
     test_label = []
 
@@ -75,11 +66,9 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         ids = obj["pmid"]
-        heading = obj["title"].strip()
         text = obj["abstract"].strip()
         label = obj['meshId']
         test_pmid.append(ids)
-        test_title.append(heading)
         test_text.append(text)
         test_label.append(label)
 
@@ -101,7 +90,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, title, label_id, test_text, test_title, test_label)
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label)
 
     # build vocab
     print('building vocab')
@@ -136,6 +125,7 @@ def weight_matrix(vocab, vectors, dim=200):
     return torch.from_numpy(weight_matrix)
 
 
+
 def generate_batch(batch):
     """
     Output:
@@ -144,24 +134,17 @@ def generate_batch(batch):
         cls: a tensor saving the labels of individual text entries.
     """
     # check if the dataset if train or test
-    if len(batch[0]) == 3:
+    if len(batch[0]) == 2:
         label = [entry[0] for entry in batch]
 
         # padding according to the maximum sequence length in batch
-        abstract = [entry[1] for entry in batch]
-        abstract = pad_sequence(abstract, batch_first=True)
-
-        title = [entry[2] for entry in batch]
-        title = pad_sequence(title, batch_first=True)
-        return label, abstract, title
-
+        text = [entry[1] for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text, label
     else:
-        abstract = [entry[0] for entry in batch]
-        abstract = pad_sequence(abstract, batch_first=True)
-
-        title = [entry[1] for entry in batch]
-        title = pad_sequence(title, batch_first=True)
-        return abstract, title
+        text = [entry for entry in batch]
+        text = pad_sequence(text, batch_first=True)
+        return text
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
@@ -173,12 +156,9 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     #    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
-        for i, (label, abstract, title) in enumerate(train_data):
+        for i, (text, label) in enumerate(train_data):
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
-            print('text', len(abstract[0]))
-            print('title', len(title[0]))
-            print('label', label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
             output = model(text, G.ndata['feat'], G)
@@ -316,10 +296,8 @@ def main():
 
     vocab_size = len(vocab)
     print('arg', args.add_original_embedding)
-    # model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.add_original_embedding,
-    #                args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
-    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-                           args.atten_dropout, embedding_dim=args.embedding_dim)
+    model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.add_original_embedding,
+                   args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
 
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
