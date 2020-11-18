@@ -170,10 +170,12 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     #    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
-        for i, (text, title, label) in enumerate(train_data):
+        for i, (text, label) in enumerate(train_data):
             # print('train_original', i, label, '\n')
             # test_label = mlb.fit_transform(label)
-            print('text', text)
+            abstract = text[0]
+            title = text[1]
+            print('text', abstract)
             print('title', title)
             print('label', label)
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
