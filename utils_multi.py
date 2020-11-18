@@ -38,6 +38,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
     with tqdm(unit_scale=0, unit='lines') as t:
         if is_test:
             for text, title in iterator:
+                print(text, title, type(text), type(title))
                 if include_unk:
                     ab_tokens = torch.tensor([vocab[token] for token in text])
                     title_tokens = torch.tensor([vocab[token] for token in title])
