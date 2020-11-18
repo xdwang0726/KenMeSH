@@ -112,7 +112,7 @@ class attenCNN(nn.Module):
 
 class multichannle_attenCNN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.5, embedding_dim=200):
-        super(attenCNN, self).__init__()
+        super(multichannle_attenCNN, self).__init__()
 
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
