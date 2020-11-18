@@ -41,7 +41,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         if i <= 10000:
             try:
                 ids = obj["pmid"]
-                heading = obj['title']
+                heading = obj['title'].strip()
                 text = obj["abstractText"].strip()
                 original_label = obj["meshMajor"]
                 mesh_id = obj['meshId']
@@ -54,7 +54,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                 print(obj["pmid"].strip())
         else:
             break
-
+    print('title', title[0], type(title), type(titile[0]))
     print("Finish loading training data")
     logging.info("Finish loading training data")
 
