@@ -144,21 +144,24 @@ def generate_batch(batch):
         cls: a tensor saving the labels of individual text entries.
     """
     # check if the dataset if train or test
-    if len(batch[0]) == 2:
+    if len(batch[0]) == 3:
         label = [entry[0] for entry in batch]
 
         # padding according to the maximum sequence length in batch
-        text = [entry[1] for entry in batch]
-        text = pad_sequence(text, batch_first=True)
-        return text, label
+        abstract = [entry[1] for entry in batch]
+        abstract = pad_sequence(abstract, batch_first=True)
 
-        text = [entry[0] for entry in batch]
-        text = pad_sequence(text, batch_first=True)
-        return text
+        title = [entry[2] for entry in batch]
+        title = pad_sequence(title, batch_first=True)
+        return label, abstract, title
+
     else:
-        text = [entry for entry in batch]
-        text = pad_sequence(text, batch_first=True)
-        return text
+        abstract = [entry[0] for entry in batch]
+        abstract = pad_sequence(abstract, batch_first=True)
+
+        title = [entry[1] for entry in batch]
+        title = pad_sequence(title, batch_first=True)
+        return abstract, title
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
