@@ -165,12 +165,12 @@ class multichannle_attenCNN(nn.Module):
         title_content = [torch.matmul(title_conv[i], att) for i, att in enumerate(title_atten)]
         print('content_feature', abstract_content[0].shape, title_content[0].shape)
 
-        abstract_concat = torch.cat(abstract_content, dim=1)
-        title_concat = torch.cat(title_content, dim=1)
-        print('concat', abstract_concat.shape, title_concat.shape)
+        ab_title_concat = [torch.cat((ab, title_content[i]), dim=1) for i, ab in enumerate(abstract_content)]
+        content_concat = torch.cat(ab_title_concat, dim=1)
+        print('concat', content_concat.shape)
 
-        x_feature = nn.functional.relu(self.content_final(abstract_concat.transpose(1, 2)))
-
+        x_feature = nn.functional.relu(self.content_final(content_concat.transpose(1, 2)))
+        print('x_feature', x_feature.shape)
         return x_feature
 
 
