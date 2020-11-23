@@ -147,7 +147,7 @@ def generate_batch(batch):
 
         # padding according to the maximum sequence length in batch
         abstract = [entry[1] for entry in batch]
-        abstract = pad_sequence(abstract, batch_first=True)
+        abstract = pad_sequence(abstract, ksz=10, batch_first=True)
 
         title = [entry[2] for entry in batch]
         title = pad_sequence(title, ksz=10, batch_first=True)
