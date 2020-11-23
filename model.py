@@ -195,7 +195,7 @@ class multichannle_attenCNN(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        self.content_final = nn.Linear(self.ksz * self.nKernel * 2, embedding_dim * 2)
+        self.content_final = nn.Linear(self.nKernel * 2, embedding_dim * 2)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
