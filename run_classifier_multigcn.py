@@ -17,7 +17,7 @@ from tqdm import tqdm
 # import EarlyStopping
 # from pytorchtools import EarlyStopping
 
-from model import MeSH_GCN_Multi
+from model import MeSH_GCN_Multi, multichannle_attenCNN
 from utils_multi import MeSH_indexing
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -175,7 +175,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         for i, (label, abstract, title) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             abstract, title, label, G = abstract.to(device), title.to(device), label.to(device), G.to(device)
-            output = model(abstract, title, G.ndata['feat'], G)
+            # output = model(abstract, title, G.ndata['feat'], G)
+            output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -202,7 +203,8 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(abstract, title, G.ndata['feat'], G)
+            # output = model(abstract, title, G.ndata['feat'], G)
+            output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
@@ -261,7 +263,7 @@ def main():
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', type=list, default=[3, 4, 5])
+    parser.add_argument('--ksz', type=list, default=10)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
@@ -291,10 +293,13 @@ def main():
 
     vocab_size = len(vocab)
 
-    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-                           args.atten_dropout, embedding_dim=args.embedding_dim)
+    # model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
+    #                        args.atten_dropout, embedding_dim=args.embedding_dim)
+    # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
+                                  args.atten_dropout, embedding_dim=args.embedding_dim)
 
-    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G.to(device)
