@@ -263,7 +263,7 @@ def main():
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=[3, 4, 5])
+    parser.add_argument('--ksz', default=10)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
@@ -296,10 +296,10 @@ def main():
     # model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
-                                  args.atten_dropout, embedding_dim=args.embedding_dim)
+    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
+                           args.atten_dropout, embedding_dim=args.embedding_dim)
 
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G.to(device)
