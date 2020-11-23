@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
@@ -18,7 +17,7 @@ from tqdm import tqdm
 # from pytorchtools import EarlyStopping
 
 from model import MeSH_GCN_Multi, multichannle_attenCNN
-from utils_multi import MeSH_indexing
+from utils_multi import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
 
