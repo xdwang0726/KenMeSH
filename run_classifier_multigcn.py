@@ -293,13 +293,13 @@ def main():
 
     vocab_size = len(vocab)
 
-    # model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-    #                        args.atten_dropout, embedding_dim=args.embedding_dim)
-    # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
+    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
                            args.atten_dropout, embedding_dim=args.embedding_dim)
-
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
+    #                        args.atten_dropout, embedding_dim=args.embedding_dim)
+    #
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G.to(device)
