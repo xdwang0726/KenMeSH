@@ -150,7 +150,7 @@ def generate_batch(batch):
         abstract = pad_sequence(abstract, batch_first=True)
 
         title = [entry[2] for entry in batch]
-        title = pad_sequence(title, batch_first=True)
+        title = pad_sequence(title, ksz=10, batch_first=True)
         return label, abstract, title
 
     else:
