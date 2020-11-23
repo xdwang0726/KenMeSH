@@ -175,8 +175,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         for i, (label, abstract, title) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             abstract, title, label, G = abstract.to(device), title.to(device), label.to(device), G.to(device)
-            # output = model(abstract, title, G.ndata['feat'], G)
-            output = model(abstract, title, G.ndata['feat'])
+            output = model(abstract, title, G.ndata['feat'], G)
+            # output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -203,8 +203,8 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            # output = model(abstract, title, G.ndata['feat'], G)
-            output = model(abstract, title, G.ndata['feat'])
+            output = model(abstract, title, G.ndata['feat'], G)
+            # output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
