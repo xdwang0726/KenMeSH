@@ -206,10 +206,12 @@ class multichannle_attenCNN(nn.Module):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         embedded_seq = embedded_seq.unsqueeze(1)
         embedded_seq = self.dropout(embedded_seq)
+        print("embed_seq", embedded_seq.shape)
 
         embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
         embedded_title = embedded_title.unsqueeze(1)
         embedded_title = self.dropout(embedded_title)
+        print("embed_title", embedded_title.shape)
 
         abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
         title_conv = F.relu(self.conv(embedded_title)).squeeze(3)
@@ -350,7 +352,9 @@ class MeSH_GCN(nn.Module):
         #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         # print('concat', label_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        print('label', label_feature)
         x = torch.sum(x_feature * label_feature, dim=2)
+        print('final_x', x.shape)
         x = torch.sigmoid(x)
         return x
 
