@@ -368,21 +368,47 @@ class LabelNet(nn.Module):
 
 
 class Baseline(nn.Module):
-    def __init__(self, num_nodes, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.2,
+    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.2,
                  embedding_dim=200):
         super(Baseline, self).__init__()
 
-        self.num_nodes = num_nodes
         self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
         self.nKernel = nKernel
         self.ksz = ksz
         self.add_original_embedding = add_original_embedding
-        self.atten_dropout = atten_dropout
 
-        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
-                                        self.atten_dropout, embedding_dim=200)
+        self.dropout = nn.Dropout(atten_dropout)
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
-        self.fc = nn.Linear()
+        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
+        self.transform = nn.Linear(nKernel, embedding_dim)
+        nn.init.xavier_uniform_(self.transform.weight)
+        nn.init.zeros_(self.transform.bias)
+
+        self.content_final = nn.Linear(self.nKernel, 1)
+
+        nn.init.xavier_normal_(self.content_final.weight)
+        nn.init.zeros_(self.content_final.bias)
+
+    def forward(self, input_seq, g_node_feat):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = embedded_seq.unsqueeze(1)
+        embedded_seq = self.dropout(embedded_seq)
+
+        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
+
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
+
+        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
+
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)
+
+        x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2)))
+        # print('x_feature', x_feature.shape)
+        x = torch.sigmoid(x_feature)
+        return x
 
 
 class MeSH_GCN_Old(nn.Module):
