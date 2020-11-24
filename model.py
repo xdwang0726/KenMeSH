@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
 
-from pytorch_transformers.modeling_bert import BertPreTrainedModel
-from pytorch_transformers import BertModel
+from transformers.modeling_bert import BertPreTrainedModel
+from transformers import BertModel
 
 
 class Embeddings_OOV(torch.nn.Module):
