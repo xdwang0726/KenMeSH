@@ -405,7 +405,7 @@ class Baseline(nn.Module):
 
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
 
-        x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2)))
+        x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2))).squeeze(2)
         # print('x_feature', x_feature.shape)
         x = torch.sigmoid(x_feature)
         return x
