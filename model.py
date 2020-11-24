@@ -97,7 +97,7 @@ class attenCNN(nn.Module):
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
 
         x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
+        # print('x_feature', x_feature.shape)
 
         return x_feature
 
@@ -367,6 +367,24 @@ class LabelNet(nn.Module):
         return x
 
 
+class Baseline(nn.Module):
+    def __init__(self, num_nodes, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.2,
+                 embedding_dim=200):
+        super(Baseline, self).__init__()
+
+        self.num_nodes = num_nodes
+        self.vocab_size = vocab_size
+        self.nKernel = nKernel
+        self.ksz = ksz
+        self.add_original_embedding = add_original_embedding
+        self.atten_dropout = atten_dropout
+
+        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
+                                        self.atten_dropout, embedding_dim=200)
+
+        self.fc = nn.Linear()
+
+
 class MeSH_GCN_Old(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
         super(MeSH_GCN_Old, self).__init__()
@@ -438,9 +456,9 @@ class MeSH_GCN_Multi(nn.Module):
         #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         # print('concat', label_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        print('label', label_feature)
+        # print('label', label_feature)
         x = torch.sum(x_feature * label_feature, dim=2)
-        print('final_x', x.shape)
+        #print('final_x', x.shape)
         x = torch.sigmoid(x)
         return x
 
