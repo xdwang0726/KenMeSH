@@ -251,34 +251,34 @@ class multichannle_attenCNN(nn.Module):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         embedded_seq = embedded_seq.unsqueeze(1)
         embedded_seq = self.dropout(embedded_seq)
-        print("embed_seq", embedded_seq.shape)
+        # print("embed_seq", embedded_seq.shape)
 
         embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
         embedded_title = embedded_title.unsqueeze(1)
         embedded_title = self.dropout(embedded_title)
-        print("embed_title", embedded_title.shape)
+        #print("embed_title", embedded_title.shape)
 
         abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
         title_conv = F.relu(self.conv(embedded_title)).squeeze(3)
-        print('conv', abstract_conv.shape, title_conv.shape)
+        #print('conv', abstract_conv.shape, title_conv.shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
         title = torch.tanh(self.transform(title_conv.transpose(1, 2)))
-        print('content', abstract.shape, title.shape)
+        #print('content', abstract.shape, title.shape)
 
         abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
         title_atten = torch.softmax(torch.matmul(title, g_node_feat.transpose(0, 1)), dim=1)
-        print('atten', abstract_atten.shape, title_atten.shape)
+        #print('atten', abstract_atten.shape, title_atten.shape)
 
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
         title_content = torch.matmul(title_conv, title_atten)
-        print('content_feature', abstract_content.shape, title_content.shape)
+        #print('content_feature', abstract_content.shape, title_content.shape)
 
         content_concat = torch.cat((abstract_content, title_content), dim=1)
-        print('concat', content_concat.shape)
+        #print('concat', content_concat.shape)
 
         x_feature = nn.functional.relu(self.content_final(content_concat.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
+        #print('x_feature', x_feature.shape)
 
         return x_feature
 
