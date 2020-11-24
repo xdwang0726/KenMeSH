@@ -293,7 +293,8 @@ def main():
     vocab_size = len(vocab)
 
     model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-                           args.atten_dropout, embedding_dim=args.embedding_dim)
+                           args.atten_dropout, num_nodes, embedding_dim=args.embedding_dim, cornet_dim=1000,
+                           n_cornet_blocks=2)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)

@@ -432,8 +432,8 @@ class MeSH_GCN(nn.Module):
 
 
 class MeSH_GCN_Multi(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding, atten_dropout,
-                 embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding, atten_dropout, output_size,
+                 embedding_dim=200, cornet_dim=1000, n_cornet_blocks=2):
         super(MeSH_GCN_Multi, self).__init__()
 
         self.vocab_size = vocab_size
@@ -447,6 +447,7 @@ class MeSH_GCN_Multi(nn.Module):
                                                      self.add_original_embedding,
                                                      self.atten_dropout, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, input_title, g_node_feature, g):
         x_feature = self.content_feature(input_seq, input_title, g_node_feature)
@@ -458,6 +459,7 @@ class MeSH_GCN_Multi(nn.Module):
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
         # print('label', label_feature)
         x = torch.sum(x_feature * label_feature, dim=2)
+        x = self.cornet(x)
         #print('final_x', x.shape)
         x = torch.sigmoid(x)
         return x
