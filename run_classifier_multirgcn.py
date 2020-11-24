@@ -158,7 +158,7 @@ def train(train_dataset, model, mlb, G, feats, edge_type, edge_norm, batch_sz, n
         for i, (text, label) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label = text.cuda(), label.cuda()
-            output = model(text, G, feats, edge_type, edge_norm)
+            output = model(text, G, G.ndata['feat'], edge_type, edge_norm)
             # print('Allocated4:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
             optimizer.zero_grad()
@@ -189,7 +189,7 @@ def test(test_dataset, model, G, feats, edge_type, edge_norm, batch_sz):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G, feats, edge_type, edge_norm)
+            output = model(text, G, G.ndata['feat'], edge_type, edge_norm)
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
