@@ -678,8 +678,8 @@ class Multi_RGCN(nn.Module):
                                    dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
-    def forward(self, input_seq, g, g_node_feature, edge_type, edge_norm):
-        x_feature = self.content_feature(input_seq, g_node_feature)
+    def forward(self, input_seq, input_title, g, g_node_feature, edge_type, edge_norm):
+        x_feature = self.content_feature(input_seq, input_title, g_node_feature)
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
