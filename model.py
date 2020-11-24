@@ -5,7 +5,8 @@ import torch.nn.functional as F
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
 
 
-# from pytorch_transformers.modeling_bert import BertPreTrainedModel
+# from transformers.modeling_bert import BertPreTrainedModel
+# from transformers import BertModel
 
 
 class Embeddings_OOV(torch.nn.Module):
@@ -70,20 +71,13 @@ class attenCNN(nn.Module):
 
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
-        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
+        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
 
         self.transform = nn.Linear(nKernel, embedding_dim)
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        # just graph embedding
-        # if self.add_original_embedding:
-        #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
-        # # concatenate graph embedding together with original MeSH embeddings
-        # else:
-        #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
-
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+        self.content_final = nn.Linear(self.nKernel, embedding_dim * 2)
 
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
@@ -93,89 +87,69 @@ class attenCNN(nn.Module):
         embedded_seq = embedded_seq.unsqueeze(1)
         embedded_seq = self.dropout(embedded_seq)
 
-        x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
+
         # label-wise attention (mapping different parts of the document representation to different labels)
-        x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
-                 x_conv]  # [bs, (n_words-ks+1), embedding_sz]
-        atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
-                 x_doc]  # []bs, (n_words-ks+1), n_labels]
-        x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
-        x_concat = torch.cat(x_content, dim=1)
+        abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
 
-        x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
 
-        return x_feature
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)
 
-
-class multichannle_attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.5, embedding_dim=200):
-        super(multichannle_attenCNN, self).__init__()
-
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.nKernel = nKernel
-        self.ksz = ksz
-        self.add_original_embedding = add_original_embedding
-        self.dropout = nn.Dropout(atten_dropout)
-
-        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-
-        self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
-
-        self.transform = nn.Linear(nKernel, embedding_dim)
-        nn.init.xavier_uniform_(self.transform.weight)
-        nn.init.zeros_(self.transform.bias)
-
-        # just graph embedding
-        # if self.add_original_embedding:
-        #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
-        # # concatenate graph embedding together with original MeSH embeddings
-        # else:
-        #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
-
-        self.content_final = nn.Linear(len(self.ksz) * self.nKernel * 2, embedding_dim * 2)
-
-        nn.init.xavier_normal_(self.content_final.weight)
-        nn.init.zeros_(self.content_final.bias)
-
-    def forward(self, input_seq, input_title, g_node_feat):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        embedded_seq = embedded_seq.unsqueeze(1)
-        embedded_seq = self.dropout(embedded_seq)
-
-        embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
-        embedded_title = embedded_title.unsqueeze(1)
-        embedded_title = self.dropout(embedded_title)
-
-        abstract_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in
-                         self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
-        title_conv = [F.relu(conv(embedded_title)).squeeze(3) for conv in self.convs]
-        print('conv', abstract_conv[0].shape, title_conv[0].shape)
-        # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
-                    abstract_conv]  # [bs, (n_words-ks+1), embedding_sz]
-        title = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
-                 title_conv]
-        print('content', abstract[0].shape, title[0].shape)
-
-        abstract_atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
-                          abstract]  # []bs, (n_words-ks+1), n_labels]
-        title_atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
-                       title]
-        print('atten', abstract_atten[0].shape, title_atten[0].shape)
-
-        abstract_content = [torch.matmul(abstract_conv[i], att) for i, att in enumerate(abstract_atten)]
-        title_content = [torch.matmul(title_conv[i], att) for i, att in enumerate(title_atten)]
-        print('content_feature', abstract_content[0].shape, title_content[0].shape)
-
-        ab_title_concat = [torch.cat((ab, title_content[i]), dim=1) for i, ab in enumerate(abstract_content)]
-        content_concat = torch.cat(ab_title_concat, dim=1)
-        print('concat', content_concat.shape)
-
-        x_feature = nn.functional.relu(self.content_final(content_concat.transpose(1, 2)))
+        x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2)))
         print('x_feature', x_feature.shape)
 
         return x_feature
+
+
+# class attenCNN(nn.Module):
+#     def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.2, embedding_dim=200):
+#         super(attenCNN, self).__init__()
+#
+#         self.vocab_size = vocab_size
+#         self.embedding_dim = embedding_dim
+#         self.nKernel = nKernel
+#         self.ksz = ksz
+#         self.add_original_embedding = add_original_embedding
+#         self.dropout = nn.Dropout(atten_dropout)
+#
+#         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+#
+#         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
+#
+#         self.transform = nn.Linear(nKernel, embedding_dim)
+#         nn.init.xavier_uniform_(self.transform.weight)
+#         nn.init.zeros_(self.transform.bias)
+#
+#         # just graph embedding
+#         # if self.add_original_embedding:
+#         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+#         # # concatenate graph embedding together with original MeSH embeddings
+#         # else:
+#         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+#
+#         self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+#
+#         nn.init.xavier_normal_(self.content_final.weight)
+#         nn.init.zeros_(self.content_final.bias)
+#
+#     def forward(self, input_seq, g_node_feat):
+#         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+#         embedded_seq = embedded_seq.unsqueeze(1)
+#         embedded_seq = self.dropout(embedded_seq)
+#
+#         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+#         # label-wise attention (mapping different parts of the document representation to different labels)
+#         x_doc = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
+#                  x_conv]  # [bs, (n_words-ks+1), embedding_sz]
+#         atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
+#                  x_doc]  # []bs, (n_words-ks+1), n_labels]
+#         x_content = [torch.matmul(x_conv[i], att) for i, att in enumerate(atten)]
+#         x_concat = torch.cat(x_content, dim=1)
+#
+#         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
+#
+#         return x_feature
 
 
 # class multichannle_attenCNN(nn.Module):
@@ -191,13 +165,20 @@ class multichannle_attenCNN(nn.Module):
 #
 #         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 #
-#         self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
+#         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 #
 #         self.transform = nn.Linear(nKernel, embedding_dim)
 #         nn.init.xavier_uniform_(self.transform.weight)
 #         nn.init.zeros_(self.transform.bias)
 #
-#         self.content_final = nn.Linear(self.nKernel * 2, embedding_dim * 2)
+#         # just graph embedding
+#         # if self.add_original_embedding:
+#         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim * 2)
+#         # # concatenate graph embedding together with original MeSH embeddings
+#         # else:
+#         #     self.content_final = nn.Linear(len(self.ksz) * self.nKernel, embedding_dim)
+#
+#         self.content_final = nn.Linear(len(self.ksz) * self.nKernel * 2, embedding_dim * 2)
 #
 #         nn.init.xavier_normal_(self.content_final.weight)
 #         nn.init.zeros_(self.content_final.bias)
@@ -206,30 +187,34 @@ class multichannle_attenCNN(nn.Module):
 #         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
 #         embedded_seq = embedded_seq.unsqueeze(1)
 #         embedded_seq = self.dropout(embedded_seq)
-#         print("embed_seq", embedded_seq.shape)
 #
 #         embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
 #         embedded_title = embedded_title.unsqueeze(1)
 #         embedded_title = self.dropout(embedded_title)
-#         print("embed_title", embedded_title.shape)
 #
-#         abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
-#         title_conv = F.relu(self.conv(embedded_title)).squeeze(3)
-#         print('conv', abstract_conv.shape, title_conv.shape)
+#         abstract_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in
+#                          self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
+#         title_conv = [F.relu(conv(embedded_title)).squeeze(3) for conv in self.convs]
+#         print('conv', abstract_conv[0].shape, title_conv[0].shape)
 #         # label-wise attention (mapping different parts of the document representation to different labels)
-#         abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
-#         title = torch.tanh(self.transform(title_conv.transpose(1, 2)))
-#         print('content', abstract.shape, title.shape)
+#         abstract = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
+#                     abstract_conv]  # [bs, (n_words-ks+1), embedding_sz]
+#         title = [torch.tanh(self.transform(line.transpose(1, 2))) for line in
+#                  title_conv]
+#         print('content', abstract[0].shape, title[0].shape)
 #
-#         abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
-#         title_atten = torch.softmax(torch.matmul(title, g_node_feat.transpose(0, 1)), dim=1)
-#         print('atten', abstract_atten.shape, title_atten.shape)
+#         abstract_atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
+#                           abstract]  # []bs, (n_words-ks+1), n_labels]
+#         title_atten = [torch.softmax(torch.matmul(x, g_node_feat.transpose(0, 1)), dim=1) for x in
+#                        title]
+#         print('atten', abstract_atten[0].shape, title_atten[0].shape)
 #
-#         abstract_content = torch.matmul(abstract_conv, abstract_atten)
-#         title_content = torch.matmul(title_conv, title_atten)
-#         print('content_feature', abstract_content.shape, title_content.shape)
+#         abstract_content = [torch.matmul(abstract_conv[i], att) for i, att in enumerate(abstract_atten)]
+#         title_content = [torch.matmul(title_conv[i], att) for i, att in enumerate(title_atten)]
+#         print('content_feature', abstract_content[0].shape, title_content[0].shape)
 #
-#         content_concat = torch.cat((abstract_content, title_content), dim=1)
+#         ab_title_concat = [torch.cat((ab, title_content[i]), dim=1) for i, ab in enumerate(abstract_content)]
+#         content_concat = torch.cat(ab_title_concat, dim=1)
 #         print('concat', content_concat.shape)
 #
 #         x_feature = nn.functional.relu(self.content_final(content_concat.transpose(1, 2)))
@@ -238,11 +223,82 @@ class multichannle_attenCNN(nn.Module):
 #         return x_feature
 
 
+class multichannle_attenCNN(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.5, embedding_dim=200):
+        super(multichannle_attenCNN, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.nKernel = nKernel
+        self.ksz = ksz
+        self.add_original_embedding = add_original_embedding
+        self.dropout = nn.Dropout(atten_dropout)
+
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+
+        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
+
+        self.transform = nn.Linear(nKernel, embedding_dim)
+        nn.init.xavier_uniform_(self.transform.weight)
+        nn.init.zeros_(self.transform.bias)
+
+        self.content_final = nn.Linear(self.nKernel * 2, embedding_dim * 2)
+
+        nn.init.xavier_normal_(self.content_final.weight)
+        nn.init.zeros_(self.content_final.bias)
+
+    def forward(self, input_seq, input_title, g_node_feat):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = embedded_seq.unsqueeze(1)
+        embedded_seq = self.dropout(embedded_seq)
+        print("embed_seq", embedded_seq.shape)
+
+        embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
+        embedded_title = embedded_title.unsqueeze(1)
+        embedded_title = self.dropout(embedded_title)
+        print("embed_title", embedded_title.shape)
+
+        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
+        title_conv = F.relu(self.conv(embedded_title)).squeeze(3)
+        print('conv', abstract_conv.shape, title_conv.shape)
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
+        title = torch.tanh(self.transform(title_conv.transpose(1, 2)))
+        print('content', abstract.shape, title.shape)
+
+        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
+        title_atten = torch.softmax(torch.matmul(title, g_node_feat.transpose(0, 1)), dim=1)
+        print('atten', abstract_atten.shape, title_atten.shape)
+
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)
+        title_content = torch.matmul(title_conv, title_atten)
+        print('content_feature', abstract_content.shape, title_content.shape)
+
+        content_concat = torch.cat((abstract_content, title_content), dim=1)
+        print('concat', content_concat.shape)
+
+        x_feature = nn.functional.relu(self.content_final(content_concat.transpose(1, 2)))
+        print('x_feature', x_feature.shape)
+
+        return x_feature
+
+
 # class Bert(BertPreTrainedModel):
-#     def __init__(self, config):
-#         super(Bert, self).__init__(config)
+#         def __init__(self, config, d_model=768, num_d_heads=8, num_d_layer=6):
+#             super(Bert, self).__init__(config)
+#             self.bert = BertModel(config)
+#             self.init_weights()
+#             self.dropout = nn.Dropout(config.hidden_dropout_prob)
+#             encoder_layer = nn.TransformerEncoderLayer(d_model, num_d_heads)
+#             encoder_norm = nn.LayerNorm(d_model)
+#             self.encoder = nn.TransformerEncoder(encoder_layer, num_d_layer, encoder_norm)
 #
-#     return None
+#         def forward(self, src_input_ids, src_token_type_ids, src_attention_mask):
+#             _, pooled_output = self.bert(src_input_ids, src_token_type_ids, src_attention_mask)
+#             pooled_output = self.dropout(pooled_output)
+#             encoder_output = self.encoder(pooled_output.unsqueeze(1))
+#             print('encoder', encoder_output.shape)
+#             return encoder_output
 
 
 class CorNetBlock(nn.Module):
@@ -387,6 +443,11 @@ class MeSH_GCN_Multi(nn.Module):
         print('final_x', x.shape)
         x = torch.sigmoid(x)
         return x
+
+
+class Bert_GCN(nn.Module):
+    def __init__(self):
+        super(Bert_GCN, self).__init__()
 
 
 class CorGCN(nn.Module):

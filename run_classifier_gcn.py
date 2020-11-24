@@ -10,13 +10,13 @@ import torch
 import torch.nn as nn
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.nn.utils.rnn import pad_sequence
+# from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
 from model import MeSH_GCN
-from utils import MeSH_indexing
+from utils import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
 
@@ -136,15 +136,11 @@ def generate_batch(batch):
 
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
-        text = pad_sequence(text, batch_first=True)
+        text = pad_sequence(text, ksz=10, batch_first=True)
         return text, label
-
-        text = [entry[0] for entry in batch]
-        text = pad_sequence(text, batch_first=True)
-        return text
     else:
         text = [entry for entry in batch]
-        text = pad_sequence(text, batch_first=True)
+        text = pad_sequence(text, ksz=10, batch_first=True)
         return text
 
 
@@ -271,13 +267,13 @@ def main():
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', type=list, default=[3, 4, 5])
+    parser.add_argument('--ksz', default=10)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=3)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-4)
