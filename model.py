@@ -670,7 +670,7 @@ class Multi_RGCN(nn.Module):
         self.add_original_embedding = add_original_embedding
         self.atten_dropout = atten_dropout
 
-        self.content_feature = multichannle_attenCNN(self.vocab_size, self.nKernel, self.ksz,
+        self.content_feature = multichannel_attenCNN(self.vocab_size, self.nKernel, self.ksz,
                                                      self.add_original_embedding,
                                                      self.atten_dropout, embedding_dim=200)
 

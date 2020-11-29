@@ -128,7 +128,7 @@ class bert_MeSHDataset(torch.utils.data.Dataset):
         self.max_len = max_len
 
     def __len__(self):
-        return len(self.train_text)
+        return len(self.text)
 
     def __getitem__(self, item):
         encoding = self.tokenizer.encode_plus(
