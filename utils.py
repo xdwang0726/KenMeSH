@@ -135,6 +135,7 @@ class bert_MeSHDataset(torch.utils.data.Dataset):
             self.text[item],
             add_special_tokens=True,
             max_length=self.max_len,
+            padding='longest',
             return_token_type_ids=False,
             return_attention_mask=True
         )
