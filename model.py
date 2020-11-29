@@ -476,7 +476,6 @@ class Bert_GCN(nn.Module):
 
         self.config = config
         self.bert = BertModel(config)
-        self.init_weights()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
         self.linear = nn.Linear(config.hidden_size, embedding_dim * 2)
