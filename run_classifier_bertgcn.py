@@ -213,7 +213,7 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
-    # parser.add_argument('--bio_bert', type=str)
+    parser.add_argument('--biobert', type=str)
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
@@ -234,9 +234,8 @@ def main():
     # device = torch.device(args.device)
     logging.info('Device:'.format(device))
 
-    # bio_bert = args.bio_bert
-    tokenizer = AutoTokenizer.from_pretrained("dmis-lab/biobert-v1.1")
-    bert_config = AutoConfig.from_pretrained("dmis-lab/biobert-v1.1")
+    tokenizer = AutoTokenizer.from_pretrained(args.biobert)
+    bert_config = AutoConfig.from_pretrained(args.biobert)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, train_dataset, test_dataset, G = prepare_dataset(args.train_path,
                                                                      args.test_path,
