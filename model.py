@@ -489,6 +489,7 @@ class Bert_GCN(nn.Module):
         print('x', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)
         print('label', label_feature.shape)
         x = torch.matmul(x_feature, label_feature.transpose(0, 1))
         print('final_feature', x.shape)
