@@ -139,7 +139,7 @@ class bert_MeSHDataset(torch.utils.data.Dataset):
             return_token_type_ids=False,
             return_attention_mask=True
         )
-        return {'input_ids': encoding['input_ids'], 'attenion_mask': encoding['attention_mask'],
+        return {'input_ids': encoding['input_ids'][0], 'attenion_mask': encoding['attention_mask'][0],
                 'label': self.labels[item]}
 
 
