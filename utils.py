@@ -136,9 +136,11 @@ class bert_MeSHDataset(torch.utils.data.Dataset):
             add_special_tokens=True,
             max_length=self.max_len,
             return_token_type_ids=False,
-            pad_to_max_length=True,
+            pad_to_max_length=False,
             return_attention_mask=True
         )
+        print('input_id', encoding['input_ids'][0], len(encoding['input_ids'][0]))
+        print('attention_mask', encoding['attention_mask'][0], len(encoding['attention_mask'][0]))
         return {'input_ids': encoding['input_ids'][0], 'attenion_mask': encoding['attention_mask'][0],
                 'label': self.labels[item]}
 
