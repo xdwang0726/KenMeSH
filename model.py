@@ -90,7 +90,7 @@ class attenCNN(nn.Module):
         abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
 
         x_maxpool = F.max_pool1d(abstract_conv, abstract_conv.size(2)).squeeze(2)  # (bs, kernel_sz)
-        print('x_maxpool', x_maxpool)
+        print('x_maxpool', x_maxpool.shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
 
