@@ -100,15 +100,30 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     return len(meshIDs), mlb, train_dataset, test_dataset, G
 
 
+def generate_batch(batch):
+    """
+    Output:
+        text: the text entries in the data_batch are packed into a list and
+            concatenated as a single tensor for the input of nn.EmbeddingBag.
+        cls: a tensor saving the labels of individual text entries.
+    """
+    input_ids = [entry['input_ids'] for entry in batch]
+    input_ids = pad_sequence(input_ids, batch_first=True)
+    attention_mask = [entry['attention_mask'] for entry in batch]
+    attention_mask = pad_sequence(attention_mask, batch_first=True)
+    label = [entry['label'] for entry in batch]
+    return input_ids, attention_mask, label
+
+
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_sz)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch)
 
     num_lines = num_epochs * len(train_data)
 
     print("Training....")
     for epoch in range(num_epochs):
         for i, data in enumerate(train_data):
-            input_ids, attention_mask, label = data['input_ids'], data['attention_mask'], data['label']
+            input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.to(device), attention_mask.to(device), label.to(device)
             output = model(input_ids, attention_mask, G, G.ndata['feat'])
@@ -131,12 +146,12 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
 
 def test(test_dataset, model, G, batch_sz, device):
-    test_data = DataLoader(test_dataset, sampler=RandomSampler(test_dataset), batch_size=batch_sz)
+    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
     print('Testing....')
     for data in test_data:
-        input_ids, attention_mask, label = data['input_ids'], data['attention_mask'], data['label']
+        input_ids, attention_mask, label = data
         input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
         print('test_orig', label, '\n')
         ori_label.append(label)
