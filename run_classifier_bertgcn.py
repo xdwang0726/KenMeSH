@@ -64,7 +64,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         ids = obj["pmid"]
-        text = obj["abstractText"].strip()
+        text = obj["abstract"].strip()
         label = obj['meshId']
         test_pmid.append(ids)
         test_text.append(text)
