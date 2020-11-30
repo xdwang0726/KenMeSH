@@ -140,9 +140,10 @@ class bert_MeSHDataset(torch.utils.data.Dataset):
             return_attention_mask=True
         )
         print(self.text[item])
-        print('input_id', encoding['input_ids'][0], type(encoding['input_ids'][0]))
-        print('attention_mask', encoding['attention_mask'][0], type(encoding['attention_mask'][0]))
-        return {'input_ids': encoding['input_ids'][0], 'attenion_mask': encoding['attention_mask'][0],
+        print('input_id', encoding['input_ids'], type(encoding['input_ids'], len(encoding['input_ids'])))
+        print('attention_mask', encoding['attention_mask'],
+              type(encoding['attention_mask'], len(encoding['attention_mask'])))
+        return {'input_ids': encoding['input_ids'], 'attenion_mask': encoding['attention_mask'],
                 'label': self.labels[item]}
 
 

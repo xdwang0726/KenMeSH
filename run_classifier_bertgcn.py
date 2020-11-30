@@ -17,7 +17,7 @@ from tqdm import tqdm
 from model import Bert_GCN
 from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
-from transformers import AutoTokenizer, BertTokenizer, AutoConfig, BertConfig
+from transformers import AutoTokenizer, AutoConfig
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_file, tokenizer):
@@ -64,7 +64,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
         ids = obj["pmid"]
-        text = obj["abstract"].strip()
+        text = obj["abstractText"].strip()
         label = obj['meshId']
         test_pmid.append(ids)
         test_text.append(text)
