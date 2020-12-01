@@ -393,7 +393,7 @@ class Baseline(nn.Module):
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
 
         x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2))).squeeze(2)
-        # print('x_feature', x_feature.shape)
+        print('x_feature', x_feature.shape)
         x = torch.sigmoid(x_feature)
         return x
 
@@ -473,7 +473,7 @@ class MeSH_GCN_Multi(nn.Module):
 
 
 class Bert_GCN(nn.Module):
-    def __init__(self, config, num_labels):
+    def __init__(self, config, gcn_hidden_gcn_size, embedding_dim=200):
         super(Bert_GCN, self).__init__()
 
         self.config = config
@@ -481,10 +481,10 @@ class Bert_GCN(nn.Module):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
         # self.linear = nn.Linear(config.hidden_size, embedding_dim * 2)
-        # self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
+        self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
 
-        self.classifier = nn.Linear(config.hidden_size, num_labels)
-
+        # self.classifier = nn.Linear(config.hidden_size, num_labels)
+        self.linear = nn.Linear(embedding_dim * 2, 768)
     def forward(self, input_ids, attention_mask, g, g_node_feature):
         _, pooled_output = self.bert(input_ids, attention_mask)
         pooled_output = self.dropout(pooled_output)
@@ -492,12 +492,14 @@ class Bert_GCN(nn.Module):
         # x_feature = nn.functional.relu(self.linear(pooled_output.squeeze(1)))
         #print('x', x_feature.shape)
 
-        # label_feature = self.gcn(g, g_node_feature)
-        # label_feature = torch.cat((label_feature, g_node_feature), dim=1)
-        #print('label', label_feature.shape)
-        # x = torch.matmul(x_feature, label_feature.transpose(0, 1))
+        label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)
+        print('label1', label_feature.shape)
+        label_feature = self.linear(label_feature)
+        print('label2', label_feature.shape)
+        x = torch.matmul(pooled_output, label_feature.transpose(0, 1))
         #print('final_feature', x.shape)
-        x = self.classifier(pooled_output)
+        # x = self.classifier(pooled_output)
         x = torch.sigmoid(x)
         return x
 
