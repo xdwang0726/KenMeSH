@@ -230,7 +230,7 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--biobert', type=str)
 
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=20)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-5)
