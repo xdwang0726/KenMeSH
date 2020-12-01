@@ -489,13 +489,13 @@ class Bert_GCN(nn.Module):
     def forward(self, input_ids, attention_mask, g, g_node_feature):
         _, pooled_output = self.bert(input_ids, attention_mask)
         pooled_output = self.dropout(pooled_output)
-        # print('pooled', pooled_output.shape)
+        print('pooled', pooled_output.shape)
         # x_feature = nn.functional.relu(self.linear(pooled_output.squeeze(1)))
         #print('x', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
-        # print('label1', label_feature.shape)
+        print('label1', label_feature.shape)
         # label_feature = self.linear(label_feature)
         # print('label2', label_feature.shape)
 
