@@ -257,9 +257,10 @@ def main():
                                                                      args.meSH_pair_path,
                                                                      args.graph, tokenizer)
 
-    model = Bert_GCN(bert_config, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
+    # model = Bert_GCN(bert_config, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
 
     # model = Bert_GCN(bert_config, num_nodes)
+    model = Bert_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     model.to(device)
     G.to(device)
 
