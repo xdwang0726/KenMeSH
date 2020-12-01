@@ -473,15 +473,17 @@ class MeSH_GCN_Multi(nn.Module):
 
 
 class Bert_GCN(nn.Module):
-    def __init__(self, config, gcn_hidden_gcn_size, embedding_dim=200):
+    def __init__(self, config, num_labels):
         super(Bert_GCN, self).__init__()
 
         self.config = config
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-        self.linear = nn.Linear(config.hidden_size, embedding_dim * 2)
-        self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
+        # self.linear = nn.Linear(config.hidden_size, embedding_dim * 2)
+        # self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
+
+        self.classifier = nn.Linear(config.hidden_size, num_labels)
 
     def forward(self, input_ids, attention_mask, g, g_node_feature):
         _, pooled_output = self.bert(input_ids, attention_mask)
@@ -490,11 +492,12 @@ class Bert_GCN(nn.Module):
         x_feature = nn.functional.relu(self.linear(pooled_output.squeeze(1)))
         #print('x', x_feature.shape)
 
-        label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)
+        # label_feature = self.gcn(g, g_node_feature)
+        # label_feature = torch.cat((label_feature, g_node_feature), dim=1)
         #print('label', label_feature.shape)
-        x = torch.matmul(x_feature, label_feature.transpose(0, 1))
+        # x = torch.matmul(x_feature, label_feature.transpose(0, 1))
         #print('final_feature', x.shape)
+        x = self.classifier(x_feature)
         x = torch.sigmoid(x)
         return x
 
