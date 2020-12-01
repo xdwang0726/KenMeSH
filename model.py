@@ -502,7 +502,7 @@ class Bert_GCN(nn.Module):
         # x = torch.matmul(pooled_output, label_feature.transpose(0, 1))
         #print('final_feature', x.shape)
         # x = self.classifier(pooled_output)
-        x = torch.cat((pooled_output, label_feature), dim=1)
+        x = torch.cat((pooled_output, label_feature.transpose(0, 1)), dim=1)
         x = nn.functional.relu(self.linear(x))
         x = torch.sigmoid(x)
         return x
