@@ -484,14 +484,13 @@ class Bert_GCN(nn.Module):
         self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
 
         self.classifier = nn.Linear(config.hidden_size + embedding_dim * 2, num_labels)
-        # self.classifier = nn.Linear(config.hidden_size, num_labels)
+        self.classifier = nn.Linear(config.hidden_size, num_labels)
         # self.linear = nn.Linear(embedding_dim * 2, 768)
     def forward(self, input_ids, attention_mask, g, g_node_feature):
         _, pooled_output = self.bert(input_ids, attention_mask)
         pooled_output = self.dropout(pooled_output)
         print('pooled', pooled_output.shape)
         # x_feature = nn.functional.relu(self.linear(pooled_output.squeeze(1)))
-        #print('x', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
@@ -499,11 +498,11 @@ class Bert_GCN(nn.Module):
         # label_feature = self.linear(label_feature)
         # print('label2', label_feature.shape)
 
-        # x = torch.matmul(pooled_output, label_feature.transpose(0, 1))
+        x = torch.matmul(pooled_output, label_feature.transpose(0, 1))
         #print('final_feature', x.shape)
         # x = self.classifier(pooled_output)
-        x = torch.cat((pooled_output, label_feature.transpose(0, 1)), dim=1)
-        x = nn.functional.relu(self.linear(x))
+        # x = torch.cat((pooled_output, label_feature.transpose(0, 1)), dim=1)
+        # x = nn.functional.relu(self.linear(x))
         x = torch.sigmoid(x)
         return x
 
