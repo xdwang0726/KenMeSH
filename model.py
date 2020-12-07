@@ -513,6 +513,10 @@ class Bert_atten_GCN(nn.Module):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
+        self.transform = nn.Linear(config.hidden_size, embedding_dim)
+        nn.init.xavier_uniform_(self.transform.weight)
+        nn.init.zeros_(self.transform.bias)
+
         self.content_final = nn.Linear(config.hidden_size, embedding_dim * 2)
         nn.init.xavier_normal_(self.content_final.weight)
         nn.init.zeros_(self.content_final.bias)
@@ -521,11 +525,14 @@ class Bert_atten_GCN(nn.Module):
 
     def forward(self, input_ids, attention_mask, g, g_node_feature):
         output, _ = self.bert(input_ids, attention_mask)
-        pooled_output = self.dropout(output)
+        output = self.dropout(output)
         print('pooled', output.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
+        output = self.transform(output)
+        print('output', output.shape)
         abstract_atten = torch.softmax(torch.matmul(output, g_node_feature.transpose(0, 1)), dim=1)
+        print('atten', abstract_atten.shape)
         abstract_content = torch.matmul(output.transpose(1, 2), abstract_atten)
         print('abstract', abstract_content.shape)
 
