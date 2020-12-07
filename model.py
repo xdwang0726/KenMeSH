@@ -526,25 +526,25 @@ class Bert_atten_GCN(nn.Module):
     def forward(self, input_ids, attention_mask, g, g_node_feature):
         output, _ = self.bert(input_ids, attention_mask)
         output = self.dropout(output)
-        print('pooled', output.shape)
+        # print('pooled', output.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract = torch.tanh(self.transform(output))
-        print('output', output.shape)
+        #print('output', output.shape)
         abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feature.transpose(0, 1)), dim=1)
-        print('atten', abstract_atten.shape)
+        #print('atten', abstract_atten.shape)
         abstract_content = torch.matmul(output.transpose(1, 2), abstract_atten)
-        print('abstract', abstract_content.shape)
+        #print('abstract', abstract_content.shape)
 
         # match bert output size with graph output
         x_feature = self.content_final(abstract_content.transpose(1, 2))
-        print('x_feature', x_feature.shape)
+        #print('x_feature', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
-        print('label1', label_feature.shape)
+        #print('label1', label_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
-        print('x', x.shape)
+        #print('x', x.shape)
         x = torch.sigmoid(x)
         return x
 
