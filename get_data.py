@@ -4,6 +4,9 @@ import json
 import ijson
 from tqdm import tqdm
 
+"""
+Extract the articles from 2012-2016 from the BioASQ dataset for Taska
+"""
 
 def from_mesh2id(labels_list, mapping_id):
     mesh_id = []
@@ -37,22 +40,24 @@ def main():
     objects = ijson.items(f, 'articles.item')
 
     dataset = []
+    years = ['2012', '2013', '2014', '2015', '2016']
 
     for obj in tqdm(objects):
         data_point = {}
-        try:
-            ids = obj['pmid']
-            title = obj['title']
-            text = obj['abstractText'].strip()
-            label = obj["meshMajor"]
-            data_point['pmid'] = ids
-            data_point['title'] = title
-            data_point['abstractText'] = text
-            data_point['meshMajor'] = label
-            data_point['meshId'] = from_mesh2id(label, mapping_id)
-            dataset.append(data_point)
-        except AttributeError:
-            print(obj["pmid"])
+        if obj['year'] in years:
+            try:
+                ids = obj['pmid']
+                title = obj['title']
+                text = obj['abstractText'].strip()
+                label = obj["meshMajor"]
+                data_point['pmid'] = ids
+                data_point['title'] = title
+                data_point['abstractText'] = text
+                data_point['meshMajor'] = label
+                data_point['meshId'] = from_mesh2id(label, mapping_id)
+                dataset.append(data_point)
+            except AttributeError:
+                print(obj["pmid"])
 
     print('Total number of articles: ', len(dataset))
     print('Finished Loading Data!')
