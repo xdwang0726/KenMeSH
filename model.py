@@ -529,9 +529,9 @@ class Bert_atten_GCN(nn.Module):
         print('pooled', output.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
-        output = self.transform(output)
+        abstract = torch.tanh(self.transform(output))
         print('output', output.shape)
-        abstract_atten = torch.softmax(torch.matmul(output, g_node_feature.transpose(0, 1)), dim=1)
+        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feature.transpose(0, 1)), dim=1)
         print('atten', abstract_atten.shape)
         abstract_content = torch.matmul(output.transpose(1, 2), abstract_atten)
         print('abstract', abstract_content.shape)
