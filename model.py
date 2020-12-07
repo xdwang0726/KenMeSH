@@ -88,16 +88,14 @@ class attenCNN(nn.Module):
         embedded_seq = self.dropout(embedded_seq)
 
         abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
-
-        x_maxpool = F.max_pool1d(abstract_conv, abstract_conv.size(2)).squeeze(2)  # (bs, kernel_sz)
-        print('x_maxpool', x_maxpool.shape)
+        print('x_conv', abstract_conv.shape)
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract = torch.tanh(self.transform(abstract_conv.transpose(1, 2)))  # [bs, (n_words-ks+1), embedding_sz]
-
+        print('abstract', abstract.shape)
         abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
-
+        print('atten', abstract_atten.shape)
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
-
+        print('abstract_after_atten', abstract_content.shape)
         x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2)))
         print('x_feature', x_feature.shape)
         return x_feature
@@ -500,6 +498,57 @@ class Bert_GCN(nn.Module):
 
         x = torch.matmul(pooled_output, label_feature.transpose(0, 1))
         #print('final_feature', x.shape)
+        # x = self.classifier(pooled_output)
+        # x = torch.cat((pooled_output, label_feature.transpose(0, 1)), dim=1)
+        # x = nn.functional.relu(self.linear(x))
+        x = torch.sigmoid(x)
+        return x
+
+
+class Bert_atten_GCN(nn.Module):
+    def __init__(self, config, num_labels, gcn_hidden_gcn_size, embedding_dim=200):
+        super(Bert_atten_GCN, self).__init__()
+
+        self.config = config
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+
+        self.transform = nn.Linear(config.hidden_size, embedding_dim)
+        nn.init.xavier_uniform_(self.transform.weight)
+        nn.init.zeros_(self.transform.bias)
+
+        self.content_final = nn.Linear(self.nKernel * 2, embedding_dim * 2)
+
+        nn.init.xavier_normal_(self.content_final.weight)
+        nn.init.zeros_(self.content_final.bias)
+
+        self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
+
+        self.classifier = nn.Linear(config.hidden_size + embedding_dim * 2, num_labels)
+        self.classifier = nn.Linear(config.hidden_size, num_labels)
+        # self.linear = nn.Linear(embedding_dim * 2, 768)
+
+    def forward(self, input_ids, attention_mask, g, g_node_feature):
+        output, _ = self.bert(input_ids, attention_mask)
+        pooled_output = self.dropout(output)
+        print('pooled', output.shape)
+
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract = torch.tanh(self.transform(output))  # [bs, 512, embedding_sz]
+
+        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feature.transpose(0, 1)), dim=1)
+
+        abstract_content = torch.matmul(output, abstract_atten)
+        print('abstract', abstract_content.shape)
+
+        label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)
+        print('label1', label_feature.shape)
+        # label_feature = self.linear(label_feature)
+        # print('label2', label_feature.shape)
+
+        x = torch.matmul(pooled_output, label_feature.transpose(0, 1))
+        # print('final_feature', x.shape)
         # x = self.classifier(pooled_output)
         # x = torch.cat((pooled_output, label_feature.transpose(0, 1)), dim=1)
         # x = nn.functional.relu(self.linear(x))
