@@ -14,7 +14,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 
-from model import Bert_GCN
+from model import Bert_GCN, Bert_atten_GCN
 from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 from transformers import AutoTokenizer, AutoConfig
@@ -261,7 +261,7 @@ def main():
     # model = Bert_GCN(bert_config, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
 
     # model = Bert_GCN(bert_config, num_nodes)
-    model = Bert_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
+    model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     model.to(device)
     G.to(device)
 
