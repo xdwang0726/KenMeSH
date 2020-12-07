@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--allMesh')
     parser.add_argument('--MeshID')
     parser.add_argument('--train_json')
-    parser.add_argument('--years', type=list, default=['2012', '2013', '2014', '2015', '2016'])
+    parser.add_argument('--years', type=list, default=['2017'])
     args = parser.parse_args()
 
     """ mapping mesh terms to meshIDs """
