@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--allMesh')
     parser.add_argument('--MeshID')
     parser.add_argument('--train_json')
+    parser.add_argument('--years', type=list, default=['2012', '2013', '2014', '2015', '2016'])
     args = parser.parse_args()
 
     """ mapping mesh terms to meshIDs """
@@ -40,11 +41,10 @@ def main():
     objects = ijson.items(f, 'articles.item')
 
     dataset = []
-    years = ['2012', '2013', '2014', '2015', '2016']
 
     for obj in tqdm(objects):
         data_point = {}
-        if obj['year'] in years:
+        if obj['year'] in args.years:
             try:
                 ids = obj['pmid']
                 title = obj['title']
