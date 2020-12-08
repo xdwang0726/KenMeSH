@@ -159,10 +159,10 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
-            output = model(text, G.ndata['feat'])
+            # output = model(text, G.ndata['feat'])
             # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
-            # output = model(text)
+            output = model(text)
             # print train output
             # pred = output.data.cpu().numpy()
             # print('pred_index', pred.argsort()[::-1][:, :10])
@@ -198,8 +198,8 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G.ndata['feat'])
-            # output = model(text)
+            # output = model(text, G.ndata['feat'])
+            output = model(text)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -305,7 +305,8 @@ def main():
     #                  args.atten_dropout, embedding_dim=args.embedding_dim)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model = Baseline(vocab_size, args.nKernel, args.ksz, atten_dropout=0.5, embedding_dim=200)
+    # model = Baseline(vocab_size, args.nKernel, args.ksz, atten_dropout=0.5, embedding_dim=200)
+    model = CNN(vocab_size, args.nKernel, args.ksz, num_nodes, embedding_dim=200)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
