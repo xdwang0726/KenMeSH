@@ -353,15 +353,13 @@ class LabelNet(nn.Module):
 
 
 class Baseline(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.2,
-                 embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, atten_dropout=0.5, embedding_dim=200):
         super(Baseline, self).__init__()
 
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.nKernel = nKernel
         self.ksz = ksz
-        self.add_original_embedding = add_original_embedding
 
         self.dropout = nn.Dropout(atten_dropout)
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
@@ -389,6 +387,7 @@ class Baseline(nn.Module):
         abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
 
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
+        print('abstract_content', abstract_content.shape)
 
         x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2))).squeeze(2)
         print('x_feature', x_feature.shape)

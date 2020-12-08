@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import CNN
+from model import CNN, Baseline
 from utils import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 
@@ -159,10 +159,10 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
-            # output = model(text, G.ndata['feat'])
+            output = model(text, G.ndata['feat'])
             # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
-            output = model(text)
+            # output = model(text)
             # print train output
             # pred = output.data.cpu().numpy()
             # print('pred_index', pred.argsort()[::-1][:, :10])
@@ -198,8 +198,8 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            # output = model(text, G.ndata['feat'])
-            output = model(text)
+            output = model(text, G.ndata['feat'])
+            # output = model(text)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -268,8 +268,8 @@ def main():
     parser.add_argument('--save-model-path')
 
     parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=[3, 4, 5])
+    parser.add_argument('--nKernel', type=int, default=300)
+    parser.add_argument('--ksz', default=10)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
@@ -278,7 +278,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=5e-4)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
@@ -305,8 +305,7 @@ def main():
     #                  args.atten_dropout, embedding_dim=args.embedding_dim)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-
-    model = CNN(vocab_size, args.nKernel, args.ksz, num_nodes, embedding_dim=200)
+    model = Baseline(vocab_size, args.nKernel, args.ksz, atten_dropout=0.5, embedding_dim=200)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
