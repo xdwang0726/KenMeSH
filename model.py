@@ -369,10 +369,13 @@ class Baseline(nn.Module):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        self.content_final = nn.Linear(self.nKernel, 1)
+        self.fc1 = nn.Linear(self.nKernel, 128)
+        nn.init.xavier_normal_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
 
-        nn.init.xavier_normal_(self.content_final.weight)
-        nn.init.zeros_(self.content_final.bias)
+        self.fc2 = nn.Linear(128, 1)
+        nn.init.xavier_normal_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
 
     def forward(self, input_seq, g_node_feat):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -389,8 +392,10 @@ class Baseline(nn.Module):
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
         print('abstract_content', abstract_content.shape)
 
-        x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2))).squeeze(2)
-        print('x_feature', x_feature.shape)
+        x_feature = nn.functional.tanh(self.fc2(abstract_content.transpose(1, 2)))
+        print('fc1', x_feature.shape)
+        x_feature = self.fc2(x_feature).squeeze(2)
+        print('fc2', x_feature.shape)
         x = torch.sigmoid(x_feature)
         return x
 
