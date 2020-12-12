@@ -392,7 +392,7 @@ class Baseline(nn.Module):
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
         print('abstract_content', abstract_content.shape)
 
-        x_feature = nn.functional.tanh(self.fc2(abstract_content.transpose(1, 2)))
+        x_feature = nn.functional.tanh(self.fc1(abstract_content.transpose(1, 2)))
         print('fc1', x_feature.shape)
         x_feature = self.fc2(x_feature).squeeze(2)
         print('fc2', x_feature.shape)
