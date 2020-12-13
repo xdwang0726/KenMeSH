@@ -14,7 +14,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 
-from model import Bert_GCN, Bert_atten_GCN
+from model import Bert_GCN, Bert_atten_GCN, Bert
 from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
 from transformers import AutoTokenizer, AutoConfig
@@ -127,7 +127,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.to(device), attention_mask.to(device), label.to(device)
-            output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            output = model(input_ids, attention_mask, G.ndata['feat'])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -158,7 +159,8 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            output = model(input_ids, attention_mask, G.ndata['feat'])
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -261,7 +263,8 @@ def main():
     # model = Bert_GCN(bert_config, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
 
     # model = Bert_GCN(bert_config, num_nodes)
-    model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
+    # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
+    model = Bert(bert_config, embedding_dim=args.embedding_dim)
     model.to(device)
     G.to(device)
 
