@@ -279,7 +279,7 @@ class Bert(BertPreTrainedModel):
         output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
         print('output', output.shape)
-        output_transform = torch.relu(self.transform(output.transpose(1, 2)))
+        output_transform = torch.relu(self.transform(output))
         print('output_transform', output_transform.shape)
 
         atten = torch.softmax(torch.matmul(output_transform, g_node_feat.transpose(0, 1)), dim=1)
