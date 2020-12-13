@@ -267,11 +267,11 @@ class Bert(BertPreTrainedModel):
         nn.init.xavier_uniform_(self.transform.weight)
         nn.init.zeros_(self.transform.bias)
 
-        self.fc1 = nn.Linear(embedding_dim, 128)
+        self.fc1 = nn.Linear(config.hidden_size, 256)
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
 
-        self.fc2 = nn.Linear(128, 1)
+        self.fc2 = nn.Linear(256, 1)
         nn.init.xavier_normal_(self.fc2.weight)
         nn.init.zeros_(self.fc2.bias)
 
