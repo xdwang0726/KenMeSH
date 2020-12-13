@@ -280,10 +280,10 @@ class Bert(BertPreTrainedModel):
         output = self.dropout(output)
         print('output', output.shape)
         output_transform = torch.relu(self.transform(output))
-        print('output_transform', output_transform.shape)
+        print('output_transform', output_transform.shape)  # [8, 512, 200]
 
         atten = torch.softmax(torch.matmul(output_transform, g_node_feat.transpose(0, 1)), dim=1)
-        content = torch.matmul(output, atten)
+        content = torch.matmul(output.transpose(1, 2), atten)
 
         x_feature = nn.functional.relu(self.fc1(content.transpose(1, 2)))
         x_feature = self.fc2(x_feature).squeeze(2)
