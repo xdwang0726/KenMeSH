@@ -238,43 +238,60 @@ class multichannel_attenCNN(nn.Module):
         return x_feature
 
 
+class MLAttention(nn.Module):
+    """
+    """
+
+    def __init__(self, labels_num, hidden_size):
+        super(MLAttention, self).__init__()
+        self.attention = nn.Linear(hidden_size, labels_num, bias=False)
+        nn.init.xavier_uniform_(self.attention.weight)
+
+    def forward(self, inputs, masks):
+        masks = torch.unsqueeze(masks, 1)  # N, 1, L
+        attention = self.attention(inputs).transpose(1, 2).masked_fill(1.0 - masks, -np.inf)  # N, labels_num, L
+        attention = F.softmax(attention, -1)
+        return attention
+
+
 class Bert(BertPreTrainedModel):
-    def __init__(self, config, embedding_dim=200):
+    def __init__(self, config, num_label):
         super(Bert, self).__init__(config)
         self.bert = BertModel(config)
         self.init_weights()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-        # self.transform = nn.Linear(config.hidden_size, embedding_dim)
-        # nn.init.xavier_uniform_(self.transform.weight)
-        # nn.init.zeros_(self.transform.bias)
+        self.atten = MLAttention(num_label, config.hidden_size)
 
-        self.fc1 = nn.Linear(config.hidden_size, 512)
-        nn.init.xavier_normal_(self.fc1.weight)
-        nn.init.zeros_(self.fc1.bias)
+        # self.fc1 = nn.Linear(config.hidden_size, 512)
+        # nn.init.xavier_normal_(self.fc1.weight)
+        # nn.init.zeros_(self.fc1.bias)
+        #
+        # self.fc2 = nn.Linear(512, 256)
+        # nn.init.xavier_normal_(self.fc2.weight)
+        # nn.init.zeros_(self.fc2.bias)
+        #
+        # self.fc3 = nn.Linear(256, 1)
+        # nn.init.xavier_normal_(self.fc3.weight)
+        # nn.init.zeros_(self.fc3.bias)
 
-        self.fc2 = nn.Linear(512, 256)
-        nn.init.xavier_normal_(self.fc2.weight)
-        nn.init.zeros_(self.fc2.bias)
-
-        self.fc3 = nn.Linear(256, 1)
-        nn.init.xavier_normal_(self.fc3.weight)
-        nn.init.zeros_(self.fc3.bias)
-
-    def forward(self, src_input_ids, src_attention_mask, g_node_feat):
+    def forward(self, src_input_ids, src_attention_mask):
         output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
         # print('output', output.shape)
         # output_transform = torch.relu(self.transform(output))
         # print('output_transform', output_transform.shape)  # [8, 512, 200]
 
-        atten = torch.softmax(torch.matmul(output, g_node_feat.transpose(0, 1)), dim=1)
-        content = torch.matmul(output.transpose(1, 2), atten)
+        # atten = torch.softmax(torch.matmul(output, g_node_feat.transpose(0, 1)), dim=1)
+        # content = torch.matmul(output.transpose(1, 2), atten)
+        #
+        # x_feature = nn.functional.tanh(self.fc1(content.transpose(1, 2)))
+        # x_feature = nn.functional.tanh(self.fc2(x_feature))
+        # x_feature = self.fc3(x_feature).squeeze(2)
+        atten_out = self.atten(output, src_attention_mask)
+        print('atten_out', atten_out.shape)
 
-        x_feature = nn.functional.tanh(self.fc1(content.transpose(1, 2)))
-        x_feature = nn.functional.tanh(self.fc2(x_feature))
-        x_feature = self.fc3(x_feature).squeeze(2)
-        x = torch.sigmoid(x_feature)
+        x = torch.sigmoid(atten_out)
         return x
 
 
@@ -497,9 +514,9 @@ class Bert_atten_GCN(nn.Module):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-        self.transform = nn.Linear(config.hidden_size, embedding_dim)
-        nn.init.xavier_uniform_(self.transform.weight)
-        nn.init.zeros_(self.transform.bias)
+        # self.transform = nn.Linear(config.hidden_size, embedding_dim)
+        # nn.init.xavier_uniform_(self.transform.weight)
+        # nn.init.zeros_(self.transform.bias)
 
         self.content_final = nn.Linear(config.hidden_size, embedding_dim * 2)
         nn.init.xavier_normal_(self.content_final.weight)
