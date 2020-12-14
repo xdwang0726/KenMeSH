@@ -262,7 +262,7 @@ def main():
 
     # model = Bert_GCN(bert_config, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
 
-    model = Bert_GCN(bert_config, num_nodes)
+    model = Bert(bert_config, num_nodes)
     # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
     model.to(device)
