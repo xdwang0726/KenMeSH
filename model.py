@@ -8,24 +8,6 @@ from transformers.modeling_bert import BertPreTrainedModel
 from transformers import BertModel
 
 
-class Embeddings_OOV(torch.nn.Module):
-    def __init__(self, dim, vocab):
-        super().__init__()
-        self.embedding = torch.nn.Embedding(vocab, dim)
-        self.embedding.weight.requires_grad = False
-        # vector for oov
-        self.oov = torch.nn.Parameter(data=torch.rand(1, dim))
-        self.oov_index = -1
-        self.dim = dim
-
-    def forward(self, arr):
-        N = arr.shape[0]
-        mask = (arr == self.oov_index).long()
-        mask_ = mask.unsqueeze(dim=1).float()
-        embed = (1-mask_) * self.embedding((1 - mask) * arr) + mask_ * (self.oov.expand((N, self.dim)))
-        return embed
-
-
 class CNN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, num_class, embedding_dim=200):
         super(CNN, self).__init__()
@@ -267,13 +249,17 @@ class Bert(BertPreTrainedModel):
         # nn.init.xavier_uniform_(self.transform.weight)
         # nn.init.zeros_(self.transform.bias)
 
-        self.fc1 = nn.Linear(config.hidden_size, 300)
+        self.fc1 = nn.Linear(config.hidden_size, 512)
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
 
-        self.fc2 = nn.Linear(300, 1)
+        self.fc2 = nn.Linear(512, 256)
         nn.init.xavier_normal_(self.fc2.weight)
         nn.init.zeros_(self.fc2.bias)
+
+        self.fc3 = nn.Linear(256, 1)
+        nn.init.xavier_normal_(self.fc3.weight)
+        nn.init.zeros_(self.fc3.bias)
 
     def forward(self, src_input_ids, src_attention_mask, g_node_feat):
         output, _ = self.bert(src_input_ids, src_attention_mask)
@@ -286,7 +272,8 @@ class Bert(BertPreTrainedModel):
         content = torch.matmul(output.transpose(1, 2), atten)
 
         x_feature = nn.functional.tanh(self.fc1(content.transpose(1, 2)))
-        x_feature = self.fc2(x_feature).squeeze(2)
+        x_feature = nn.functional.tanh(self.fc2(x_feature))
+        x_feature = self.fc3(x_feature).squeeze(2)
         x = torch.sigmoid(x_feature)
         return x
 
