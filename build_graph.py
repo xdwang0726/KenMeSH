@@ -60,6 +60,7 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
         key_embedding = torch.mean(input=key_embedding, dim=0, keepdim=True)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
+
     # for key, value in mapping_id.items():
     #     embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=200)
     #     key = tokenize(key)
@@ -76,6 +77,48 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
     #     embedded_key = embedding(torch.LongTensor(key_seq))  # size: (seq_len, embedding_sz)
     #     embedding = torch.mean(input=embedded_key, dim=0, keepdim=True)
     #     label_embedding = torch.cat((label_embedding, embedding), dim=0)
+    return edges, node_count, label_embedding
+
+
+def get_edge_and_bert_node_fatures(MeSH_id_pair_file, parent_children_file, tokenizer, model):
+    """
+
+    :param file:
+    :return: edge:          a list of nodes pairs [(node1, node2), (node3, node4), ...] (39904 relations)
+             node_count:    int, number of nodes in the graph
+             node_features: a Tensor with size [num_of_nodes, embedding_dim]
+
+    """
+    print('load MeSH id and names')
+    # get descriptor and MeSH mapped
+    mapping_id = {}
+    with open(MeSH_id_pair_file, 'r') as f:
+        for line in f:
+            (key, value) = line.split('=')
+            mapping_id[key] = value.strip()
+
+    # count number of nodes and get edges
+    print('count number of nodes and get edges of the graph')
+    node_count = len(mapping_id)
+    values = list(mapping_id.values())
+    edges = []
+    with open(parent_children_file, 'r') as f:
+        for line in f:
+            item = tuple(line.strip().split(" "))
+            index_item = (values.index(item[0]), values.index(item[1]))
+            edges.append(index_item)
+
+    print('get label embeddings')
+    label_embedding = torch.zeros(0)
+    for key, value in tqdm(mapping_id.items()):
+        key_encoding = tokenizer.encode_plus(key,
+                                             add_special_tokens=True,
+                                             return_token_type_ids=False,
+                                             pad_to_max_length=False,
+                                             return_attention_mask=True)
+        _, key_embedding = model(key_encoding['input_ids'], src_attention_mask=key_encoding['attention_mask'])
+        print('embedding_sz', key_embedding.shape)
+        label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
     return edges, node_count, label_embedding
 
 

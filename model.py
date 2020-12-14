@@ -276,7 +276,7 @@ class Bert(BertPreTrainedModel):
         nn.init.zeros_(self.fc2.bias)
 
     def forward(self, src_input_ids, src_attention_mask, g_node_feat):
-        output, _ = self.bert(src_input_ids, src_attention_mask=src_attention_mask)
+        output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
         # print('output', output.shape)
         # output_transform = torch.relu(self.transform(output))
