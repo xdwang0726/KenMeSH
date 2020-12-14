@@ -484,7 +484,7 @@ class Bert_GCN(nn.Module):
         # label_feature = self.linear(label_feature)
         # print('label2', label_feature.shape)
 
-        x = torch.matmul(x_feature, label_feature.transpose((0, 1)))
+        x = torch.matmul(x_feature, label_feature.transpose(0, 1))
         x = torch.sigmoid(x)
         return x
 
