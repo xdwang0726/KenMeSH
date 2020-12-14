@@ -263,29 +263,29 @@ class Bert(BertPreTrainedModel):
         self.init_weights()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-        self.transform = nn.Linear(config.hidden_size, embedding_dim)
-        nn.init.xavier_uniform_(self.transform.weight)
-        nn.init.zeros_(self.transform.bias)
+        # self.transform = nn.Linear(config.hidden_size, embedding_dim)
+        # nn.init.xavier_uniform_(self.transform.weight)
+        # nn.init.zeros_(self.transform.bias)
 
-        self.fc1 = nn.Linear(config.hidden_size, 256)
+        self.fc1 = nn.Linear(config.hidden_size, 300)
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
 
-        self.fc2 = nn.Linear(256, 1)
+        self.fc2 = nn.Linear(300, 1)
         nn.init.xavier_normal_(self.fc2.weight)
         nn.init.zeros_(self.fc2.bias)
 
     def forward(self, src_input_ids, src_attention_mask, g_node_feat):
-        output, _ = self.bert(src_input_ids, src_attention_mask)
+        output, _ = self.bert(src_input_ids, src_attention_mask=src_attention_mask)
         output = self.dropout(output)
         # print('output', output.shape)
-        output_transform = torch.relu(self.transform(output))
+        # output_transform = torch.relu(self.transform(output))
         # print('output_transform', output_transform.shape)  # [8, 512, 200]
 
-        atten = torch.softmax(torch.matmul(output_transform, g_node_feat.transpose(0, 1)), dim=1)
+        atten = torch.softmax(torch.matmul(output, g_node_feat.transpose(0, 1)), dim=1)
         content = torch.matmul(output.transpose(1, 2), atten)
 
-        x_feature = nn.functional.relu(self.fc1(content.transpose(1, 2)))
+        x_feature = nn.functional.tanh(self.fc1(content.transpose(1, 2)))
         x_feature = self.fc2(x_feature).squeeze(2)
         x = torch.sigmoid(x_feature)
         return x
@@ -370,9 +370,6 @@ class Baseline(nn.Module):
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
         self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
-        # self.transform = nn.Linear(nKernel, embedding_dim)
-        # nn.init.xavier_uniform_(self.transform.weight)
-        # nn.init.zeros_(self.transform.bias)
 
         self.fc1 = nn.Linear(self.nKernel, 128)
         nn.init.xavier_normal_(self.fc1.weight)
@@ -387,12 +384,12 @@ class Baseline(nn.Module):
         embedded_seq = embedded_seq.unsqueeze(1)
         embedded_seq = self.dropout(embedded_seq)
 
-        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
+        abstract_conv = self.conv(embedded_seq).squeeze(3)  # [bs, (n_words-ks+1), embedding_sz]
 
         # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract = torch.tanh(abstract_conv.transpose(1, 2))  # [bs, (n_words-ks+1), embedding_sz]
+        # abstract = torch.tanh(abstract_conv.transpose(1, 2))  # [bs, (n_words-ks+1), embedding_sz] with/without tanh
 
-        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
 
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
         print('abstract_content', abstract_content.shape)
