@@ -288,7 +288,7 @@ def main():
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     # model = Baseline(vocab_size, args.nKernel, args.ksz, atten_dropout=0.5, embedding_dim=200)
     model = CNN(vocab_size, args.nKernel, args.ksz, num_nodes, embedding_dim=200)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G.to(device)
