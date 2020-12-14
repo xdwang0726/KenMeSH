@@ -8,6 +8,31 @@ from transformers import BertModel
 from transformers.modeling_bert import BertPreTrainedModel
 
 
+class Embedding(nn.Module):
+    """
+    """
+
+    def __init__(self, vocab_size=None, emb_size=None, emb_init=None, emb_trainable=True, padding_idx=0, dropout=0.2):
+        super(Embedding, self).__init__()
+        if emb_init is not None:
+            if vocab_size is not None:
+                assert vocab_size == emb_init.shape[0]
+            if emb_size is not None:
+                assert emb_size == emb_init.shape[1]
+            vocab_size, emb_size = emb_init.shape
+        self.emb = nn.Embedding(vocab_size, emb_size, padding_idx=padding_idx, sparse=True,
+                                _weight=torch.from_numpy(emb_init).float() if emb_init is not None else None)
+        self.emb.weight.requires_grad = emb_trainable
+        self.dropout = nn.Dropout(dropout)
+        self.padding_idx = padding_idx
+
+    def forward(self, inputs):
+        emb_out = self.dropout(self.emb(inputs))
+        lengths, masks = (inputs != self.padding_idx).sum(dim=-1), inputs != self.padding_idx
+        print('masks', type(masks), masks, masks.shape)
+        return emb_out[:, :lengths.max()], lengths, masks[:, :lengths.max()]
+
+
 class CNN(nn.Module):
     def __init__(self, vocab_size, nKernel, ksz, num_class, embedding_dim=200):
         super(CNN, self).__init__()
@@ -17,7 +42,7 @@ class CNN(nn.Module):
         self.nKernel = nKernel
         self.ksz = ksz
 
-        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+        self.embedding_layer = Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
 
         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 
@@ -26,8 +51,8 @@ class CNN(nn.Module):
         self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
 
     def forward(self, input_seq):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-
+        embedded_seq, _, masks = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        print('mask1', masks.shape, masks)
         embedded_seq = embedded_seq.unsqueeze(1)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
