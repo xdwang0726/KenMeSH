@@ -42,7 +42,8 @@ class CNN(nn.Module):
         self.nKernel = nKernel
         self.ksz = ksz
 
-        self.embedding_layer = Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+        # self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+        self.embedding_layer = Embedding(vocab_size=vocab_size, emb_size=embedding_dim)
 
         self.convs = nn.ModuleList([nn.Conv2d(1, nKernel, (k, embedding_dim)) for k in ksz])
 
