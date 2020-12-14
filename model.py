@@ -1,11 +1,11 @@
 import dgl.function as fn
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
-
-from transformers.modeling_bert import BertPreTrainedModel
 from transformers import BertModel
+from transformers.modeling_bert import BertPreTrainedModel
 
 
 class CNN(nn.Module):
@@ -249,7 +249,7 @@ class MLAttention(nn.Module):
 
     def forward(self, inputs, masks):
         masks = torch.unsqueeze(masks, 1)  # N, 1, L
-        attention = self.attention(inputs).transpose(1, 2).masked_fill(1.0 - masks, -np.inf)  # N, labels_num, L
+        attention = self.attention(inputs).transpose(1, 2).masked_fill(1.0 - masks, -(np.inf))  # N, labels_num, L
         attention = F.softmax(attention, -1)
         return attention
 
