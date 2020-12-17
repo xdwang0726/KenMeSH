@@ -139,8 +139,10 @@ class bert_MeSHDataset(torch.utils.data.Dataset):
             pad_to_max_length=False,
             return_attention_mask=True
         )
+        lengths = (encoding['input_ids'] != self.tokenizer.pad_token_id).sum(dim=-1)
+        masks = encoding['input_ids'] != self.tokenizer.pad_token_id
         return {'input_ids': encoding['input_ids'], 'attention_mask': encoding['attention_mask'],
-                'label': self.labels[item]}
+                'label': self.labels[item], 'masks': masks[:, :lengths.max()]}
 
 
 def bert_MeSH(train_text, train_labels, test_text, test_labels, tokenizer, max_len):

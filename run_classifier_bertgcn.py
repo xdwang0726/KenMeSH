@@ -113,7 +113,9 @@ def generate_batch(batch):
     attention_mask = [torch.tensor(entry['attention_mask']) for entry in batch]
     attention_mask = pad_sequence(attention_mask, batch_first=True)
     label = [entry['label'] for entry in batch]
-    return input_ids, attention_mask, label
+    masks = [torch.tensor(entry['masks']) for entry in batch]
+    masks = pad_sequence(masks, batch_first=True)
+    return input_ids, attention_mask, label, masks
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
@@ -124,12 +126,13 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     print("Training....")
     for epoch in range(num_epochs):
         for i, data in enumerate(train_data):
-            input_ids, attention_mask, label = data
+            input_ids, attention_mask, label, masks = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            input_ids, attention_mask, label = input_ids.to(device), attention_mask.to(device), label.to(device)
+            input_ids, attention_mask, label, masks = input_ids.to(device), attention_mask.to(device), label.to(
+                device), masks.to(device)
             # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            output = model(input_ids, attention_mask)
+            output = model(input_ids, attention_mask, masks)
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -154,15 +157,15 @@ def test(test_dataset, model, G, batch_sz, device):
     ori_label = []
     print('Testing....')
     for data in test_data:
-        input_ids, attention_mask, label = data
-        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+        input_ids, attention_mask, label, masks = data
+        input_ids, attention_mask, masks = input_ids.to(device), attention_mask.to(device), masks.to(device)
         print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            output = model(input_ids, attention_mask)
+            output = model(input_ids, attention_mask, masks)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
