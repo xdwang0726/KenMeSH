@@ -275,7 +275,8 @@ class MLAttention(nn.Module):
 
     def forward(self, inputs, masks):
         masks = torch.unsqueeze(masks, 1)  # N, 1, L
-        attention = self.attention(inputs).transpose(1, 2).masked_fill((1 - masks.bool()), -np.inf)  # N, labels_num, L
+        masks = 1 - masks
+        attention = self.attention(inputs).transpose(1, 2).masked_fill(masks, -np.inf)  # N, labels_num, L
         attention = F.softmax(attention, -1)
         return attention
 
