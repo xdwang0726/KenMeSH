@@ -113,9 +113,7 @@ def generate_batch(batch):
     attention_mask = [torch.tensor(entry['attention_mask']) for entry in batch]
     attention_mask = pad_sequence(attention_mask, batch_first=True)
     label = [entry['label'] for entry in batch]
-    masks = [torch.tensor(entry['masks']) for entry in batch]
-    masks = pad_sequence(masks, batch_first=True)
-    return input_ids, attention_mask, label, masks
+    return input_ids, attention_mask, label
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
