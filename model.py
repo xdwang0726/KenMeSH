@@ -301,7 +301,7 @@ class Bert(BertPreTrainedModel):
         # nn.init.xavier_normal_(self.fc3.weight)
         # nn.init.zeros_(self.fc3.bias)
 
-    def forward(self, src_input_ids, src_attention_mask, masks):
+    def forward(self, src_input_ids, src_attention_mask):
         output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
         # print('output', output.shape)
@@ -314,7 +314,7 @@ class Bert(BertPreTrainedModel):
         # x_feature = nn.functional.tanh(self.fc1(content.transpose(1, 2)))
         # x_feature = nn.functional.tanh(self.fc2(x_feature))
         # x_feature = self.fc3(x_feature).squeeze(2)
-        atten_out = self.atten(output, masks)
+        atten_out = self.atten(output, src_attention_mask)
         print('atten_out', atten_out.shape)
 
         x = torch.sigmoid(atten_out)
