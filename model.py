@@ -274,10 +274,14 @@ class MLAttention(nn.Module):
         nn.init.xavier_uniform_(self.attention.weight)
 
     def forward(self, inputs, masks):
+        print('mask_ori', masks.shape)
         masks = torch.unsqueeze(masks, 1)  # N, 1, L
+        print('mask_2', masks.shape)
         masks = 1 - masks
         attention = self.attention(inputs).transpose(1, 2).masked_fill_(masks.bool(), -np.inf)  # N, labels_num, L
+        print('atten', attention.shape)
         attention = F.softmax(attention, -1)
+        print('atten2', attention.shape)
         return attention
 
 
@@ -305,7 +309,7 @@ class Bert(BertPreTrainedModel):
     def forward(self, src_input_ids, src_attention_mask):
         output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
-        # print('output', output.shape)
+        print('output', output.shape)
         # output_transform = torch.relu(self.transform(output))
         # print('output_transform', output_transform.shape)  # [8, 512, 200]
 
