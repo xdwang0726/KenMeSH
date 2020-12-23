@@ -274,15 +274,12 @@ class MLAttention(nn.Module):
         nn.init.xavier_uniform_(self.attention.weight)
 
     def forward(self, inputs, masks):
-        print('mask_ori', masks.shape)
         masks = torch.unsqueeze(masks, 1)  # N, 1, L
-        print('mask_2', masks.shape)
         masks = 1 - masks
-        attention = self.attention(inputs).transpose(1, 2).masked_fill_(masks.bool(), -np.inf)  # N, labels_num, L
-        print('atten', attention.shape)
+        attention = self.attention(inputs).transpose(1, 2).masked_fill_(masks.bool(), -np.inf)  # [bz,num_label,seq_len]
         attention = F.softmax(attention, -1)
-        print('atten2', attention.shape)
-        return attention
+        x = torch.matmul(attention, inputs)  # [bz, num_label, hidden_sz]
+        return x
 
 
 class Bert(BertPreTrainedModel):
@@ -294,17 +291,17 @@ class Bert(BertPreTrainedModel):
 
         self.atten = MLAttention(num_label, config.hidden_size)
 
-        # self.fc1 = nn.Linear(config.hidden_size, 512)
-        # nn.init.xavier_normal_(self.fc1.weight)
-        # nn.init.zeros_(self.fc1.bias)
-        #
-        # self.fc2 = nn.Linear(512, 256)
-        # nn.init.xavier_normal_(self.fc2.weight)
-        # nn.init.zeros_(self.fc2.bias)
-        #
-        # self.fc3 = nn.Linear(256, 1)
-        # nn.init.xavier_normal_(self.fc3.weight)
-        # nn.init.zeros_(self.fc3.bias)
+        self.fc1 = nn.Linear(config.hidden_size, 512)
+        nn.init.xavier_normal_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
+
+        self.fc2 = nn.Linear(512, 256)
+        nn.init.xavier_normal_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
+
+        self.fc3 = nn.Linear(256, 1)
+        nn.init.xavier_normal_(self.fc3.weight)
+        nn.init.zeros_(self.fc3.bias)
 
     def forward(self, src_input_ids, src_attention_mask):
         output, _ = self.bert(src_input_ids, src_attention_mask)
@@ -316,13 +313,15 @@ class Bert(BertPreTrainedModel):
         # atten = torch.softmax(torch.matmul(output, g_node_feat.transpose(0, 1)), dim=1)
         # content = torch.matmul(output.transpose(1, 2), atten)
         #
-        # x_feature = nn.functional.tanh(self.fc1(content.transpose(1, 2)))
-        # x_feature = nn.functional.tanh(self.fc2(x_feature))
-        # x_feature = self.fc3(x_feature).squeeze(2)
+
         atten_out = self.atten(output, src_attention_mask)
         print('atten_out', atten_out.shape)
 
-        x = torch.sigmoid(atten_out)
+        x_feature = nn.functional.tanh(self.fc1(atten_out))
+        x_feature = nn.functional.tanh(self.fc2(x_feature))
+        x_feature = self.fc3(x_feature).squeeze(2)
+
+        x = torch.sigmoid(x_feature)
         return x
 
 
