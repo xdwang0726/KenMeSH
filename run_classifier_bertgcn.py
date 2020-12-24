@@ -126,7 +126,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         for i, data in enumerate(train_data):
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            input_ids, attention_mask, label = input_ids.to(device), attention_mask.to(device), label.to(device)
+            input_ids, attention_mask, label = input_ids.cuda(), attention_mask.cuda(), label.cuda()
             # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
             output = model(input_ids, attention_mask)
@@ -151,12 +151,12 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
 def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
-    pred = torch.zeros(0).to(device)
+    pred = torch.zeros(0).cuda()
     ori_label = []
     print('Testing....')
     for data in test_data:
         input_ids, attention_mask, label = data
-        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+        input_ids, attention_mask = input_ids.cuda(), attention_mask.cuda()
         print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
@@ -268,7 +268,7 @@ def main():
     model = Bert(bert_config, num_nodes)
     # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
-    model.to(device)
+    model = nn.DataParallel(model.cuda(), device_ids=device)
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
