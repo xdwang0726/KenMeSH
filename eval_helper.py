@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 from scipy.sparse import issparse
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 
 def intersection(lst1, lst2):
@@ -74,40 +75,50 @@ def micro_f1(MiP, MiR):
     return MiF
 
 
-def perf_measure(y_actual, y_hat):
-    TP_total = []
-    FP_total = []
-    TN_total = []
-    FN_total = []
+# def perf_measure(y_actual, y_hat):
+#     TP_total = []
+#     FP_total = []
+#     TN_total = []
+#     FN_total = []
+#
+#     for i in range(y_actual.shape[1]):
+#         TP = 1
+#         FP = 1
+#         TN = 1
+#         FN = 1
+#
+#         for j in range(y_actual.shape[0]):
+#             if y_actual[j, i] == y_hat[j, i] == 1:
+#                 TP += 1
+#             if y_hat[j, i] == 1 and y_actual[j, i] != y_hat[j, i]:
+#                 FP += 1
+#             if y_actual[j, i] == y_hat[j, i] == 0:
+#                 TN += 1
+#             if y_hat[j, i] == 0 and y_actual[j, i] != y_hat[j, i]:
+#                 FN += 1
+#         TP_total.append(TP)
+#         FP_total.append(FP)
+#         TN_total.append(TN)
+#         FN_total.append(FN)
+#
+#     MaP = macro_precision(TP_total, FP_total)
+#     MiP = micro_precision(TP_total, FP_total)
+#     MaR = macro_recall(TP_total, FN_total)
+#     MiR = micro_recall(TP_total, FN_total)
+#     MaF = macro_f1(MaP, MaR)
+#     MiF = micro_f1(MiP, MiR)
+#
+#     result = [round(MaP, 5), round(MiP, 5), round(MaF, 5), round(MiF, 5)]
+#     return result
+def micro_macro_eval(y_actual, y_hat):
+    MaP = precision_score(y_actual, y_hat, average='macro')
+    MiP = precision_score(y_actual, y_hat, average='micro')
+    MaR = recall_score(y_actual, y_hat, average='macro')
+    MiR = recall_score(y_actual, y_hat, average='micro')
+    MaF = f1_score(y_actual, y_hat, average='macro')
+    MiF = f1_score(y_actual, y_hat, average='micro')
 
-    for i in range(y_actual.shape[1]):
-        TP = 1
-        FP = 1
-        TN = 1
-        FN = 1
-
-        for j in range(y_actual.shape[0]):
-            if y_actual[j, i] == y_hat[j, i] == 1:
-                TP += 1
-            if y_hat[j, i] == 1 and y_actual[j, i] != y_hat[j, i]:
-                FP += 1
-            if y_actual[j, i] == y_hat[j, i] == 0:
-                TN += 1
-            if y_hat[j, i] == 0 and y_actual[j, i] != y_hat[j, i]:
-                FN += 1
-        TP_total.append(TP)
-        FP_total.append(FP)
-        TN_total.append(TN)
-        FN_total.append(FN)
-
-    MaP = macro_precision(TP_total, FP_total)
-    MiP = micro_precision(TP_total, FP_total)
-    MaR = macro_recall(TP_total, FN_total)
-    MiR = micro_recall(TP_total, FN_total)
-    MaF = macro_f1(MaP, MaR)
-    MiF = micro_f1(MiP, MiR)
-
-    result = [round(MaP, 5), round(MiP, 5), round(MaF, 5), round(MiF, 5)]
+    result = [round(MaP, 5), round(MiP, 5), round(MaR, 5), round(MiR, 5), round(MaF, 5), round(MiF, 5)]
     return result
 
 
@@ -161,3 +172,5 @@ def example_based_evaluation(y_actual, y_hat):
     EBF = example_based_fscore(num_common_label, y_actual, y_hat)
     result = [round(EBP, 5), round(EBR, 5), round(EBF, 5)]
     return result
+
+# def evalution(y_actual, y_hat):

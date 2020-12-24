@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from model import Bert_GCN, Bert_atten_GCN, Bert
 from utils import bert_MeSH
-from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from transformers import AutoTokenizer, AutoConfig
 import transformers
 
@@ -35,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 3000:
+        if i <= 1000000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -237,7 +237,7 @@ def main():
     parser.add_argument('--biobert', type=str)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=16)
+    parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-5)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -268,7 +268,7 @@ def main():
     model = Bert(bert_config, num_nodes)
     # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
-    model = nn.DataParallel(model.cuda(), device_ids=[0, 1])
+    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -317,8 +317,8 @@ def main():
         print(em, ",")
 
     # label based evaluation
-    label_measure_5 = perf_measure(test_label_transform, top_5_pred)
-    print("MaP@5, MiP@5, MaF@5, MiF@5: ")
+    label_measure_5 = micro_macro_eval(test_label_transform, top_5_pred)
+    print("MaP@5, MiP@5, MaR@5, MiR@5, MaF@5, MiF@5: ")
     for measure in label_measure_5:
         print(measure, ",")
 

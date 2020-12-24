@@ -306,7 +306,7 @@ class Bert(BertPreTrainedModel):
     def forward(self, src_input_ids, src_attention_mask):
         output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
-        print('output', output.shape)
+        # print('output', output.shape)
         # output_transform = torch.relu(self.transform(output))
         # print('output_transform', output_transform.shape)  # [8, 512, 200]
 
@@ -315,7 +315,7 @@ class Bert(BertPreTrainedModel):
         #
 
         atten_out = self.atten(output, src_attention_mask)
-        print('atten_out', atten_out.shape)
+        # print('atten_out', atten_out.shape)
 
         x_feature = nn.functional.tanh(self.fc1(atten_out))
         x_feature = nn.functional.tanh(self.fc2(x_feature))
