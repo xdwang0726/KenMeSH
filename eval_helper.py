@@ -173,4 +173,6 @@ def example_based_evaluation(y_actual, y_hat):
     result = [round(EBP, 5), round(EBR, 5), round(EBF, 5)]
     return result
 
-# def evalution(y_actual, y_hat):
+
+def evalution(pred, true_label):
+    return
