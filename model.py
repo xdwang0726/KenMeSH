@@ -528,7 +528,7 @@ class Bert_GCN(nn.Module):
         # label_feature = self.linear(label_feature)
         print('label2', label_feature.shape)
 
-        x = torch.sum(x_feature * label_feature, dim=2)
+        x = torch.sum(torch.matmul(x_feature, label_feature), dim=2)
         x = torch.sigmoid(x)
         return x
 
