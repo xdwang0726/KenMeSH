@@ -466,9 +466,11 @@ class MeSH_GCN(nn.Module):
         print('x_feat', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
-
+        print('label1', label_feature.shape)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        print('label2', label_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
+
         x = torch.sigmoid(x)
         return x
 
