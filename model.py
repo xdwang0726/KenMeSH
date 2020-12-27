@@ -463,6 +463,7 @@ class MeSH_GCN(nn.Module):
 
     def forward(self, input_seq, g, g_node_feature):
         x_feature = self.content_feature(input_seq, g_node_feature)
+        print('x_feat', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
 
