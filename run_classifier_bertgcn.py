@@ -268,7 +268,7 @@ def main():
     # model = Bert(bert_config, num_nodes)
     # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
-    model = nn.DataParallel(model.cuda(), device_ids=[0, 1])
+    # model = nn.DataParallel(model.cuda(), device_ids=[0, 1])
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
