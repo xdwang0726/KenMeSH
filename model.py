@@ -523,13 +523,13 @@ class Bert_GCN(nn.Module):
         output = self.dropout(output)
 
         atten_out = self.atten(output, attention_mask)  # [bz, num_label, hidden_sz] [8, 29368, 768]
-        print('atten', atten_out.shape)
+        # print('atten', atten_out.shape)
         x_feature = torch.tanh(self.linear(atten_out))  # [bz, bert_hidden_sz * 2] (8, 768 *2)
-        print('x', x_feature.shape)
+        #print('x', x_feature.shape)
         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
         # label_feature = self.linear(label_feature)
-        print('label2', label_feature.shape)
+        #print('label2', label_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
