@@ -306,16 +306,8 @@ class Bert(BertPreTrainedModel):
     def forward(self, src_input_ids, src_attention_mask):
         output, _ = self.bert(src_input_ids, src_attention_mask)
         output = self.dropout(output)
-        # print('output', output.shape)
-        # output_transform = torch.relu(self.transform(output))
-        # print('output_transform', output_transform.shape)  # [8, 512, 200]
 
-        # atten = torch.softmax(torch.matmul(output, g_node_feat.transpose(0, 1)), dim=1)
-        # content = torch.matmul(output.transpose(1, 2), atten)
-        #
-
-        atten_out = self.atten(output, src_attention_mask)
-        # print('atten_out', atten_out.shape)
+        atten_out = self.atten(output, src_attention_mask)  # [bz, num_label, hidden_sz]
 
         x_feature = nn.functional.tanh(self.fc1(atten_out))
         x_feature = nn.functional.tanh(self.fc2(x_feature))
@@ -511,27 +503,32 @@ class MeSH_GCN_Multi(nn.Module):
 
 
 class Bert_GCN(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, num_label):
         super(Bert_GCN, self).__init__()
 
         self.config = config
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
+        self.atten = MLAttention(num_label, config.hidden_size)
+
         self.linear = nn.Linear(config.hidden_size, config.hidden_size * 2)
         self.gcn = LabelNet(config.hidden_size, config.hidden_size, config.hidden_size)
 
     def forward(self, input_ids, attention_mask, g, g_node_feature):
-        _, pooled_output = self.bert(input_ids, attention_mask)
-        pooled_output = self.dropout(pooled_output)
-        x_feature = nn.functional.tanh(self.linear(pooled_output.squeeze(1)))  # [bz, bert_hidden_sz * 2] (8, 768 *2)
+        output, _ = self.bert(input_ids, attention_mask)
+        output = self.dropout(output)
+
+        atten_out = self.atten(output, attention_mask)  # [bz, num_label, hidden_sz] [8, 29368, 768]
+
+        x_feature = nn.functional.tanh(self.linear(atten_out))  # [bz, bert_hidden_sz * 2] (8, 768 *2)
 
         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
         # label_feature = self.linear(label_feature)
         # print('label2', label_feature.shape)
 
-        x = torch.matmul(x_feature, label_feature.transpose(0, 1))
+        x = torch.sum(x_feature * label_feature.transpose(0, 1), dim=2)
         x = torch.sigmoid(x)
         return x
 
