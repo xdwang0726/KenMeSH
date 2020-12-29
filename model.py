@@ -8,10 +8,10 @@ from transformers import BertModel
 from transformers.modeling_bert import BertPreTrainedModel
 
 
+########## Embedding ##########
 class Embedding(nn.Module):
     """
     """
-
     def __init__(self, vocab_size=None, emb_size=None, emb_init=None, emb_trainable=True, padding_idx=0, dropout=0.2):
         super(Embedding, self).__init__()
         if emb_init is not None:
@@ -28,14 +28,17 @@ class Embedding(nn.Module):
 
     def forward(self, inputs):
         emb_out = self.dropout(self.emb(inputs))
-        lengths, masks = (inputs != self.padding_idx).sum(dim=-1), inputs != self.padding_idx
-        print('masks', type(masks), masks, masks.shape)
-        return emb_out[:, :lengths.max()], lengths, masks[:, :lengths.max()]
+        # lengths, masks = (inputs != self.padding_idx).sum(dim=-1), inputs != self.padding_idx
+        return emb_out  # emb_out[:, :lengths.max()], lengths, masks[:, :lengths.max()]
 
 
-class CNN(nn.Module):
+########## CNN ###########
+class CNN_Baseline(nn.Module):
+    """
+    CNN baseline with 3 kernel size
+    """
     def __init__(self, vocab_size, nKernel, ksz, num_class, embedding_dim=200):
-        super(CNN, self).__init__()
+        super(CNN_Baseline, self).__init__()
 
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
@@ -52,8 +55,7 @@ class CNN(nn.Module):
         self.fc = nn.Linear(len(self.ksz) * self.nKernel, num_class)
 
     def forward(self, input_seq):
-        embedded_seq, _, masks = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        print('mask1', masks.shape, masks)
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         embedded_seq = embedded_seq.unsqueeze(1)
         x_conv = [F.relu(conv(embedded_seq)).squeeze(3) for conv in self.convs]  # len(Ks) * (bs, kernel_sz, seq_len)
         x_maxpool = [F.max_pool1d(line, line.size(2)).squeeze(2) for line in x_conv]  # len(Ks) * (bs, kernel_sz)
@@ -65,8 +67,53 @@ class CNN(nn.Module):
         return x
 
 
-# attention CNN with one kernel size
+class Baseline(nn.Module):
+    """
+    cnn with label-wise attention
+    """
+
+    def __init__(self, vocab_size, nKernel, ksz, atten_dropout=0.5, embedding_dim=200):
+        super(Baseline, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.nKernel = nKernel
+        self.ksz = ksz
+
+        self.dropout = nn.Dropout(atten_dropout)
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+
+        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
+
+        self.fc1 = nn.Linear(self.nKernel, 128)
+        nn.init.xavier_normal_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
+
+        self.fc2 = nn.Linear(128, 1)
+        nn.init.xavier_normal_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
+
+    def forward(self, input_seq, g_node_feat):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = embedded_seq.unsqueeze(1)
+        embedded_seq = self.dropout(embedded_seq)
+
+        abstract_conv = self.conv(embedded_seq).squeeze(3)  # [bs, (n_words-ks+1), embedding_sz]
+
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)
+
+        x_feature = nn.functional.tanh(self.fc1(abstract_content.transpose(1, 2)))
+        x_feature = self.fc2(x_feature).squeeze(2)
+        x = torch.sigmoid(x_feature)
+        return x
+
+
 class attenCNN(nn.Module):
+    """
+    label-wise attention CNN with one kernel size
+    """
     def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.5, embedding_dim=200):
         super(attenCNN, self).__init__()
 
@@ -81,10 +128,6 @@ class attenCNN(nn.Module):
 
         self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
 
-        # self.transform = nn.Linear(nKernel, embedding_dim)
-        # nn.init.xavier_uniform_(self.transform.weight)
-        # nn.init.zeros_(self.transform.bias)
-
         self.content_final = nn.Linear(self.nKernel, embedding_dim * 2)
 
         nn.init.xavier_normal_(self.content_final.weight)
@@ -95,22 +138,69 @@ class attenCNN(nn.Module):
         embedded_seq = embedded_seq.unsqueeze(1)
         embedded_seq = self.dropout(embedded_seq)
 
-        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
-        print('x_conv', abstract_conv.shape)
+        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # [bs, (n_words-ks+1), embedding_sz]
+
         # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract = torch.tanh(abstract_conv.transpose(1, 2))  # [bs, (n_words-ks+1), embedding_sz]
-        print('abstract', abstract.shape)
-        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
-        print('atten', abstract_atten.shape)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
         abstract_content = torch.matmul(abstract_conv, abstract_atten)
-        print('abstract_after_atten', abstract_content.shape)
-        x_feature = nn.functional.relu(self.content_final(abstract_content.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
+
+        x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2)))
         return x_feature
 
 
-# attention CNN with multiple kernel size
+class multichannel_attenCNN(nn.Module):
+    """
+    multichannel attention CNN with one kernel size
+    """
+
+    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.5, embedding_dim=200):
+        super(multichannel_attenCNN, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.nKernel = nKernel
+        self.ksz = ksz
+        self.add_original_embedding = add_original_embedding
+        self.dropout = nn.Dropout(atten_dropout)
+
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
+
+        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
+
+        self.content_final = nn.Linear(self.nKernel * 2, embedding_dim * 2)
+
+        nn.init.xavier_normal_(self.content_final.weight)
+        nn.init.zeros_(self.content_final.bias)
+
+    def forward(self, input_seq, input_title, g_node_feat):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = embedded_seq.unsqueeze(1)
+        embedded_seq = self.dropout(embedded_seq)
+
+        embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
+        embedded_title = embedded_title.unsqueeze(1)
+        embedded_title = self.dropout(embedded_title)
+
+        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # [bs, (n_words-ks+1), embedding_sz]
+        title_conv = F.relu(self.conv(embedded_title)).squeeze(3)
+
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
+        title_atten = torch.softmax(torch.matmul(title_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
+
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)
+        title_content = torch.matmul(title_conv, title_atten)
+
+        content_concat = torch.cat((abstract_content, title_content), dim=1)
+
+        x_feature = nn.functional.tanh(self.content_final(content_concat.transpose(1, 2)))
+        return x_feature
+
+
 # class attenCNN(nn.Module):
+# """
+# attention CNN with multiple kernel size
+# """
 #     def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.2, embedding_dim=200):
 #         super(attenCNN, self).__init__()
 #
@@ -146,6 +236,7 @@ class attenCNN(nn.Module):
 #
 #         x_feature = nn.functional.relu(self.content_final(x_concat.transpose(1, 2)))
 #         return x_feature
+
 
 # multichannel attention CNN with multiple kernel size
 # class multichannel_attenCNN(nn.Module):
@@ -214,55 +305,6 @@ class attenCNN(nn.Module):
 #
 #         return x_feature
 
-# multichannel attention CNN with one kernel size
-class multichannel_attenCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, add_original_embedding, atten_dropout=0.5, embedding_dim=200):
-        super(multichannel_attenCNN, self).__init__()
-
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.nKernel = nKernel
-        self.ksz = ksz
-        self.add_original_embedding = add_original_embedding
-        self.dropout = nn.Dropout(atten_dropout)
-
-        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-
-        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
-
-        self.content_final = nn.Linear(self.nKernel * 2, embedding_dim * 2)
-
-        nn.init.xavier_normal_(self.content_final.weight)
-        nn.init.zeros_(self.content_final.bias)
-
-    def forward(self, input_seq, input_title, g_node_feat):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        embedded_seq = embedded_seq.unsqueeze(1)
-        embedded_seq = self.dropout(embedded_seq)
-
-        embedded_title = self.embedding_layer(input_title)  # size: (bs, seq_len, embed_dim)
-        embedded_title = embedded_title.unsqueeze(1)
-        embedded_title = self.dropout(embedded_title)
-
-        abstract_conv = F.relu(self.conv(embedded_seq)).squeeze(3)  # len(Ks) * (bs, kernel_sz, seq_len)
-        title_conv = F.relu(self.conv(embedded_title)).squeeze(3)
-
-        # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract = torch.tanh(abstract_conv.transpose(1, 2))  # [bs, (n_words-ks+1), embedding_sz]
-        title = torch.tanh(title_conv.transpose(1, 2))
-
-        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feat.transpose(0, 1)), dim=1)
-        title_atten = torch.softmax(torch.matmul(title, g_node_feat.transpose(0, 1)), dim=1)
-
-        abstract_content = torch.matmul(abstract_conv, abstract_atten)
-        title_content = torch.matmul(title_conv, title_atten)
-
-        content_concat = torch.cat((abstract_content, title_content), dim=1)
-
-        x_feature = nn.functional.relu(self.content_final(content_concat.transpose(1, 2)))
-
-        return x_feature
-
 
 class MLAttention(nn.Module):
     """
@@ -282,9 +324,9 @@ class MLAttention(nn.Module):
         return x
 
 
-class Bert(BertPreTrainedModel):
+class Bert_Baseline(BertPreTrainedModel):
     def __init__(self, config, num_label):
-        super(Bert, self).__init__(config)
+        super(Bert_Baseline, self).__init__(config)
         self.bert = BertModel(config)
         self.init_weights()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -383,69 +425,27 @@ class LabelNet(nn.Module):
         return x
 
 
-class Baseline(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, atten_dropout=0.5, embedding_dim=200):
-        super(Baseline, self).__init__()
-
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.nKernel = nKernel
-        self.ksz = ksz
-
-        self.dropout = nn.Dropout(atten_dropout)
-        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-
-        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
-
-        self.fc1 = nn.Linear(self.nKernel, 128)
-        nn.init.xavier_normal_(self.fc1.weight)
-        nn.init.zeros_(self.fc1.bias)
-
-        self.fc2 = nn.Linear(128, 1)
-        nn.init.xavier_normal_(self.fc2.weight)
-        nn.init.zeros_(self.fc2.bias)
-
-    def forward(self, input_seq, g_node_feat):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        embedded_seq = embedded_seq.unsqueeze(1)
-        embedded_seq = self.dropout(embedded_seq)
-
-        abstract_conv = self.conv(embedded_seq).squeeze(3)  # [bs, (n_words-ks+1), embedding_sz]
-
-        # label-wise attention (mapping different parts of the document representation to different labels)
-        # abstract = torch.tanh(abstract_conv.transpose(1, 2))  # [bs, (n_words-ks+1), embedding_sz] with/without tanh
-
-        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
-
-        abstract_content = torch.matmul(abstract_conv, abstract_atten)
-        print('abstract_content', abstract_content.shape)
-
-        x_feature = nn.functional.tanh(self.fc1(abstract_content.transpose(1, 2)))
-        print('fc1', x_feature.shape)
-        x_feature = self.fc2(x_feature).squeeze(2)
-        print('fc2', x_feature.shape)
-        x = torch.sigmoid(x_feature)
-        return x
-
-
-class MeSH_GCN_Old(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
-        super(MeSH_GCN_Old, self).__init__()
-        # gcn_out = len(ksz) * nKernel
-
-        self.cnn = CNN(vocab_size, nKernel, ksz, embedding_dim)
-        self.gcn = LabelNet(hidden_gcn_size, embedding_dim * 2, embedding_dim)
-
-    def forward(self, input_seq, g, features):
-        x_feature = self.cnn(input_seq)
-        label_feature = self.gcn(g, features)
-        label_feature = torch.transpose(label_feature, 0, 1)
-        x = torch.matmul(x_feature, label_feature)
-        x = torch.sigmoid(x)
-        return x
+# class MeSH_GCN_Old(nn.Module):
+#     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+#         super(MeSH_GCN_Old, self).__init__()
+#         # gcn_out = len(ksz) * nKernel
+#
+#         self.cnn = CNN_Baseline(vocab_size, nKernel, ksz, embedding_dim)
+#         self.gcn = LabelNet(hidden_gcn_size, embedding_dim * 2, embedding_dim)
+#
+#     def forward(self, input_seq, g, features):
+#         x_feature = self.cnn(input_seq)
+#         label_feature = self.gcn(g, features)
+#         label_feature = torch.transpose(label_feature, 0, 1)
+#         x = torch.matmul(x_feature, label_feature)
+#         x = torch.sigmoid(x)
+#         return x
 
 
 class MeSH_GCN(nn.Module):
+    """
+    attenCNN + GCN
+    """
     def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding, atten_dropout,
                  embedding_dim=200):
         super(MeSH_GCN, self).__init__()
@@ -463,16 +463,47 @@ class MeSH_GCN(nn.Module):
 
     def forward(self, input_seq, g, g_node_feature):
         x_feature = self.content_feature(input_seq, g_node_feature)
-        print('x_feat', x_feature.shape)
 
         label_feature = self.gcn(g, g_node_feature)
-        print('label1', label_feature.shape)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        print('label2', label_feature.shape)
-        x = torch.sum(x_feature * label_feature, dim=2)
 
+        x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
         return x
+
+
+class CorGCN(nn.Module):
+    """
+    attenCNN + GCN + CorNet
+    """
+
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, add_original_embedding, atten_dropout,
+                 embedding_dim=200, cornet_dim=1000, n_cornet_blocks=2):
+        super(CorGCN, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.nKernel = nKernel
+        self.ksz = ksz
+        self.hidden_gcn_size = hidden_gcn_size
+        self.output_size = output_size
+        self.add_original_embedding = add_original_embedding
+        self.atten_dropout = atten_dropout
+
+        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
+                                        self.atten_dropout, embedding_dim=200)
+        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
+
+    def forward(self, input_seq, g_node_feature, g):
+        x_feature = self.content_feature(input_seq, g_node_feature)
+
+        label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+
+        x = torch.sum(x_feature * label_feature, dim=2)
+        cor_logit = self.cornet(x)
+        cor_logit = torch.sigmoid(cor_logit)
+        return cor_logit
 
 
 class MeSH_GCN_Multi(nn.Module):
@@ -523,96 +554,14 @@ class Bert_GCN(nn.Module):
         output = self.dropout(output)
 
         atten_out = self.atten(output, attention_mask)  # [bz, num_label, hidden_sz] [8, 29368, 768]
-        # print('atten', atten_out.shape)
-        x_feature = torch.tanh(self.linear(atten_out))  # [bz, bert_hidden_sz * 2] (8, 768 *2)
-        #print('x', x_feature.shape)
+        x_feature = torch.tanh(self.linear(atten_out))  # [bz, bert_hidden_sz * 2] (8, 29368, 768 *2)
+
         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
-        # label_feature = self.linear(label_feature)
-        #print('label2', label_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
         return x
-
-
-class Bert_atten_GCN(nn.Module):
-    def __init__(self, config, num_labels, gcn_hidden_gcn_size, embedding_dim=200):
-        super(Bert_atten_GCN, self).__init__()
-
-        self.config = config
-        self.bert = BertModel(config)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-
-        # self.transform = nn.Linear(config.hidden_size, embedding_dim)
-        # nn.init.xavier_uniform_(self.transform.weight)
-        # nn.init.zeros_(self.transform.bias)
-
-        self.content_final = nn.Linear(config.hidden_size, embedding_dim * 2)
-        nn.init.xavier_normal_(self.content_final.weight)
-        nn.init.zeros_(self.content_final.bias)
-
-        self.gcn = LabelNet(gcn_hidden_gcn_size, embedding_dim, embedding_dim)
-
-    def forward(self, input_ids, attention_mask, g, g_node_feature):
-        output, _ = self.bert(input_ids, attention_mask)
-        output = self.dropout(output)
-        # print('pooled', output.shape)
-
-        # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract = torch.tanh(self.transform(output))
-        #print('output', output.shape)
-        abstract_atten = torch.softmax(torch.matmul(abstract, g_node_feature.transpose(0, 1)), dim=1)
-        #print('atten', abstract_atten.shape)
-        abstract_content = torch.matmul(output.transpose(1, 2), abstract_atten)
-        #print('abstract', abstract_content.shape)
-
-        # match bert output size with graph output
-        x_feature = self.content_final(abstract_content.transpose(1, 2))
-        #print('x_feature', x_feature.shape)
-
-        label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)
-        #print('label1', label_feature.shape)
-        x = torch.sum(x_feature * label_feature, dim=2)
-        #print('x', x.shape)
-        x = torch.sigmoid(x)
-        return x
-
-
-class CorGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, add_original_embedding, atten_dropout,
-                 embedding_dim=200, cornet_dim=1000, n_cornet_blocks=2):
-        super(CorGCN, self).__init__()
-
-        self.vocab_size = vocab_size
-        self.nKernel = nKernel
-        self.ksz = ksz
-        self.hidden_gcn_size = hidden_gcn_size
-        self.output_size = output_size
-        self.add_original_embedding = add_original_embedding
-        self.atten_dropout = atten_dropout
-
-        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
-                                        self.atten_dropout, embedding_dim=200)
-        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
-        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
-
-    def forward(self, input_seq, g_node_feature, g):
-        x_feature = self.content_feature(input_seq, g_node_feature)
-
-        label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        # if self.add_original_embedding:
-        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        #     print('concat', label_feature.shape)
-        # else:
-        #     None
-
-        x = torch.sum(x_feature * label_feature, dim=2)
-        cor_logit = self.cornet(x)
-        cor_logit = torch.sigmoid(cor_logit)
-        return cor_logit
 
 
 class BaseRGCN(nn.Module):
@@ -706,8 +655,6 @@ class MeSH_RGCN(nn.Module):
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        # if self.add_original_embedding:
-        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
@@ -733,8 +680,6 @@ class CorRGCN(nn.Module):
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        # if self.add_original_embedding:
-        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
         x = torch.sum(x_feature * label_feature, dim=2)
 
@@ -767,8 +712,6 @@ class Multi_RGCN(nn.Module):
 
         label_feature = self.rgcn(g, g_node_feature, edge_type, edge_norm)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
-        # if self.add_original_embedding:
-        #     label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
 
         x = torch.sum(x_feature * label_feature, dim=2)
 

@@ -14,7 +14,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 
-from model import Bert_GCN, Bert_atten_GCN, Bert
+from model import Bert_GCN, Bert_Baseline
 from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from transformers import AutoTokenizer, AutoConfig
@@ -35,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 500000:
+        if i <= 100000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -239,7 +239,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
