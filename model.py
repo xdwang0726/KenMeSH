@@ -583,14 +583,13 @@ class Bert_GCN(nn.Module):
 
         # weight adaptive layer
         self.linear_weight1 = torch.nn.Linear(config.hidden_size, 1)
-        self.linear_weight2 = torch.nn.Linear(2 * config.hidden_size, 1)
+        self.linear_weight2 = torch.nn.Linear(config.hidden_size, 1)
 
     def forward(self, input_ab, attention_ab, g, g_node_feature):
         # input_ab, input_title, attention_ab, attention_title, g, g_node_feature
         # self-attention output
         output, _ = self.bert(input_ab, attention_ab)
         output = self.dropout(output)  # [bz, seq_length, hidden_sz]
-        print('out', output.shape)
 
         # title_output, _ = self.bert(input_title, attention_title)
         # title_output = self.dropout(title_output)
@@ -599,19 +598,14 @@ class Bert_GCN(nn.Module):
         # attention_mask = torch.cat((attention_title, attention_ab), dim=0)
         # self_atten_out = self.atten(output, attention_mask) # [bz, num_label, hidden_sz] [8, 29368, 768]
         self_atten_out = self.atten(output, attention_ab)
-        print('self_atten_out', self_atten_out.shape)
 
         # label-wise attention output mapping different parts of the document representation to different labels
         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
-        print('label_feature', label_feature.shape)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # [29468, 768*2]
-        print('label_feature2', label_feature.shape)
         output_trans = self.linear(output)
         label_atten = torch.softmax(torch.matmul(output_trans, label_feature.transpose(0, 1)),
-                                    dim=1)  # [bz, seq_len, num_label]
-        print('attrn', label_atten.shape)
+                                    dim=1)
         label_atten_out = torch.matmul(output.transpose(1, 2), label_atten)  # [bz, hidden_sz, number_label]
-        print('label_atten_out', label_atten_out.shape)
 
         # attention fusion output
         factor1 = torch.sigmoid(self.linear_weight1(self_atten_out))
