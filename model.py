@@ -590,6 +590,7 @@ class Bert_GCN(nn.Module):
         # self-attention output
         output, _ = self.bert(input_ab, attention_ab)
         output = self.dropout(output)  # [bz, seq_length, hidden_sz]
+        print('out', output.shape)
 
         # title_output, _ = self.bert(input_title, attention_title)
         # title_output = self.dropout(title_output)
@@ -608,6 +609,7 @@ class Bert_GCN(nn.Module):
         output_trans = self.linear(output)
         label_atten = torch.softmax(torch.matmul(output_trans, label_feature.transpose(0, 1)),
                                     dim=1)  # [bz, seq_len, num_label]
+        print('attrn', label_atten.shape)
         label_atten_out = torch.matmul(output.transpose(1, 2), label_atten)  # [bz, hidden_sz, number_label]
         print('label_atten_out', label_atten_out.shape)
 
