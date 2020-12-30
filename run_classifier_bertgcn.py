@@ -35,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 100000:
+        if i <= 50000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -127,9 +127,9 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.cuda(), attention_mask.cuda(), label.cuda()
-            output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            # output = model(input_ids, attention_mask)
+            output = model(input_ids, attention_mask)
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -161,9 +161,9 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            # output = model(input_ids, attention_mask)
+            output = model(input_ids, attention_mask)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -263,9 +263,9 @@ def main():
                                                                      args.meSH_pair_path,
                                                                      args.graph, tokenizer)
 
-    model = Bert_GCN(bert_config, num_nodes)
+    # model = Bert_GCN(bert_config, num_nodes)
 
-    # model = Bert(bert_config, num_nodes)
+    model = Bert_Baseline(bert_config, num_nodes)
     # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
     # model = nn.DataParallel(model.cuda(), device_ids=[0, 1])
