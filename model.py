@@ -602,8 +602,9 @@ class Bert_GCN(nn.Module):
 
         # label-wise attention output mapping different parts of the document representation to different labels
         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
+        print('label_feature', label_feature.shape)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # [29468, 768*2]
-
+        print('label_feature2', label_feature.shape)
         output_trans = self.linear(output)
         label_atten = torch.softmax(torch.matmul(output_trans, label_feature.transpose(0, 1)),
                                     dim=1)  # [bz, seq_len, num_label]
