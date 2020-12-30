@@ -613,7 +613,7 @@ class Bert_GCN(nn.Module):
         factor1 = factor1 / (factor1 + factor2)
         factor2 = 1 - factor1
 
-        out = factor1 * self_atten_out + factor2 * label_atten_out
+        out = factor1 * self_atten_out + factor2 * (label_atten_out.transpose(1, 2))
         out = F.relu(self.linear_final(out))
         out = torch.sigmoid(self.output_layer(out).squeeze(-1))
 
