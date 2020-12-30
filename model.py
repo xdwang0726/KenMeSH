@@ -585,6 +585,10 @@ class Bert_GCN(nn.Module):
         self.linear_weight1 = torch.nn.Linear(config.hidden_size, 1)
         self.linear_weight2 = torch.nn.Linear(config.hidden_size, 1)
 
+        # shared for all attention component
+        self.linear_final = torch.nn.Linear(config.hidden_size, config.hidden_size)
+        self.output_layer = torch.nn.Linear(config.hidden_size, 1)
+
     def forward(self, input_ab, attention_ab, g, g_node_feature):
         # input_ab, input_title, attention_ab, attention_title, g, g_node_feature
         # self-attention output
