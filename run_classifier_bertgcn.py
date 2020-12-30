@@ -127,9 +127,9 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.cuda(), attention_mask.cuda(), label.cuda()
-            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            output = model(input_ids, attention_mask)
+            # output = model(input_ids, attention_mask)
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -161,9 +161,9 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            output = model(input_ids, attention_mask)
+            # output = model(input_ids, attention_mask)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -232,12 +232,12 @@ def main():
     parser.add_argument('--save-model-path')
 
     parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--hidden_gcn_size', type=int, default=200)
+    parser.add_argument('--hidden_gcn_size', type=int, default=768)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--biobert', type=str)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=16)
+    parser.add_argument('--batch_sz', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -265,8 +265,8 @@ def main():
 
     # model = Bert_GCN(bert_config, num_nodes)
 
-    model = Bert_Baseline(bert_config, num_nodes)
-    # model = Bert_atten_GCN(bert_config, num_nodes, args.hidden_gcn_size, embedding_dim=args.embedding_dim)
+    # model = Bert_Baseline(bert_config, num_nodes)
+    model = Bert_GCN(bert_config, num_nodes)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
     # model = nn.DataParallel(model.cuda(), device_ids=[0, 1])
     model.to(device)

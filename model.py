@@ -536,6 +536,37 @@ class MeSH_GCN_Multi(nn.Module):
         return x
 
 
+# class Bert_GCN(nn.Module):
+#     def __init__(self, config, num_label):
+#         super(Bert_GCN, self).__init__()
+#
+#         self.config = config
+#         self.bert = BertModel(config)
+#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+#
+#         self.atten = MLAttention(num_label, config.hidden_size)
+#
+#         self.linear = nn.Linear(config.hidden_size, config.hidden_size * 2)
+#         self.gcn = LabelNet(config.hidden_size, config.hidden_size, config.hidden_size)
+#
+#     def forward(self, input_ids, attention_mask, g, g_node_feature):
+#         # self-attention output
+#         output, _ = self.bert(input_ids, attention_mask)
+#         output = self.dropout(output)
+#
+#         # label-wise attention output
+#         atten_out = self.atten(output, attention_mask)  # [bz, num_label, hidden_sz] [8, 29368, 768]
+#         x_feature = torch.tanh(self.linear(atten_out))  # [bz, bert_hidden_sz * 2] (8, 29368, 768 *2)
+#
+#         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
+#         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
+#
+#         # attention fusion output
+#         x = torch.sum(x_feature * label_feature, dim=2)
+#         x = torch.sigmoid(x)
+#         return x
+
+
 class Bert_GCN(nn.Module):
     def __init__(self, config, num_label):
         super(Bert_GCN, self).__init__()
@@ -543,25 +574,53 @@ class Bert_GCN(nn.Module):
         self.config = config
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-
+        # self-attention
         self.atten = MLAttention(num_label, config.hidden_size)
 
+        # label-wise attention
         self.linear = nn.Linear(config.hidden_size, config.hidden_size * 2)
         self.gcn = LabelNet(config.hidden_size, config.hidden_size, config.hidden_size)
 
-    def forward(self, input_ids, attention_mask, g, g_node_feature):
-        output, _ = self.bert(input_ids, attention_mask)
-        output = self.dropout(output)
+        # weight adaptive layer
+        self.linear_weight1 = torch.nn.Linear(config.hidden_size, 1)
+        self.linear_weight2 = torch.nn.Linear(2 * config.hidden_size, 1)
 
-        atten_out = self.atten(output, attention_mask)  # [bz, num_label, hidden_sz] [8, 29368, 768]
-        x_feature = torch.tanh(self.linear(atten_out))  # [bz, bert_hidden_sz * 2] (8, 29368, 768 *2)
+    def forward(self, input_ab, attention_ab, g, g_node_feature):
+        # input_ab, input_title, attention_ab, attention_title, g, g_node_feature
+        # self-attention output
+        output, _ = self.bert(input_ab, attention_ab)
+        output = self.dropout(output)  # [bz, seq_length, hidden_sz]
 
+        # title_output, _ = self.bert(input_title, attention_title)
+        # title_output = self.dropout(title_output)
+
+        # output = torch.cat((title_output, ab_output), dim=1)
+        # attention_mask = torch.cat((attention_title, attention_ab), dim=0)
+        # self_atten_out = self.atten(output, attention_mask) # [bz, num_label, hidden_sz] [8, 29368, 768]
+        self_atten_out = self.atten(output, attention_ab)
+        print('self_atten_out', self_atten_out.shape)
+
+        # label-wise attention output mapping different parts of the document representation to different labels
         label_feature = self.gcn(g, g_node_feature)  # [num_labels, hidden_sz] (29468, 768)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # [29468, 768*2]
 
-        x = torch.sum(x_feature * label_feature, dim=2)
-        x = torch.sigmoid(x)
-        return x
+        output_trans = self.linear(output)
+        label_atten = torch.softmax(torch.matmul(output_trans, label_feature.transpose(0, 1)),
+                                    dim=1)  # [bz, seq_len, num_label]
+        label_atten_out = torch.matmul(output.transpose(1, 2), label_atten)  # [bz, hidden_sz, number_label]
+        print('label_atten_out', label_atten_out)
+
+        # attention fusion output
+        factor1 = torch.sigmoid(self.linear_weight1(self_atten_out))
+        factor2 = torch.sigmoid(self.linear_weight2(label_atten_out.transpose(1, 2)))
+        factor1 = factor1 / (factor1 + factor2)
+        factor2 = 1 - factor1
+
+        out = factor1 * self_atten_out + factor2 * label_atten_out
+        out = F.relu(self.linear_final(out))
+        out = torch.sigmoid(self.output_layer(out).squeeze(-1))
+
+        return out
 
 
 class BaseRGCN(nn.Module):
