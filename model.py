@@ -608,7 +608,7 @@ class Bert_GCN(nn.Module):
         label_atten = torch.softmax(torch.matmul(output_trans, label_feature.transpose(0, 1)),
                                     dim=1)  # [bz, seq_len, num_label]
         label_atten_out = torch.matmul(output.transpose(1, 2), label_atten)  # [bz, hidden_sz, number_label]
-        print('label_atten_out', label_atten_out)
+        print('label_atten_out', label_atten_out.shape)
 
         # attention fusion output
         factor1 = torch.sigmoid(self.linear_weight1(self_atten_out))
