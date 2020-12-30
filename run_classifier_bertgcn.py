@@ -237,7 +237,7 @@ def main():
     parser.add_argument('--biobert', type=str)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=4)
+    parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--momentum', type=float, default=0.9)
