@@ -35,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 50000:
+        if i <= 5000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -239,9 +239,10 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=2e-5)
+    parser.add_argument('--bert_lr', type=float, default=5e-5)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=0)
+    parser.add_argument('--weight_decay', type=float, default=0.01)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
@@ -272,9 +273,12 @@ def main():
     model.to(device)
     G.to(device)
 
+    bert_params = list(map(id, model.bert.parameters()))
+    base_params = filter(lambda p: id(p) not in bert_params, model.parameters())
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    optimizer = transformers.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW([{'params': bert_params, 'lr': args.bert_lr}, {'params': base_params}], lr=args.lr,
+                                  weight_decay=args.weight_decay)
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
