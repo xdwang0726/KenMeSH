@@ -280,7 +280,7 @@ def main():
     base_params = list(map(lambda x: x[1], list(filter(lambda kv: kv[0] not in layer_list, model.named_parameters()))))
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    optimizer = torch.optim.AdamW([{'params': model.bert.parameters(), 'lr': args.bert_lr}, {'params': base_params}],
+    optimizer = torch.optim.AdamW([{'params': bert_params, 'lr': args.bert_lr}, {'params': base_params}],
                                   lr=args.lr,
                                   weight_decay=args.weight_decay)
 
