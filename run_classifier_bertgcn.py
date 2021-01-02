@@ -144,6 +144,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
+            print(optimizer.param_groups[0]['lr'])
         # Adjust the learning rate
         lr_scheduler.step()
         # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
@@ -280,9 +281,8 @@ def main():
     base_params = list(map(lambda x: x[1], list(filter(lambda kv: kv[0] not in layer_list, model.named_parameters()))))
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    optimizer = torch.optim.AdamW([{'params': bert_params, 'lr': args.bert_lr}, {'params': base_params}],
-                                  lr=args.lr,
-                                  weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW([{'params': bert_params, 'lr': args.bert_lr}, {'params': base_params, 'lr': args.lr}],
+                                  lr=args.lr, weight_decay=args.weight_decay)
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
