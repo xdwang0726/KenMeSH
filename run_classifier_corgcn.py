@@ -19,7 +19,8 @@ from tqdm import tqdm
 
 from model import CorGCN
 from utils import MeSH_indexing, pad_sequence
-from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
+from threshold_opt import eval
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
@@ -301,6 +302,7 @@ def main():
 
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
+    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
     G.to(device)
 
@@ -356,11 +358,12 @@ def main():
         print(em, ",")
 
     # label based evaluation
-    label_measure_5 = perf_measure(test_label_transform, top_5_pred)
+    label_measure_5 = micro_macro_eval(test_label_transform, top_5_pred)
     print("MaP@5, MiP@5, MaF@5, MiF@5: ")
     for measure in label_measure_5:
         print(measure, ",")
 
-
+    micro_precision, micro_recall, micro_f_score = eval(test_label_transform, pred, num_nodes, len(pred))
+    print(micro_precision, micro_recall, micro_f_score)
 if __name__ == "__main__":
     main()
