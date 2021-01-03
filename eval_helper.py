@@ -110,6 +110,8 @@ def micro_f1(MiP, MiR):
 #
 #     result = [round(MaP, 5), round(MiP, 5), round(MaF, 5), round(MiF, 5)]
 #     return result
+
+
 def micro_macro_eval(y_actual, y_hat):
     MaP = precision_score(y_actual, y_hat, average='macro')
     MiP = precision_score(y_actual, y_hat, average='micro')
