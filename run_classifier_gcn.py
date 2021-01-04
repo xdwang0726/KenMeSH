@@ -303,6 +303,8 @@ def main():
     logging.info('Device:'.format(device))
 
     # initialize the distributed training
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group(backend=args.dist_backend, init_method=None, world_size=args.world_size,
                             rank=args.local_rank)
 
