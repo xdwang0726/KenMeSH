@@ -168,9 +168,9 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            # output = model(input_ids, attention_mask)
+            output = model(input_ids, attention_mask)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
