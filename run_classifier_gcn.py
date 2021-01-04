@@ -19,6 +19,8 @@ from model import MeSH_GCN
 from utils import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from threshold_opt import eval
+import torch.distributed as dist
+import torch.utils.data.distributed
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
@@ -35,7 +37,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000000:
+        if i <= 1000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -146,8 +148,9 @@ def generate_batch(batch):
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
-                            num_workers=num_workers)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch,
+                            num_workers=num_workers, sampler=train_sampler)
 
     num_lines = num_epochs * len(train_data)
 
@@ -275,7 +278,7 @@ def main():
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
     parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=32)
+    parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -283,15 +286,25 @@ def main():
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
+    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
+    parser.add_argument('--dist_url', default='tcp://172.16.1.186:2222', type=str,
+                        help='url used to set up distributed training')
+    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
+
     # parser.add_argument('--fp16', default=True, type=bool)
     # parser.add_argument('--fp16_opt_level', type=str, default='O0')
 
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
     # device = torch.device(args.device)
     logging.info('Device:'.format(device))
+
+    # initialize the distributed training
+    dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size,
+                            rank=args.dist_rank)
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
@@ -310,8 +323,9 @@ def main():
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                      output_device=args.local_rank)
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
