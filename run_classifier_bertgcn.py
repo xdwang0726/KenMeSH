@@ -35,7 +35,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 5000:
+        if i <= 300000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -127,9 +127,15 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.cuda(), attention_mask.cuda(), label.cuda()
-            output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            # output = model(input_ids, attention_mask)
+            output = model(input_ids, attention_mask)
+
+            # training precision@k
+            original_label = mlb.fit_transform(label)
+            pred = output.data.cpu().numpy()
+            labelsIndex = getLabelIndex(original_label)
+            precision = precision_at_ks(pred, labelsIndex, ks=[1])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -142,8 +148,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
                 sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
-                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
+                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f} p@1:{:3.8f}\n".format(
+                        progress * 100, lr_scheduler.get_last_lr()[0], loss, precision))
             print(optimizer.param_groups[0]['lr'])
         # Adjust the learning rate
         lr_scheduler.step()
@@ -237,8 +243,8 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--biobert', type=str)
 
-    parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=4)
+    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--bert_lr', type=float, default=5e-5)
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -267,10 +273,10 @@ def main():
 
     # model = Bert_GCN(bert_config, num_nodes)
 
-    # model = Bert_Baseline(bert_config, num_nodes)
-    model = Bert_GCN(bert_config, num_nodes)
+    model = Bert_Baseline(bert_config, num_nodes)
+    # model = Bert_GCN(bert_config, num_nodes)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
-    # model = nn.DataParallel(model.cuda(), device_ids=[0, 1])
+    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
     G.to(device)
 
