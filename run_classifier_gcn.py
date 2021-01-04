@@ -303,7 +303,7 @@ def main():
     logging.info('Device:'.format(device))
 
     # initialize the distributed training
-    dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size,
+    dist.init_process_group(backend=args.dist_backend, init_method=None, world_size=args.world_size,
                             rank=args.local_rank)
 
     # Get dataset and label graph & Load pre-trained embeddings
