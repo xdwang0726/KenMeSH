@@ -7,7 +7,9 @@ import sys
 import ijson
 import numpy as np
 import torch
+import torch.distributed as dist
 import torch.nn as nn
+import torch.utils.data.distributed
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 # from torch.nn.utils.rnn import pad_sequence
@@ -15,12 +17,10 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import MeSH_GCN
-from utils import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
+from model import MeSH_GCN
 from threshold_opt import eval
-import torch.distributed as dist
-import torch.utils.data.distributed
+from utils import MeSH_indexing, pad_sequence
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
@@ -304,7 +304,7 @@ def main():
 
     # initialize the distributed training
     dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size,
-                            rank=args.dist_rank)
+                            rank=args.local_rank)
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
