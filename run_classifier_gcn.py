@@ -289,7 +289,7 @@ def main():
     parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
     parser.add_argument('--dist_url', default='tcp://172.16.1.186:2222', type=str,
                         help='url used to set up distributed training')
-    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--dist_backend', default='gloo', type=str, help='distributed backend')
     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
     # parser.add_argument('--fp16', default=True, type=bool)
