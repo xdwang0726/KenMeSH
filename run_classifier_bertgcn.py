@@ -36,7 +36,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 3000:
+        if i <= 300000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -151,7 +151,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
-            print(optimizer.param_groups[0]['lr'])
+            # print(optimizer.param_groups[0]['lr'])
             # for k, p in zip([1, 3, 5], precision):
             #     print('p@{}: {:.5f}'.format(k, p))
         # Adjust the learning rate
