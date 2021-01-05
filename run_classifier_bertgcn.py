@@ -133,7 +133,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             output = model(input_ids, attention_mask)
 
             # training precision@k
-            original_label = mlb.fit_transform(label)
+            original_label = mlb.fit_transform(label).cpu()
             pred = output.data.cpu().numpy()
             labelsIndex = getLabelIndex(original_label)
             precision = precision_at_ks(pred, labelsIndex, ks=[1, 3, 5])
