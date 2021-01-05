@@ -135,7 +135,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             original_label = mlb.fit_transform(label)
             pred = output.data.cpu().numpy()
             labelsIndex = getLabelIndex(original_label)
-            precision = precision_at_ks(pred, labelsIndex, ks=[1])
+            precision = precision_at_ks(pred, labelsIndex, ks=[1, 3, 5])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -148,9 +148,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             progress = processed_lines / float(num_lines)
             if processed_lines % 128 == 0:
                 sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f} p@1:{:3.8f}\n".format(
-                        progress * 100, lr_scheduler.get_last_lr()[0], loss, precision))
+                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
+                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
             print(optimizer.param_groups[0]['lr'])
+            for k, p in zip([1, 3, 5], precision):
+                print('p@{}: {:.5f}'.format(k, p))
         # Adjust the learning rate
         lr_scheduler.step()
         # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
