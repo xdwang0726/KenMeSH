@@ -19,6 +19,7 @@ from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from transformers import AutoTokenizer, AutoConfig
 import transformers
+from threshold_opt import eval
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_file, tokenizer):
@@ -339,6 +340,7 @@ def main():
     for measure in label_measure_5:
         print(measure, ",")
 
-
+    micro_precision, micro_recall, micro_f_score = eval(test_label_transform, pred, num_nodes, len(pred))
+    print(micro_precision, micro_recall, micro_f_score)
 if __name__ == "__main__":
     main()
