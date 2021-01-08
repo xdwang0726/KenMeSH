@@ -306,7 +306,7 @@ def main():
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
     dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
-                            world_size=args.world_size, rank=args.local_rank)
+                            rank=args.local_rank, world_size=args.world_size)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
