@@ -298,9 +298,9 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
     # device = torch.device(args.device)
-    logging.info('Device:'.format(device))
+    # logging.info('Device:'.format(device))
 
     # initialize the distributed training
     hostname = socket.gethostname()
@@ -324,10 +324,10 @@ def main():
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
+    model.cuda()
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                       output_device=args.local_rank)
-    G.to(device)
+    G.cuda()
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
