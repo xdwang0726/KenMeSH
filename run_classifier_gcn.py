@@ -287,6 +287,7 @@ def main():
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
+    parser.add_argument('--port', type=str, default='20000')
     parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
@@ -304,7 +305,7 @@ def main():
     # initialize the distributed training
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
-    dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}'.format(ip_address),
+    dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
                             world_size=args.world_size, rank=args.local_rank)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
