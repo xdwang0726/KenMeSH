@@ -288,9 +288,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
     parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
-    parser.add_argument('--dist_url', default='tcp://172.16.1.186:2222', type=str,
-                        help='url used to set up distributed training')
-    parser.add_argument('--dist_backend', default='', type=str, help='distributed backend')
+    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
     # parser.add_argument('--fp16', default=True, type=bool)
@@ -304,11 +302,10 @@ def main():
     logging.info('Device:'.format(device))
 
     # initialize the distributed training
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group(backend=args.dist_backend, init_method=None, world_size=args.world_size,
-                            rank=args.local_rank)
-
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}'.format(ip_address),
+                            world_size=args.world_size, rank=args.local_rank)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
