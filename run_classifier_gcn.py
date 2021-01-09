@@ -328,7 +328,8 @@ def main():
     model.cuda()
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                       output_device=args.local_rank)
-    G.to(device)
+    G.to('cuda:0')
+    G.to('cuda:1')
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
