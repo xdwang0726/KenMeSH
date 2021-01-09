@@ -298,7 +298,7 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     # device = torch.device(args.device)
     # logging.info('Device:'.format(device))
 
@@ -328,8 +328,7 @@ def main():
     model.cuda()
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                       output_device=args.local_rank)
-    G.to('cuda:0')
-    G.to('cuda:1')
+    G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
