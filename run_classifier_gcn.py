@@ -163,7 +163,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # test_label = mlb.fit_transform(label)
 
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label, G = text.to(device), label.to(device), G.to(device)
+            text, label, G, G.ndata['feat'] = text.to(device), label.to(device), G.to(device), G.ndata['feat'].to(
+                device)
             output = model(text, G, G.ndata['feat'])
             # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
