@@ -290,7 +290,7 @@ def main():
     parser.add_argument('--port', type=str, default='20000')
     parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--local_rank', default=-1, type=int, help='rank of distributed processes')
+    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
     # parser.add_argument('--fp16', default=True, type=bool)
     # parser.add_argument('--fp16_opt_level', type=str, default='O0')
@@ -298,15 +298,16 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    # device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu", args.local_rank)
     # device = torch.device(args.device)
     # logging.info('Device:'.format(device))
 
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # initialize the distributed training
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
     dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
-                            rank=args.local_rank, world_size=args.world_size)
+                            world_size=args.world_size, rank=args.local_rank)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
@@ -327,7 +328,7 @@ def main():
     model.cuda()
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                       output_device=args.local_rank)
-    G.cuda()
+    G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
