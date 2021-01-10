@@ -326,7 +326,7 @@ def main():
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.cuda()
+    model.to(device)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                       output_device=args.local_rank)
     G.to(device)
