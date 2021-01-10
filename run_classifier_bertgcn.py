@@ -38,7 +38,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 100000:
+        if i <= 1000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -121,8 +121,7 @@ def generate_batch(batch):
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
-                            sampler=train_sampler)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch, sampler=train_sampler)
 
     num_lines = num_epochs * len(train_data)
 
