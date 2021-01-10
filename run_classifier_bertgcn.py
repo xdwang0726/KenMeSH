@@ -38,7 +38,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_fi
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 1000:
+        if i <= 100000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -120,8 +120,8 @@ def generate_batch(batch):
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch, sampler=train_sampler)
+    # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=True)
 
     num_lines = num_epochs * len(train_data)
 
@@ -249,10 +249,10 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--biobert', type=str)
 
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--bert_lr', type=float, default=5e-5)
+    parser.add_argument('--bert_lr', type=float, default=2e-5)
     parser.add_argument('--lr', type=float, default=5e-5)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0.01)
@@ -273,12 +273,12 @@ def main():
     # device = torch.device(args.device)
     logging.info('Device:'.format(device))
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
-    # initialize the distributed training
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
-                            world_size=args.world_size, rank=args.local_rank)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    # # initialize the distributed training
+    # hostname = socket.gethostname()
+    # ip_address = socket.gethostbyname(hostname)
+    # dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
+    #                         world_size=args.world_size, rank=args.local_rank)
 
     tokenizer = AutoTokenizer.from_pretrained(args.biobert)
     bert_config = AutoConfig.from_pretrained(args.biobert)
@@ -297,9 +297,9 @@ def main():
     # model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
     G.to(device)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-                                                      output_device=args.local_rank)
-
+    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+    #                                                   output_device=args.local_rank)
+    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
 
     # bert_params = list(map(id, model.bert.parameters()))
     # base_params = filter(lambda p: id(p) not in bert_params, model.parameters())
