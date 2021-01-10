@@ -20,6 +20,8 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from transformers import AutoTokenizer, AutoConfig
 import transformers
 from threshold_opt import eval
+import socket
+import torch.distributed as dist
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_file, tokenizer):
@@ -118,7 +120,9 @@ def generate_batch(batch):
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
+                            sampler=train_sampler)
 
     num_lines = num_epochs * len(train_data)
 
@@ -256,6 +260,10 @@ def main():
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.1)
 
+    parser.add_argument('--port', type=str, default='20000')
+    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
+    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
     # parser.add_argument('--fp16', default=True, type=bool)
     # parser.add_argument('--fp16_opt_level', type=str, default='O0')
 
@@ -266,6 +274,13 @@ def main():
     # device = torch.device(args.device)
     logging.info('Device:'.format(device))
 
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    # initialize the distributed training
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
+                            world_size=args.world_size, rank=args.local_rank)
+
     tokenizer = AutoTokenizer.from_pretrained(args.biobert)
     bert_config = AutoConfig.from_pretrained(args.biobert)
     # Get dataset and label graph & Load pre-trained embeddings
@@ -274,14 +289,18 @@ def main():
                                                                      args.meSH_pair_path,
                                                                      args.graph, tokenizer)
 
+
     # model = Bert_GCN(bert_config, num_nodes)
 
     model = Bert_Baseline(bert_config, num_nodes)
     # model = Bert_GCN(bert_config, num_nodes)
     # model = Bert(bert_config, embedding_dim=args.embedding_dim)
-    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
+    # model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
     G.to(device)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                      output_device=args.local_rank)
+
 
     # bert_params = list(map(id, model.bert.parameters()))
     # base_params = filter(lambda p: id(p) not in bert_params, model.parameters())
