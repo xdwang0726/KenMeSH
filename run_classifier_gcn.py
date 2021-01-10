@@ -324,9 +324,10 @@ def main():
     #     model = nn.DataParallel(model)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model.to(device)
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
+    # model.to(device)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                       output_device=args.local_rank)
     G.to(device)
@@ -346,10 +347,12 @@ def main():
 
     # training
     print("Start training!")
+    model.module.train()
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
+    model.module.eval()
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
     # print('predicted:', results, '\n')
 
