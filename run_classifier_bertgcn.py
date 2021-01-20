@@ -22,6 +22,7 @@ import transformers
 from threshold_opt import eval
 import socket
 import torch.distributed as dist
+import torch.multiprocessing as mp
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, graph_file, tokenizer):
@@ -120,8 +121,8 @@ def generate_batch(batch):
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
-    # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=True)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch)
 
     num_lines = num_epochs * len(train_data)
 
@@ -232,54 +233,24 @@ def getLabelIndex(labels):
     return label_index
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path')
-    parser.add_argument('--test_path')
-    parser.add_argument('----meSH_pair_path')
-    parser.add_argument('--word2vec_path')
-    parser.add_argument('--meSH_pair_path')
-    parser.add_argument('--mesh_parent_children_path')
-    parser.add_argument('--graph')
-    parser.add_argument('--results')
-    parser.add_argument('--save-model-path')
+def run(dev_id, args):
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    # initialize the distributed training
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    dist.init_process_group(backend='nccl', init_method='tcp://{}:{}'.format(ip_address, args.port),
+                            world_size=args.world_size, rank=dev_id)
+    gpu_rank = dist.get_rank()
+    assert gpu_rank == dev_id
+    main(dev_id, args)
 
-    parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--hidden_gcn_size', type=int, default=768)
-    parser.add_argument('--embedding_dim', type=int, default=200)
-    parser.add_argument('--biobert', type=str)
 
-    parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=32)
-    parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--bert_lr', type=float, default=2e-5)
-    parser.add_argument('--lr', type=float, default=5e-5)
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=0.01)
-    parser.add_argument('--scheduler_step_sz', type=int, default=5)
-    parser.add_argument('--lr_gamma', type=float, default=0.1)
+def main(dev_id, args):
+    device = torch.device('cuda:{}'.format(dev_id))
+    # set current device
+    torch.cuda.set_device(device)
 
-    parser.add_argument('--port', type=str, default='20000')
-    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
-    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
-    # parser.add_argument('--fp16', default=True, type=bool)
-    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
-
-    args = parser.parse_args()
-
-    n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # device = torch.device(args.device)
-    logging.info('Device:'.format(device))
-
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
-    # # initialize the distributed training
-    # hostname = socket.gethostname()
-    # ip_address = socket.gethostbyname(hostname)
-    # dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
-    #                         world_size=args.world_size, rank=args.local_rank)
-
+    # prepare dataset
     tokenizer = AutoTokenizer.from_pretrained(args.biobert)
     bert_config = AutoConfig.from_pretrained(args.biobert)
     # Get dataset and label graph & Load pre-trained embeddings
@@ -288,31 +259,19 @@ def main():
                                                                      args.meSH_pair_path,
                                                                      args.graph, tokenizer)
 
-
-    # model = Bert_GCN(bert_config, num_nodes)
-
+    # create model
     model = Bert_Baseline(bert_config, num_nodes)
-    # model = Bert_GCN(bert_config, num_nodes)
-    # model = Bert(bert_config, embedding_dim=args.embedding_dim)
-    # model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
     G.to(device)
-    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-    #                                                   output_device=args.local_rank)
-    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
+    # wrap the model
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[dev_id])
 
-    # bert_params = list(map(id, model.bert.parameters()))
-    # base_params = filter(lambda p: id(p) not in bert_params, model.parameters())
-    # layer_list = ['bert.weight', 'bert.bias']
-    # bert_params = list(map(lambda x: x[1], list(filter(lambda kv: kv[0] in layer_list, model.named_parameters()))))
-    # base_params = list(map(lambda x: x[1], list(filter(lambda kv: kv[0] not in layer_list, model.named_parameters()))))
-    # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    # loss function
+    criterion = nn.BCELoss().cuda(dev_id)
+
+    # optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    # optimizer = torch.optim.AdamW([{'params': bert_params, 'lr': args.bert_lr}, {'params': base_params, 'lr': args.lr}],
-    #                               lr=args.lr, weight_decay=args.weight_decay)
-
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCELoss()
 
     # training
     print("Start training!")
@@ -320,7 +279,6 @@ def main():
     print('Finish training!')
     # testing
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
-    # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
     # print('test_golden_truth', test_labels)
@@ -360,5 +318,145 @@ def main():
 
     micro_precision, micro_recall, micro_f_score = eval(test_label_transform, pred, num_nodes, len(pred))
     print(micro_precision, micro_recall, micro_f_score)
+
+    # def main():
+    #     parser = argparse.ArgumentParser()
+    #     parser.add_argument('--train_path')
+    #     parser.add_argument('--test_path')
+    #     parser.add_argument('----meSH_pair_path')
+    #     parser.add_argument('--word2vec_path')
+    #     parser.add_argument('--meSH_pair_path')
+    #     parser.add_argument('--mesh_parent_children_path')
+    #     parser.add_argument('--graph')
+    #     parser.add_argument('--results')
+    #     parser.add_argument('--save-model-path')
+    #
+    #     parser.add_argument('--device', default='cuda', type=str)
+    #     parser.add_argument('--hidden_gcn_size', type=int, default=768)
+    #     parser.add_argument('--embedding_dim', type=int, default=200)
+    #     parser.add_argument('--biobert', type=str)
+    #
+    #     parser.add_argument('--num_epochs', type=int, default=3)
+    #     parser.add_argument('--batch_sz', type=int, default=32)
+    #     parser.add_argument('--num_workers', type=int, default=1)
+    #     parser.add_argument('--bert_lr', type=float, default=2e-5)
+    #     parser.add_argument('--lr', type=float, default=5e-5)
+    #     parser.add_argument('--momentum', type=float, default=0.9)
+    #     parser.add_argument('--weight_decay', type=float, default=0.01)
+    #     parser.add_argument('--scheduler_step_sz', type=int, default=5)
+    #     parser.add_argument('--lr_gamma', type=float, default=0.1)
+    #
+    #     parser.add_argument('--port', type=str, default='20000')
+    #     parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
+    #     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    #     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
+    #     # parser.add_argument('--fp16', default=True, type=bool)
+    #     # parser.add_argument('--fp16_opt_level', type=str, default='O0')
+    #
+    #     args = parser.parse_args()
+    #
+    #     # n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
+    #     # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    #     # # device = torch.device(args.device)
+    #     # logging.info('Device:'.format(device))
+    #     #
+    #     # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    #     # # initialize the distributed training
+    #     # hostname = socket.gethostname()
+    #     # ip_address = socket.gethostbyname(hostname)
+    #     # dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
+    #     #                         world_size=args.world_size, rank=args.local_rank)
+    #     # gpu_rank = torch.distributed.get_rank()
+    #     #
+    #     # tokenizer = AutoTokenizer.from_pretrained(args.biobert)
+    #     # bert_config = AutoConfig.from_pretrained(args.biobert)
+    #     # # Get dataset and label graph & Load pre-trained embeddings
+    #     # num_nodes, mlb, train_dataset, test_dataset, G = prepare_dataset(args.train_path,
+    #     #                                                                  args.test_path,
+    #     #                                                                  args.meSH_pair_path,
+    #     #                                                                  args.graph, tokenizer)
+    #     #
+    #     #
+    #     # # model = Bert_GCN(bert_config, num_nodes)
+    #     #
+    #     # model = Bert_Baseline(bert_config, num_nodes)
+    #     # # model = Bert_GCN(bert_config, num_nodes)
+    #     # # model = Bert(bert_config, embedding_dim=args.embedding_dim)
+    #     # # model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
+    #     # model.to(device)
+    #     # G.to(device)
+    #     # # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+    #     # #                                                   output_device=args.local_rank)
+    #     # model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
+    #     #
+    #     # # bert_params = list(map(id, model.bert.parameters()))
+    #     # # base_params = filter(lambda p: id(p) not in bert_params, model.parameters())
+    #     # # layer_list = ['bert.weight', 'bert.bias']
+    #     # # bert_params = list(map(lambda x: x[1], list(filter(lambda kv: kv[0] in layer_list, model.named_parameters()))))
+    #     # # base_params = list(map(lambda x: x[1], list(filter(lambda kv: kv[0] not in layer_list, model.named_parameters()))))
+    #     # # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #     # optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    #     # # optimizer = torch.optim.AdamW([{'params': bert_params, 'lr': args.bert_lr}, {'params': base_params, 'lr': args.lr}],
+    #     # #                               lr=args.lr, weight_decay=args.weight_decay)
+    #     #
+    #     # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    #     # criterion = nn.BCELoss()
+    #     #
+    #     # # training
+    #     # print("Start training!")
+    #     # train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, optimizer, lr_scheduler)
+    #     # print('Finish training!')
+    #     # # testing
+    #     # results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    #     # # print('predicted:', results, '\n')
+
+    mp.spawn(main, nprocs=args.gpus, args=(args,))
+
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_path')
+    parser.add_argument('--test_path')
+    parser.add_argument('----meSH_pair_path')
+    parser.add_argument('--word2vec_path')
+    parser.add_argument('--meSH_pair_path')
+    parser.add_argument('--mesh_parent_children_path')
+    parser.add_argument('--graph')
+    parser.add_argument('--results')
+    parser.add_argument('--save-model-path')
+
+    parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--hidden_gcn_size', type=int, default=768)
+    parser.add_argument('--embedding_dim', type=int, default=200)
+    parser.add_argument('--biobert', type=str)
+
+    parser.add_argument('--num_epochs', type=int, default=3)
+    parser.add_argument('--batch_sz', type=int, default=32)
+    parser.add_argument('--num_workers', type=int, default=1)
+    parser.add_argument('--bert_lr', type=float, default=2e-5)
+    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--weight_decay', type=float, default=0.01)
+    parser.add_argument('--scheduler_step_sz', type=int, default=5)
+    parser.add_argument('--lr_gamma', type=float, default=0.1)
+
+    parser.add_argument('--gpus', type=str, default='0,1')
+    parser.add_argument('--port', type=str, default='20000')
+    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
+    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
+    # parser.add_argument('--fp16', default=True, type=bool)
+    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
+    args = parser.parse_args()
+
+    devices = list(map(int, args.gpus.split(',')))
+    args.ngpu = len(devices)
+    mp = torch.multiprocessing.get_context('spawn')
+    procs = []
+    for dev_id in devices:
+        procs.append(mp.Process(target=run, args=(dev_id, args),
+                                daemon=True))
+        procs[-1].start()
+    for p in procs:
+        p.join()
