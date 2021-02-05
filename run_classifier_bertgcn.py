@@ -240,6 +240,8 @@ def run(dev_id, args):
     ip_address = socket.gethostbyname(hostname)
     dist.init_process_group(backend='nccl', init_method='tcp://{}:{}'.format(ip_address, args.port),
                             world_size=args.world_size, rank=dev_id)
+    # delete world_size / rank
+    # random port number
     gpu_rank = dist.get_rank()
     assert gpu_rank == dev_id
     main(dev_id, args)
@@ -264,7 +266,7 @@ def main(dev_id, args):
     model.to(device)
     G.to(device)
     # wrap the model
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[dev_id])
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[dev_id], find_unused_parameters=True)
 
     # loss function
     criterion = nn.BCELoss().cuda(dev_id)
@@ -432,7 +434,7 @@ if __name__ == "__main__":
     parser.add_argument('--biobert', type=str)
 
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--batch_sz', type=int, default=32)
+    parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--bert_lr', type=float, default=2e-5)
     parser.add_argument('--lr', type=float, default=5e-5)
