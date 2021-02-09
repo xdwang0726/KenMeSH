@@ -234,7 +234,7 @@ def getLabelIndex(labels):
 
 
 def run(dev_id, args):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1, 2, 3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # initialize the distributed training
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
