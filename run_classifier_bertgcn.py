@@ -420,7 +420,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path')
     parser.add_argument('--test_path')
-    parser.add_argument('----meSH_pair_path')
+    parser.add_argument('--meSH_pair_path')
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--mesh_parent_children_path')
