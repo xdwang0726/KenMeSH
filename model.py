@@ -198,18 +198,18 @@ class multichannel_attenCNN(nn.Module):
 
 
 class dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz=3, embedding_dim=200):
         super(dilatedCNN, self).__init__()
 
         self.vocab_size = vocab_size
         self.nKernel = nKernel
         self.ksz = ksz
         self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-        self.dconv = nn.Sequential(nn.Conv1d(embedding_dim, self.nKernel, self.ksz, dilation=1),
+        self.dconv = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(embedding_dim, self.nKernel, self.ksz, dilation=2),
+                                   nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=2),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(embedding_dim, self.nKernel, self.ksz, dilation=3),
+                                   nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         self.fc1 = nn.Linear(self.nKernel, 128)
@@ -221,7 +221,7 @@ class dilatedCNN(nn.Module):
         nn.init.zeros_(self.fc2.bias)
 
     def forward(self, input_seq):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
         print('embed', embedded_seq.shape)
         # embedded_seq = embedded_seq.unsqueeze(1)
         # print('squembed', embedded_seq.shape)
