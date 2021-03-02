@@ -175,6 +175,33 @@ def example_based_evaluation(y_actual, y_hat):
     result = [round(EBP, 5), round(EBR, 5), round(EBF, 5)]
     return result
 
-
-def evalution(pred, true_label):
-    return
+# def evalution(pred, true_label):
+#     return
+#
+#
+# """
+# def ranking_precision_score(y_true, y_score, k=10):
+# """Precision at rank k
+#     Parameters
+#     ----------
+#     y_true : array-like, shape = [n_samples]
+#         Ground truth (true relevance labels).
+#     y_score : array-like, shape = [n_samples]
+#         Predicted scores.
+#     k : int
+#         Rank.
+#     Returns
+#     -------
+#     precision @k : float
+#     """
+# unique_y = np.unique(y_true)
+# if len(unique_y) > 2:
+# raise ValueError("Only supported for two relevance levels.")
+# pos_label = unique_y[1]
+# n_pos = np.sum(y_true == pos_label)
+# order = np.argsort(y_score)[::-1]
+# y_true = np.take(y_true, order[:k])
+# n_relevant = np.sum(y_true == pos_label)
+# # Divide by min(n_pos, k) such that the best achievable score is always 1.0.
+# return float(n_relevant) / min(n_pos, k)
+# """

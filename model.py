@@ -197,6 +197,47 @@ class multichannel_attenCNN(nn.Module):
         return x_feature
 
 
+class dilatedCNN(nn.Module):
+    def __init__(self, vocab_size, nKernel, ksz, embedding_dim=200):
+        super(dilatedCNN, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.nKernel = nKernel
+        self.ksz = ksz
+        self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
+        self.dconv = nn.Sequential(nn.Conv1d(embedding_dim, self.nKernel, self.ksz, dilation=1),
+                                   nn.SELU(), nn.AlphaDropout(p=0.05),
+                                   nn.Conv1d(embedding_dim, self.nKernel, self.ksz, dilation=2),
+                                   nn.SELU(), nn.AlphaDropout(p=0.05),
+                                   nn.Conv1d(embedding_dim, self.nKernel, self.ksz, dilation=3),
+                                   nn.SELU(), nn.AlphaDropout(p=0.05))
+
+        self.fc1 = nn.Linear(self.nKernel, 128)
+        nn.init.xavier_normal_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
+
+        self.fc2 = nn.Linear(128, 1)
+        nn.init.xavier_normal_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
+
+    def forward(self, input_seq, g_node_feat):
+        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = embedded_seq.unsqueeze(1)
+        embedded_seq = self.dropout(embedded_seq)
+
+        abstract_conv = self.dconv(embedded_seq)
+        print('dconv', abstract_conv.shape)
+
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)
+
+        x_feature = nn.functional.tanh(self.fc1(abstract_content.transpose(1, 2)))
+        x_feature = self.fc2(x_feature).squeeze(2)
+        x = torch.sigmoid(x_feature)
+        return x
+
+
 # class attenCNN(nn.Module):
 # """
 # attention CNN with multiple kernel size
