@@ -222,8 +222,10 @@ class dilatedCNN(nn.Module):
 
     def forward(self, input_seq):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        print('embed', embedded_seq.shape)
         embedded_seq = embedded_seq.unsqueeze(1)
-        embedded_seq = self.dropout(embedded_seq)
+        print('squembed', embedded_seq.shape)
+        # embedded_seq = self.dropout(embedded_seq)
 
         abstract_conv = self.dconv(embedded_seq)
         print('dconv', abstract_conv.shape)
