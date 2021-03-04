@@ -102,7 +102,7 @@ class Baseline(nn.Module):
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
-        abstract_content = torch.matmul(abstract_conv, abstract_atten)
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)  #
         print('abstract_content', abstract_content.shape)
 
         x_feature = nn.functional.tanh(self.fc1(abstract_content.transpose(1, 2)))
