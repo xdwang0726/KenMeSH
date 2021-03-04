@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from model import Baseline, dilatedCNN
+from model import Baseline, dilatedCNN, attenCNN
 from utils import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 
@@ -159,8 +159,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G = text.to(device), label.to(device), G.to(device)
-            # output = model(text, G.ndata['feat'])
-            output = model(text)
+            output = model(text, G.ndata['feat'])
+            # output = model(text)
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -190,8 +190,8 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            # output = model(text, G.ndata['feat'])
-            output = model(text)
+            output = model(text, G.ndata['feat'])
+            # output = model(text)
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
@@ -286,10 +286,10 @@ def main():
     #                  args.atten_dropout, embedding_dim=args.embedding_dim)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    # model = Baseline(vocab_size, args.nKernel, args.ksz, atten_dropout=0.5, embedding_dim=200)
-    # model = CNN(vocab_size, args.nKernel, args.ksz, num_nodes, embedding_dim=200)
-    model = dilatedCNN(vocab_size, args.nKernel, args.ksz, embedding_dim=200)
-    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model = Baseline(vocab_size, args.nKernel, args.ksz, atten_dropout=0.5, embedding_dim=200)
+    # model = attenCNN(vocab_size, args.nKernel, args.ksz, embedding_dim=200)
+    # model = dilatedCNN(vocab_size, args.nKernel, args.ksz, embedding_dim=200)
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G.to(device)
