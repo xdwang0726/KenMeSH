@@ -348,12 +348,12 @@ def main():
 
     # training
     print("Start training!")
-    model.module.train()
+    # model.module.train()
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
-    model.module.eval()
+    # model.module.eval()
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
     # print('predicted:', results, '\n')
 
