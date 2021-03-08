@@ -303,12 +303,12 @@ def main():
     # device = torch.device(args.device)
     # logging.info('Device:'.format(device))
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
-    # initialize the distributed training
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
-                            world_size=args.world_size, rank=args.local_rank)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    # # initialize the distributed training
+    # hostname = socket.gethostname()
+    # ip_address = socket.gethostbyname(hostname)
+    # dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
+    #                         world_size=args.world_size, rank=args.local_rank)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
