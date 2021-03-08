@@ -235,7 +235,7 @@ class dilatedCNN(nn.Module):
         print('label_feature', label_feature.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feature.transpose(0, 1)),
                                        dim=1)
         abstract_content = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim, 29368)
         print('abstract_cont', abstract_content.shape)
