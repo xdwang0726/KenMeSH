@@ -328,9 +328,9 @@ def main():
     # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
-    # model.to(device)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-                                                      output_device=args.local_rank)
+    model.to(device)
+    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+    #                                                   output_device=args.local_rank)
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
