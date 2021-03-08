@@ -318,7 +318,7 @@ def main():
     vocab_size = len(vocab)
     # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
     #                  args.atten_dropout, embedding_dim=args.embedding_dim)
-    model = dilatedCNN(vocab_size, args.nKernel, args.ksz, embedding_dim=200)
+    model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)
