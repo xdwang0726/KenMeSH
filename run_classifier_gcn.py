@@ -18,7 +18,7 @@ from torchtext.vocab import Vectors
 from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
-from model import MeSH_GCN
+from model import MeSH_GCN, dilatedCNN
 from threshold_opt import eval
 from utils import MeSH_indexing, pad_sequence
 import socket
@@ -273,13 +273,13 @@ def main():
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=10)
+    parser.add_argument('--ksz', default=3)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -316,9 +316,9 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-                     args.atten_dropout, embedding_dim=args.embedding_dim)
-
+    # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
+    #                  args.atten_dropout, embedding_dim=args.embedding_dim)
+    model = dilatedCNN(vocab_size, args.nKernel, args.ksz, embedding_dim=200)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)

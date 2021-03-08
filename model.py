@@ -102,7 +102,7 @@ class Baseline(nn.Module):
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
-        abstract_content = torch.matmul(abstract_conv, abstract_atten)  #
+        abstract_content = torch.matmul(abstract_conv, abstract_atten)  # [bs, embed]
         print('abstract_content', abstract_content.shape)
 
         x_feature = nn.functional.tanh(self.fc1(abstract_content.transpose(1, 2)))
@@ -217,22 +217,14 @@ class dilatedCNN(nn.Module):
                                    nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
+        self.content_final = nn.Linear(self.nKernel, embedding_dim * 2)
+
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
-        self.fc1 = nn.Linear(embedding_dim, 128)
-        nn.init.xavier_normal_(self.fc1.weight)
-        nn.init.zeros_(self.fc1.bias)
-
-        self.fc2 = nn.Linear(embedding_dim, 1)
-        nn.init.xavier_normal_(self.fc2.weight)
-        nn.init.zeros_(self.fc2.bias)
 
     def forward(self, input_seq, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
         print('embed', embedded_seq.shape)
-        # embedded_seq = embedded_seq.unsqueeze(1)
-        # print('squembed', embedded_seq.shape)
-        # embedded_seq = self.dropout(embedded_seq)
 
         abstract_conv = self.dconv(embedded_seq)  # (bs, embed_dim, seq_len-ksz+1)
         print('dconv', abstract_conv.shape)
@@ -240,6 +232,7 @@ class dilatedCNN(nn.Module):
         # get label features
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        print('label_feature', label_feature.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
@@ -247,9 +240,11 @@ class dilatedCNN(nn.Module):
         abstract_content = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim, 29368)
         print('abstract_cont', abstract_content.shape)
 
-        x_feature = nn.functional.tanh(self.fc1(abstract_conv.transpose(1, 2)))
-        x_feature = self.fc2(x_feature).squeeze(2)
-        x = torch.sigmoid(x_feature)
+        x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2)))
+        print('x_feature', x_feature.shape)
+
+        x = torch.sum(x_feature * label_feature, dim=2)
+        x = torch.sigmoid(x)
         return x
 
 
