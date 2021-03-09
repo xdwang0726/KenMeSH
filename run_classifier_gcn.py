@@ -16,6 +16,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
+from transformers import AutoTokenizer, AutoConfig
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from model import MeSH_GCN, dilatedCNN
@@ -273,10 +274,11 @@ def main():
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', default=3)
-    parser.add_argument('--hidden_gcn_size', type=int, default=200)
+    parser.add_argument('--hidden_gcn_size', type=int, default=768)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
+    parser.add_argument('--biobert', type=str)
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=16)
@@ -302,6 +304,10 @@ def main():
     # device = torch.device(args.device)
     # logging.info('Device:'.format(device))
 
+    # prepare dataset
+    tokenizer = AutoTokenizer.from_pretrained(args.biobert)
+    bert_config = AutoConfig.from_pretrained(args.biobert)
+
     # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # # initialize the distributed training
     # hostname = socket.gethostname()
@@ -317,7 +323,9 @@ def main():
     vocab_size = len(vocab)
     # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
     #                  args.atten_dropout, embedding_dim=args.embedding_dim)
-    model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
+
+    # model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
+    model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)

@@ -203,35 +203,40 @@ class multichannel_attenCNN(nn.Module):
 
 
 class dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
+    def __init__(self, config, ksz, hidden_gcn_size, embedding_dim=200):
         super(dilatedCNN, self).__init__()
 
-        self.vocab_size = vocab_size
-        self.nKernel = nKernel
+        self.config = config
         self.ksz = ksz
-        self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-        self.dconv = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=1),
+        self.hidden_gcn_size = hidden_gcn_size
+        # self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
+        self.bert = BertModel(config)
+        self.dconv = nn.Sequential(nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=2),
+                                   nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, dilation=2),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(embedding_dim, embedding_dim, kernel_size=self.ksz, dilation=3),
+                                   nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
-        self.content_final = nn.Linear(self.nKernel, embedding_dim * 2)
+        self.content_final = nn.Linear(self.config.hidden_size, self.config.hidden_size*2)
 
-        self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
+        self.gcn = LabelNet(self.hidden_gcn_size, embedding_dim, embedding_dim)
 
 
-    def forward(self, input_seq, g, g_node_feature):
-        embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
-        print('embed', embedded_seq.shape)
+    def forward(self, input_seq, attention_seq, g, g_node_feature):
+        output, _ = self.bert(input_seq, attention_seq)
+        output = self.dropout(output)  # [bz, seq_length, hidden_sz]
+        # embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
+        print('embed', output.shape)
 
-        abstract_conv = self.dconv(embedded_seq)  # (bs, embed_dim, seq_len-ksz+1)
+        abstract_conv = self.dconv(output)  # (bs, embed_dim, seq_len-ksz+1)
         print('dconv', abstract_conv.shape)
+
+
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 400])
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 768*2])
         print('label_feature', label_feature.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)

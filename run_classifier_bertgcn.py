@@ -14,7 +14,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 
-from model import Bert_GCN, Bert_Baseline
+from model import Bert_GCN, Bert_Baseline, dilatedCNN
 from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from transformers import AutoTokenizer, AutoConfig
@@ -132,9 +132,9 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.cuda(), attention_mask.cuda(), label.cuda()
-            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            output = model(input_ids, attention_mask)
+            # output = model(input_ids, attention_mask)
 
             # training precision@k
             # original_label = mlb.fit_transform(label).cpu()
@@ -175,9 +175,9 @@ def test(test_dataset, model, G, batch_sz, device):
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            # output = model(input_ids, attention_mask, G, G.ndata['feat'])
+            output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
-            output = model(input_ids, attention_mask)
+            # output = model(input_ids, attention_mask)
 
             # results = output.data.cpu().numpy()
             # print(type(results), results.shape)
@@ -262,11 +262,14 @@ def main(dev_id, args):
                                                                      args.graph, tokenizer)
 
     # create model
-    model = Bert_Baseline(bert_config, num_nodes)
+    # model = Bert_Baseline(bert_config, num_nodes)
+    model = dilatedCNN(bert_config, args.ksz, args.hidden_gcn_size)
+    # model = Bert_Baseline(bert_config, num_nodes)
     model.to(device)
     G.to(device)
     # wrap the model
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[dev_id], find_unused_parameters=True)
+    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[dev_id], find_unused_parameters=True)
+
 
     # loss function
     criterion = nn.BCELoss().cuda(dev_id)
@@ -436,7 +439,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--bert_lr', type=float, default=2e-5)
-    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0.01)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
