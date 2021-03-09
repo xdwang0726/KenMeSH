@@ -211,6 +211,7 @@ class dilatedCNN(nn.Module):
         self.hidden_gcn_size = hidden_gcn_size
         # self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
         self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.dconv = nn.Sequential(nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
                                    nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, dilation=2),
