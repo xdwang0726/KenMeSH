@@ -221,7 +221,7 @@ class dilatedCNN(nn.Module):
 
         self.content_final = nn.Linear(self.config.hidden_size, self.config.hidden_size*2)
 
-        self.gcn = LabelNet(self.hidden_gcn_size, embedding_dim, embedding_dim)
+        self.gcn = LabelNet(config.hidden_size, config.hidden_size, config.hidden_size)
 
 
     def forward(self, input_seq, attention_seq, g, g_node_feature):
