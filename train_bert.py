@@ -120,7 +120,7 @@ def generate_batch(batch):
     return input_ids, attention_mask, label
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, optimizer, lr_scheduler):
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch)
 
@@ -163,7 +163,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
-def test(test_dataset, model, G, batch_sz, device):
+def test(test_dataset, model, G, batch_sz):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
     ori_label = []
@@ -304,12 +304,11 @@ def main():
     # training
     print("Start training!")
     # model.module.train()
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
-          lr_scheduler)
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, optimizer, lr_scheduler)
     print('Finish training!')
     # testing
     # model.module.eval()
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz)
     # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
