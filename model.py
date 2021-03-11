@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
 from transformers import BertModel
-from transformers.modeling_bert import BertPreTrainedModel
+# from transformers.modeling_bert import BertPreTrainedModel
 
 
 ########## Embedding ##########
