@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
 from transformers import BertModel
-# from transformers.modeling_bert import BertPreTrainedModel
+from transformers.modeling_bert import BertPreTrainedModel
 
 
 ########## Embedding ##########
@@ -226,7 +226,6 @@ class dilatedCNN(nn.Module):
 
     def forward(self, input_seq, attention_seq, g, g_node_feature):
         output, _ = self.bert(input_seq, attention_seq)
-        print(output, type(output))
         output = self.dropout(output).permute(0, 2, 1)  # [bz, hidden_sz, seq_length]
         # embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
         # print('embed', output.shape)
@@ -380,39 +379,39 @@ class MLAttention(nn.Module):
         return x
 
 
-# class Bert_Baseline(BertPreTrainedModel):
-#     def __init__(self, config, num_label):
-#         super(Bert_Baseline, self).__init__(config)
-#         self.bert = BertModel(config)
-#         self.init_weights()
-#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-#
-#         self.atten = MLAttention(num_label, config.hidden_size)
-#
-#         self.fc1 = nn.Linear(config.hidden_size, 512)
-#         nn.init.xavier_normal_(self.fc1.weight)
-#         nn.init.zeros_(self.fc1.bias)
-#
-#         self.fc2 = nn.Linear(512, 256)
-#         nn.init.xavier_normal_(self.fc2.weight)
-#         nn.init.zeros_(self.fc2.bias)
-#
-#         self.fc3 = nn.Linear(256, 1)
-#         nn.init.xavier_normal_(self.fc3.weight)
-#         nn.init.zeros_(self.fc3.bias)
-#
-#     def forward(self, src_input_ids, src_attention_mask):
-#         output, _ = self.bert(src_input_ids, src_attention_mask)
-#         output = self.dropout(output)
-#
-#         atten_out = self.atten(output, src_attention_mask)  # [bz, num_label, hidden_sz]
-#
-#         x_feature = nn.functional.tanh(self.fc1(atten_out))
-#         x_feature = nn.functional.tanh(self.fc2(x_feature))
-#         x_feature = self.fc3(x_feature).squeeze(2)
-#
-#         x = torch.sigmoid(x_feature)
-#         return x
+class Bert_Baseline(BertPreTrainedModel):
+    def __init__(self, config, num_label):
+        super(Bert_Baseline, self).__init__(config)
+        self.bert = BertModel(config)
+        self.init_weights()
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+
+        self.atten = MLAttention(num_label, config.hidden_size)
+
+        self.fc1 = nn.Linear(config.hidden_size, 512)
+        nn.init.xavier_normal_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
+
+        self.fc2 = nn.Linear(512, 256)
+        nn.init.xavier_normal_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
+
+        self.fc3 = nn.Linear(256, 1)
+        nn.init.xavier_normal_(self.fc3.weight)
+        nn.init.zeros_(self.fc3.bias)
+
+    def forward(self, src_input_ids, src_attention_mask):
+        output, _ = self.bert(src_input_ids, src_attention_mask)
+        output = self.dropout(output)
+
+        atten_out = self.atten(output, src_attention_mask)  # [bz, num_label, hidden_sz]
+
+        x_feature = nn.functional.tanh(self.fc1(atten_out))
+        x_feature = nn.functional.tanh(self.fc2(x_feature))
+        x_feature = self.fc3(x_feature).squeeze(2)
+
+        x = torch.sigmoid(x_feature)
+        return x
 
 
 class CorNetBlock(nn.Module):
