@@ -14,7 +14,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 
-from model import Bert_GCN, Bert_Baseline, dilatedCNN
+from model import Bert_GCN, dilatedCNN
 from utils import bert_MeSH
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from transformers import AutoTokenizer, AutoConfig
@@ -280,7 +280,7 @@ def main():
                                                                      args.graph, tokenizer)
 
     # create model
-    model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
+    model = dilatedCNN(bert_config, args.ksz, args.hidden_gcn_size)
     model.to(device)
     G.to(device)
 

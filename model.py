@@ -203,7 +203,7 @@ class multichannel_attenCNN(nn.Module):
 
 
 class dilatedCNN(nn.Module):
-    def __init__(self, config, ksz, hidden_gcn_size, embedding_dim=200):
+    def __init__(self, config, ksz, hidden_gcn_size):
         super(dilatedCNN, self).__init__()
 
         self.config = config
