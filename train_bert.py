@@ -120,9 +120,9 @@ def generate_batch(batch):
     return input_ids, attention_mask, label
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, optimizer, lr_scheduler):
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch)
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, num_workers, optimizer, lr_scheduler):
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
+                            num_workers=num_workers)
 
     num_lines = num_epochs * len(train_data)
 
@@ -304,7 +304,7 @@ def main():
     # training
     print("Start training!")
     # model.module.train()
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, optimizer, lr_scheduler)
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
     # testing
     # model.module.eval()
