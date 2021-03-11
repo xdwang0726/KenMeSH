@@ -132,6 +132,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, num_wor
             input_ids, attention_mask, label = data
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             input_ids, attention_mask, label = input_ids.cuda(), attention_mask.cuda(), label.cuda()
+            print(input_ids, type(input_ids))
             output = model(input_ids, attention_mask, G, G.ndata['feat'])
             # output = model(input_ids, attention_mask, G.ndata['feat'])
             # output = model(input_ids, attention_mask)
