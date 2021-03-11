@@ -226,6 +226,7 @@ class dilatedCNN(nn.Module):
 
     def forward(self, input_seq, attention_seq, g, g_node_feature):
         output, _ = self.bert(input_seq, attention_seq)
+        print(output, type(output))
         output = self.dropout(output).permute(0, 2, 1)  # [bz, hidden_sz, seq_length]
         # embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
         # print('embed', output.shape)
