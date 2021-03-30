@@ -120,9 +120,10 @@ def generate_batch(batch):
     return input_ids, attention_mask, label
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, num_workers, optimizer, lr_scheduler):
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch)
+    # train_data = DataLoader(train_dataset, batch_size=batch_sz, collate_fn=generate_batch)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, num_workers=num_workers, sampler=train_sampler)
 
     num_lines = num_epochs * len(train_data)
 
@@ -163,7 +164,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
-def test(test_dataset, model, G, batch_sz, device):
+def test(test_dataset, model, G, batch_sz):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
     ori_label = []
@@ -233,24 +234,70 @@ def getLabelIndex(labels):
     return label_index
 
 
-def run(dev_id, args):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+# def run(args):
+#     os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+#     # initialize the distributed training
+#     hostname = socket.gethostname()
+#     ip_address = socket.gethostbyname(hostname)
+#     # number of GPU:
+#     ngpus_per_node = torch.cuda.device_count()
+#     rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + int(os.environ.get("SLURM_LOCALID"))
+#     dist.init_process_group(backend='nccl', init_method='tcp://{}:{}'.format(ip_address, args.port),
+#                             world_size=args.world_size, rank=rank)
+#
+#     # random port number
+#     main(dev_id, args)
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_path')
+    parser.add_argument('--test_path')
+    parser.add_argument('--meSH_pair_path')
+    parser.add_argument('--word2vec_path')
+    parser.add_argument('--mesh_parent_children_path')
+    parser.add_argument('--graph')
+    parser.add_argument('--results')
+    parser.add_argument('--save-model-path')
+
+    parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--hidden_gcn_size', type=int, default=768)
+    parser.add_argument('--embedding_dim', type=int, default=200)
+    parser.add_argument('--biobert', type=str)
+
+    parser.add_argument('--ksz', default=3)
+    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--batch_sz', type=int, default=16)
+    parser.add_argument('--num_workers', type=int, default=0)
+    parser.add_argument('--bert_lr', type=float, default=2e-5)
+    parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--weight_decay', type=float, default=0.01)
+    parser.add_argument('--scheduler_step_sz', type=int, default=5)
+    parser.add_argument('--lr_gamma', type=float, default=0.1)
+
+    parser.add_argument('--gpus', type=str, default='0,1')
+    parser.add_argument('--port', type=str, default='20000')
+    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
+    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
+    # parser.add_argument('--fp16', default=True, type=bool)
+    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
+    args = parser.parse_args()
+
+    device = torch.device('cuda:{}'.format(dev_id))
+    # set current device
+    # torch.cuda.set_device(device)
+
     # initialize the distributed training
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
+    # number of GPU:
+    ngpus_per_node = torch.cuda.device_count()
+    rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + int(os.environ.get("SLURM_LOCALID"))
     dist.init_process_group(backend='nccl', init_method='tcp://{}:{}'.format(ip_address, args.port),
-                            world_size=args.world_size, rank=dev_id)
-    # delete world_size / rank
-    # random port number
-    gpu_rank = dist.get_rank()
-    assert gpu_rank == dev_id
-    main(dev_id, args)
-
-
-def main(dev_id, args):
-    device = torch.device('cuda:{}'.format(dev_id))
-    # set current device
-    torch.cuda.set_device(device)
+                            world_size=args.world_size, rank=rank)
 
     # prepare dataset
     tokenizer = AutoTokenizer.from_pretrained(args.biobert)
@@ -269,10 +316,10 @@ def main(dev_id, args):
     G.to(device)
     # wrap the model
     # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[dev_id], find_unused_parameters=True)
-
+    model = torch.nn.parallel.DistributedDataParallel(model)
 
     # loss function
-    criterion = nn.BCELoss().cuda(dev_id)
+    criterion = nn.BCELoss().cuda()
 
     # optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
@@ -280,10 +327,10 @@ def main(dev_id, args):
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, optimizer, lr_scheduler)
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    results, test_labels = test(test_dataset, model, G, args.batch_sz)
 
     test_label_transform = mlb.fit_transform(test_labels)
     # print('test_golden_truth', test_labels)
@@ -415,53 +462,26 @@ def main(dev_id, args):
     #     # results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
     #     # # print('predicted:', results, '\n')
 
-    mp.spawn(main, nprocs=args.gpus, args=(args,))
+    # mp.spawn(main, nprocs=args.gpus, args=(args,))
 
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path')
-    parser.add_argument('--test_path')
-    parser.add_argument('--meSH_pair_path')
-    parser.add_argument('--word2vec_path')
-    parser.add_argument('--mesh_parent_children_path')
-    parser.add_argument('--graph')
-    parser.add_argument('--results')
-    parser.add_argument('--save-model-path')
 
-    parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--hidden_gcn_size', type=int, default=768)
-    parser.add_argument('--embedding_dim', type=int, default=200)
-    parser.add_argument('--biobert', type=str)
-
-    parser.add_argument('--ksz', default=3)
-    parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=16)
-    parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--bert_lr', type=float, default=2e-5)
-    parser.add_argument('--lr', type=float, default=3e-4)
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=0.01)
-    parser.add_argument('--scheduler_step_sz', type=int, default=5)
-    parser.add_argument('--lr_gamma', type=float, default=0.1)
-
-    parser.add_argument('--gpus', type=str, default='0,1')
-    parser.add_argument('--port', type=str, default='20000')
-    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
-    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
-    # parser.add_argument('--fp16', default=True, type=bool)
-    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
-    args = parser.parse_args()
-
-    devices = list(map(int, args.gpus.split(',')))
-    args.ngpu = len(devices)
-    mp = torch.multiprocessing.get_context('spawn')
-    procs = []
-    for dev_id in devices:
-        procs.append(mp.Process(target=run, args=(dev_id, args),
-                                daemon=True))
-        procs[-1].start()
-    for p in procs:
-        p.join()
+    main()
+    # os.environ['SLURM_NTASKS']  # world size
+    # os.environ['SLURM_NODEID']  # node id
+    # os.environ['SLURM_PROCID']  # rank
+    # os.environ['SLURM_LOCALID']  # local_rank
+    # os.environ['SLURM_STEP_NODELIST']  # 从中取得一个ip作为通讯ip
+    #
+    # devices = list(map(int, args.gpus.split(',')))
+    # args.ngpu = len(devices)
+    # mp = torch.multiprocessing.get_context('spawn')
+    # procs = []
+    # for dev_id in devices:
+    #     procs.append(mp.Process(target=run, args=(dev_id, args),
+    #                             daemon=True))
+    #     procs[-1].start()
+    # for p in procs:
+    #     p.join()
