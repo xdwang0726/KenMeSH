@@ -181,13 +181,13 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         # print('Allocated3:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
 
 
-def test(test_dataset, model, G, batch_sz, device):
+def test(test_dataset, model, G, batch_sz):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
-    pred = torch.zeros(0).to(device)
+    pred = torch.zeros(0).cuda()
     ori_label = []
     print('Testing....')
     for text, label in test_data:
-        text = text.to(device)
+        text = text.cuda()
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
@@ -310,8 +310,7 @@ def main():
     print('Finish training!')
     # testing
     # model.module.eval()
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
-    # print('predicted:', results, '\n')
+    results, test_labels = test(test_dataset, model, G, args.batch_sz)
 
     test_label_transform = mlb.fit_transform(test_labels)
     # print('test_golden_truth', test_labels)
