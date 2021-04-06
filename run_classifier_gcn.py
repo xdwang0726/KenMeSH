@@ -172,7 +172,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # print('Allocated2:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
-            if processed_lines % 128 == 0:
+            if processed_lines % 200 == 0:
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
@@ -248,7 +248,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=5)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=1)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0.5)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
@@ -277,27 +277,27 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-    #                  args.atten_dropout, embedding_dim=args.embedding_dim)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
+                      args.atten_dropout, embedding_dim=args.embedding_dim)
 
     # model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
     # model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
-    model = dilatedCNN(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
+    # model = dilatedCNN(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
     # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
     #                                                   output_device=args.local_rank)
     G.to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
