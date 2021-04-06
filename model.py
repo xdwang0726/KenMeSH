@@ -281,15 +281,10 @@ class dilatedCNN(nn.Module):
         # embedded_seq = self.dropout(embedded_seq)
         print('embed', embedded_seq.shape)
 
-        outputs, (_,_) = self.rnn(embedded_seq)
-        print('rnn_out', outputs.shape)
-        bilstm_outputs = outputs[:, :, :self.embedding_dim] + outputs[:, :, self.embedding_dim:] # (bs, seq_len, emb_dim*2)
-        print('bilstm_out', bilstm_outputs)
-
-        output = bilstm_outputs.permute(0, 2, 1)  # (bs, emb_dim*2, seq_length)
+        outputs, (_,_) = self.rnn(embedded_seq).permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         print('output', output.shape)
 
-        abstract_conv = self.dconv(output)  # (bs, embed_dim*2, seq_len-ksz+1)
+        abstract_conv = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
         print('dconv', abstract_conv.shape)
 
         # get label features
