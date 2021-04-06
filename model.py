@@ -145,11 +145,9 @@ class attenCNN(nn.Module):
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
-        abstract_content = torch.matmul(abstract_conv, abstract_atten)
-        print('abstract_content', abstract_content.shape)
+        abstract_content = torch.matmul(abstract_conv, abstract_atten) # (bs, emb_sz, num_label)
 
-        x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2)))
-        print('x_feature', x_feature.shape)
+        x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2))) # (bs, num_label, emb_sz*2)
         return x_feature
 
 
