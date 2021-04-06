@@ -273,10 +273,10 @@ class dilatedCNN(nn.Module):
                                    nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
-        self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
+        # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
 
-    def forward(self, input_seq, attention_seq, g, g_node_feature):
+    def forward(self, input_seq, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         embedded_seq = self.dropout(embedded_seq)
         print('embed', embedded_seq.shape)
@@ -286,17 +286,15 @@ class dilatedCNN(nn.Module):
         bilstm_outputs = outputs[:, :, :self.embedding_dim] + outputs[:, :, self.embedding_dim:] # (bs, seq_len, emb_dim*2)
         print('bilstm_out', bilstm_outputs)
 
-        output, _ = self.bert(input_seq, attention_seq)
-        output = self.dropout(output).permute(0, 2, 1)  # [bz, hidden_sz, seq_length]
-        # embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
-        # print('embed', output.shape)
+        output = bilstm_outputs.permute(0, 2, 1)  # (bs, emb_dim*2, seq_length)
+        print('output', output.shape)
 
         abstract_conv = self.dconv(output)  # (bs, embed_dim, seq_len-ksz+1)
-        # print('dconv', abstract_conv.shape)
+        print('dconv', abstract_conv.shape)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 768*2])
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 200*2])
         # print('label_feature', label_feature.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)

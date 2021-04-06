@@ -158,22 +158,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     print("Training....")
     for epoch in range(num_epochs):
         for i, (text, label) in enumerate(train_data):
-            # ('batch:', i)
-            # print('train_original', i, label, '\n')
-            # test_label = mlb.fit_transform(label)
 
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             text, label, G, G.ndata['feat'] = text.to(device), label.to(device), G.to(device), G.ndata['feat'].to(
                 device)
             output = model(text, G, G.ndata['feat'])
-            # print('Allocated1:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
-
-            # print train output
-            # pred = output.data.cpu().numpy()
-            # print('pred_index', pred.argsort()[::-1][:, :10])
-            # top_10_pred = top_k_predicted(test_label, pred, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted train', i, top_10_mesh, '\n')
 
             optimizer.zero_grad()
             loss = criterion(output, label)
