@@ -39,7 +39,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 10000:
+        if i <= 1000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -277,8 +277,7 @@ def main():
     parser.add_argument('--hidden_gcn_size', type=int, default=768)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
-    parser.add_argument('--atten_dropout', type=float, default=0.5)
-    parser.add_argument('--biobert', type=str)
+    parser.add_argument('--dropout', type=float, default=0.2)
 
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=16)
@@ -325,7 +324,8 @@ def main():
     #                  args.atten_dropout, embedding_dim=args.embedding_dim)
 
     # model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
-    model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
+    # model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
+    model = dilatedCNN(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)
