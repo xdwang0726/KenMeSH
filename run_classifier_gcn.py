@@ -111,9 +111,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     print('graph', G.ndata['feat'].shape)
 
-    # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
-    # G = build_MeSH_graph(edges, node_count, label_embedding)
-
     print('prepare dataset and labels graph done!')
     return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G
 
@@ -297,7 +294,7 @@ def main():
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)

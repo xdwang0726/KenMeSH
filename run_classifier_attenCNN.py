@@ -186,7 +186,7 @@ def test(test_dataset, model, G, batch_sz, device):
     print('Testing....')
     for text, label in test_data:
         text = text.to(device)
-        print('test_orig', label, '\n')
+        # print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
