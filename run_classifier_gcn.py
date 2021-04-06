@@ -188,37 +188,14 @@ def test(test_dataset, model, G, batch_sz, device):
     print('Testing....')
     for text, label in test_data:
         text = text.to(device)
-        print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             output = model(text, G, G.ndata['feat'])
-
-            # results = output.data.cpu().numpy()
-            # print(type(results), results.shape)
-            # idx = results.argsort()[::-1][:, :10]
-            # print(idx)
-            # prob = [results[0][i] for i in idx]
-            # print('probability:', prob)
-            # top_10_pred = top_k_predicted(flattened, results, 10)
-            # top_10_mesh = mlb.inverse_transform(top_10_pred)
-            # print('predicted_test', top_10_mesh, '\n')
-
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
 
-
-# predicted binary labels
-# find the top k labels in the predicted label set
-# def top_k_predicted(predictions, k):
-#     predicted_label = np.zeros(predictions.shape)
-#     for i in range(len(predictions)):
-#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
-#         for j in top_k_index:
-#             predicted_label[i][j] = 1
-#     predicted_label = predicted_label.astype(np.int64)
-#     return predicted_label
 
 def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
@@ -260,7 +237,6 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
-    parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', default=3)
     parser.add_argument('--hidden_gcn_size', type=int, default=768)
@@ -271,7 +247,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=5)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--lr', type=float, default=1)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0.5)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
@@ -282,19 +258,10 @@ def main():
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
-    # parser.add_argument('--fp16', default=True, type=bool)
-    # parser.add_argument('--fp16_opt_level', type=str, default='O0')
-
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # device = torch.device(args.device)
-    # logging.info('Device:'.format(device))
-
-    # prepare dataset
-    # tokenizer = AutoTokenizer.from_pretrained(args.biobert)
-    # bert_config = AutoConfig.from_pretrained(args.biobert)
 
     # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # # initialize the distributed training
@@ -320,7 +287,6 @@ def main():
     #     model = nn.DataParallel(model)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    model.to(device)
     # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
@@ -329,15 +295,9 @@ def main():
     #                                                   output_device=args.local_rank)
     G.to(device)
 
-    # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
-    # if args.fp16:
-    #     try:
-    #         from apex import amp
-    #     except ImportError:
-    #         raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-    #     model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()

@@ -258,10 +258,10 @@ class dilatedCNN(nn.Module):
 
         self.vocab_size = vocab_size
         self.dropout = dropout
-        self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-
         self.ksz = ksz
         self.embedding_dim = embedding_dim
+
+        self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
 
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
@@ -278,7 +278,6 @@ class dilatedCNN(nn.Module):
 
     def forward(self, input_seq, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        # embedded_seq = self.dropout(embedded_seq)
         # print('embed', embedded_seq.shape)
 
         outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
