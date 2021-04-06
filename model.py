@@ -279,15 +279,15 @@ class dilatedCNN(nn.Module):
     def forward(self, input_seq, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         # embedded_seq = self.dropout(embedded_seq)
-        print('embed', embedded_seq.shape)
+        # print('embed', embedded_seq.shape)
 
         outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
 
         outputs = outputs. permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
-        print('output', outputs.shape)
+        # print('output', outputs.shape)
 
         abstract_conv = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
-        print('dconv', abstract_conv.shape)
+        # print('dconv', abstract_conv.shape)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
@@ -297,14 +297,12 @@ class dilatedCNN(nn.Module):
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
                                        dim=1)
-        print('abstract_atten', abstract_atten.shape)
+        # print('abstract_atten', abstract_atten.shape)
         x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, embed_dim*2, 29368)
-        print('x_feature', x_feature.shape)
+        # print('x_feature', x_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
-        print(x.shape)
         x = torch.sigmoid(x)
-        print(x.shape)
         return x
 
 
