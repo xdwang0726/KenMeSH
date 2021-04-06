@@ -266,11 +266,11 @@ class dilatedCNN(nn.Module):
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
 
-        self.dconv = nn.Sequential(nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=1),
+        self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim, self.embedding_dim, kernel_size=self.ksz, padding=1, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=2),
+                                   nn.Conv1d(self.embedding_dim, self.embedding_dim, kernel_size=self.ksz, padding=1, dilation=2),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=3),
+                                   nn.Conv1d(self.embedding_dim, self.embedding_dim, kernel_size=self.ksz, padding=1, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
@@ -289,7 +289,7 @@ class dilatedCNN(nn.Module):
         output = bilstm_outputs.permute(0, 2, 1)  # (bs, emb_dim*2, seq_length)
         print('output', output.shape)
 
-        abstract_conv = self.dconv(output)  # (bs, embed_dim, seq_len-ksz+1)
+        abstract_conv = self.dconv(output)  # (bs, embed_dim*2, seq_len-ksz+1)
         print('dconv', abstract_conv.shape)
 
         # get label features
@@ -298,13 +298,11 @@ class dilatedCNN(nn.Module):
         # print('label_feature', label_feature.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feature.transpose(0, 1)),
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
                                        dim=1)
-        abstract_content = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim, 29368)
-        # print('abstract_cont', abstract_content.shape)
-
-        x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2)))
-        # print('x_feature', x_feature.shape)
+        print('abstract_atten', abstract_atten.shape)
+        x_feature = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim*2, 29368)
+        print('x_feature', x_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sigmoid(x)
