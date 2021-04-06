@@ -278,7 +278,7 @@ class dilatedCNN(nn.Module):
 
     def forward(self, input_seq, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        embedded_seq = self.dropout(embedded_seq)
+        # embedded_seq = self.dropout(embedded_seq)
         print('embed', embedded_seq.shape)
 
         outputs, (_,_) = self.rnn(embedded_seq)
