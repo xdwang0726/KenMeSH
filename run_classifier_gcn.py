@@ -236,7 +236,7 @@ def main():
 
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', default=3)
-    parser.add_argument('--hidden_gcn_size', type=int, default=768)
+    parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
     parser.add_argument('--dropout', type=float, default=0.2)
