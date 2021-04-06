@@ -250,7 +250,7 @@ def main():
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0.5)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
-    parser.add_argument('--lr_gamma', type=float, default=0.1)
+    parser.add_argument('--lr_gamma', type=float, default=0.98)
 
     parser.add_argument('--port', type=str, default='20000')
     parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
@@ -297,7 +297,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
 
     # training
