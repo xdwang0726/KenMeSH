@@ -302,7 +302,9 @@ class dilatedCNN(nn.Module):
         print('x_feature', x_feature.shape)
 
         x = torch.sum(x_feature * label_feature.transpose(0, 1), dim=2)
+        print(x.shape)
         x = torch.sigmoid(x)
+        print(x.shape)
         return x
 
 
