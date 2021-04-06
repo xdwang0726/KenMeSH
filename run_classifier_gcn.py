@@ -293,8 +293,8 @@ def main():
     # logging.info('Device:'.format(device))
 
     # prepare dataset
-    tokenizer = AutoTokenizer.from_pretrained(args.biobert)
-    bert_config = AutoConfig.from_pretrained(args.biobert)
+    # tokenizer = AutoTokenizer.from_pretrained(args.biobert)
+    # bert_config = AutoConfig.from_pretrained(args.biobert)
 
     # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # # initialize the distributed training
