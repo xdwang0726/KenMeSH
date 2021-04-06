@@ -282,7 +282,7 @@ class dilatedCNN(nn.Module):
         print('embed', embedded_seq.shape)
 
         outputs, (_,_) = self.rnn(embedded_seq).permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
-        print('output', output.shape)
+        print('output', outputs.shape)
 
         abstract_conv = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
         print('dconv', abstract_conv.shape)
