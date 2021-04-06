@@ -278,8 +278,7 @@ def main():
                                                                                      args.word2vec_path, args.graph)
 
     vocab_size = len(vocab)
-    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-                      args.atten_dropout)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size)
 
     # model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
     # model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)

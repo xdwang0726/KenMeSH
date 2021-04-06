@@ -553,20 +553,17 @@ class LabelNet(nn.Module):
 class MeSH_GCN(nn.Module):
     """
     attenCNN + GCN
+
     """
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, add_original_embedding, atten_dropout,
-                 embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, embedding_dim=200):
         super(MeSH_GCN, self).__init__()
 
         self.vocab_size = vocab_size
         self.nKernel = nKernel
         self.ksz = ksz
         self.hidden_gcn_size = hidden_gcn_size
-        self.add_original_embedding = add_original_embedding
-        self.atten_dropout = atten_dropout
 
-        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
-                                        self.atten_dropout, embedding_dim=200)
+        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
 
     def forward(self, input_seq, g, g_node_feature):
