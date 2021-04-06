@@ -244,7 +244,7 @@ class multichannel_attenCNN(nn.Module):
 #         abstract_content = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim, 29368)
 #         # print('abstract_cont', abstract_content.shape)
 #
-#         x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2)))
+#         x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2))) # (bs, 29368, embed_dim*2)
 #         # print('x_feature', x_feature.shape)
 #
 #         x = torch.sum(x_feature * label_feature, dim=2)
@@ -298,10 +298,10 @@ class dilatedCNN(nn.Module):
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
                                        dim=1)
         print('abstract_atten', abstract_atten.shape)
-        x_feature = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim*2, 29368)
+        x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, embed_dim*2, 29368)
         print('x_feature', x_feature.shape)
 
-        x = torch.sum(x_feature * label_feature.transpose(0, 1), dim=2)
+        x = torch.sum(x_feature * label_feature, dim=2)
         print(x.shape)
         x = torch.sigmoid(x)
         print(x.shape)
