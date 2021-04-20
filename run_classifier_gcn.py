@@ -25,7 +25,7 @@ from utils import MeSH_indexing, pad_sequence
 import socket
 
 
-def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
+def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -39,7 +39,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 10000:
+        if i <= num_example:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -234,6 +234,7 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
+    parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', type=int, default=5)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
@@ -272,7 +273,8 @@ def main():
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
                                                                                      args.meSH_pair_path,
-                                                                                     args.word2vec_path, args.graph)
+                                                                                     args.word2vec_path, args.graph,
+                                                                                     args.num_example)
 
     vocab_size = len(vocab)
     # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size)
