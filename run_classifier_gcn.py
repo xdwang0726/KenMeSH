@@ -243,7 +243,7 @@ def main():
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
     parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--num_epochs', type=int, default=5)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-4)
