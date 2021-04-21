@@ -251,7 +251,7 @@ class multichannel_attenCNN(nn.Module):
 
 
 class dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, dropout, ksz, embedding_dim=200, rnn_num_layers=2):
+    def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
         super(dilatedCNN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -273,6 +273,9 @@ class dilatedCNN(nn.Module):
 
         # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
+
+        # corNet
+        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
@@ -299,8 +302,11 @@ class dilatedCNN(nn.Module):
         # print('x_feature', x_feature.shape)
 
         x = torch.sum(x_feature * label_feature, dim=2)
-        x = torch.sigmoid(x)
-        return x
+        # x = torch.sigmoid(x)
+
+        cor_logit = self.cornet(x)
+        cor_logit = torch.sigmoid(cor_logit)
+        return cor_logit
 
 
 # class attenCNN(nn.Module):

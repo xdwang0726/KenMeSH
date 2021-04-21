@@ -281,7 +281,9 @@ def main():
 
     # model = dilatedCNN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
     # model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
-    model = dilatedCNN(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
+    # model = dilatedCNN(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
+    model = dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes,
+                       embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)
