@@ -147,8 +147,13 @@ def generate_batch(batch):
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
-                            num_workers=num_workers)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+
+    # train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
+    #                         num_workers=num_workers)
+
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=(train_sampler is None),
+                            num_workers=num_workers, sampler = train_sampler)
 
     num_lines = num_epochs * len(train_data)
 
@@ -246,7 +251,7 @@ def main():
 
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=16)
+    parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -254,8 +259,8 @@ def main():
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.98)
 
-    parser.add_argument('--port', type=str, default='20000')
-    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')
+    parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
+    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
@@ -270,6 +275,10 @@ def main():
     # ip_address = socket.gethostbyname(hostname)
     # dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
     #                         world_size=args.world_size, rank=args.local_rank)
+
+    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(os.environ.get("SLURM_LOCALID"))
+    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method,
+                            world_size=args.world_size, rank=rank)
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
@@ -294,8 +303,7 @@ def main():
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
-    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-    #                                                   output_device=args.local_rank)
+    model = torch.nn.parallel.DistributedDataParallel(model)
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
