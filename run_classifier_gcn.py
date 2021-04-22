@@ -7,9 +7,9 @@ import sys
 import ijson
 import numpy as np
 import torch
+torch.multiprocessing.set_start_method('spawn')
 import torch.distributed as dist
 import torch.nn as nn
-import torch.utils.data.distributed
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 # from torch.nn.utils.rnn import pad_sequence
@@ -146,8 +146,8 @@ def generate_batch(batch):
         return text
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler, world_size, rank):
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
 
     # train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
     #                         num_workers=num_workers)
@@ -260,7 +260,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.98)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
-    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
+    # parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
     parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
@@ -275,10 +275,13 @@ def main():
     # ip_address = socket.gethostbyname(hostname)
     # dist.init_process_group(backend=args.dist_backend, init_method='tcp://{}:{}'.format(ip_address, args.port),
     #                         world_size=args.world_size, rank=args.local_rank)
-
+    world_size = int(os.environ['SLURM_NTASKS'])
     rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(os.environ.get("SLURM_LOCALID"))
+    local_rank = int(os.environ['SLURM_LOCALID'])
     dist.init_process_group(backend=args.dist_backend, init_method=args.init_method,
-                            world_size=args.world_size, rank=rank)
+                            world_size=world_size, rank=rank)
+    torch.cuda.set_device(local_rank)
+
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
@@ -303,7 +306,7 @@ def main():
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
-    model = torch.nn.parallel.DistributedDataParallel(model)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
     G.to(device)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -316,8 +319,8 @@ def main():
     # training
     print("Start training!")
     # model.module.train()
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
-          lr_scheduler)
+    train(train_dataset, model, mlb, G, args.batch_sz / world_size, args.num_epochs, criterion, device, args.num_workers, optimizer,
+          lr_scheduler, world_size, rank)
     print('Finish training!')
     # testing
     # model.module.eval()
