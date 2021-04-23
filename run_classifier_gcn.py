@@ -7,7 +7,7 @@ import sys
 import ijson
 import numpy as np
 import torch
-torch.multiprocessing.set_start_method('spawn')
+# torch.multiprocessing.set_start_method('spawn')
 import torch.distributed as dist
 import torch.nn as nn
 from dgl.data.utils import load_graphs
