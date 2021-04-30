@@ -283,7 +283,8 @@ class dilatedCNN(nn.Module):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         # print('embed', embedded_seq.shape)
 
-        outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
+        # outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
+        outputs, _ = self.rnn(embedded_seq)
 
         outputs = outputs. permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
