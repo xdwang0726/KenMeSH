@@ -363,7 +363,7 @@ def main():
     for measure in label_measure_5:
         print(measure, ",")
 
-    micro_precision, micro_recall, micro_f_score = eval(test_label_transform, pred, num_nodes, len(pred))
-    print(micro_precision, micro_recall, micro_f_score)
+    # micro_precision, micro_recall, micro_f_score = eval(test_label_transform, pred, num_nodes, len(pred))
+    # print(micro_precision, micro_recall, micro_f_score)
 if __name__ == "__main__":
     main()
