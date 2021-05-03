@@ -290,7 +290,8 @@ def main():
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
                                                                                      args.meSH_pair_path,
-                                                                                     args.word2vec_path, args.graph,
+                                                                                     args.word2vec_path,
+                                                                                     args.graph,
                                                                                      args.num_example)
 
     vocab_size = len(vocab)
