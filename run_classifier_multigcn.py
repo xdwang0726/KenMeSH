@@ -16,12 +16,12 @@ from tqdm import tqdm
 # import EarlyStopping
 # from pytorchtools import EarlyStopping
 
-from model import MeSH_GCN_Multi, multichannle_attenCNN
+from model import MeSH_GCN_Multi, multichannel_dilatedCNN
 from utils_multi import MeSH_indexing, pad_sequence
-from eval_helper import precision_at_ks, example_based_evaluation, perf_measure
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 
 
-def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
+def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -36,7 +36,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 10000:
+        if i <= num_example:
             try:
                 ids = obj["pmid"]
                 heading = obj['title'].strip()
@@ -260,22 +260,24 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
+    parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=10)
+    parser.add_argument('--ksz', default=5)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
+    parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
     parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=8)
+    parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=5e-4)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=5)
-    parser.add_argument('--lr_gamma', type=float, default=0.1)
+    parser.add_argument('--lr_gamma', type=float, default=0.98)
 
     args = parser.parse_args()
 
@@ -292,10 +294,10 @@ def main():
 
     vocab_size = len(vocab)
 
-    model = MeSH_GCN_Multi(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, args.add_original_embedding,
-                           args.atten_dropout, num_nodes, embedding_dim=args.embedding_dim, cornet_dim=1000,
-                           n_cornet_blocks=2)
-    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
+    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes,
+                       embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #
@@ -313,7 +315,7 @@ def main():
     #         raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
     #     model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
 
     # training
@@ -356,7 +358,7 @@ def main():
         print(em, ",")
 
     # label based evaluation
-    label_measure_5 = perf_measure(test_label_transform, top_5_pred)
+    label_measure_5 = micro_macro_eval(test_label_transform, top_5_pred)
     print("MaP@5, MiP@5, MaF@5, MiF@5: ")
     for measure in label_measure_5:
         print(measure, ",")

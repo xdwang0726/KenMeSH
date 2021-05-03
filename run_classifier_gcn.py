@@ -313,7 +313,6 @@ def main():
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
 

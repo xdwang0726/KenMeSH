@@ -286,7 +286,7 @@ class dilatedCNN(nn.Module):
         # outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
         outputs, _ = self.rnn(embedded_seq)
 
-        outputs = outputs. permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
+        outputs = outputs.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
 
         abstract_conv = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
@@ -310,6 +310,76 @@ class dilatedCNN(nn.Module):
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
         return cor_logit
+
+
+class multichannel_dilatedCNN(nn.Module):
+    def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
+        super(dilatedCNN, self).__init__()
+
+        self.vocab_size = vocab_size
+        self.dropout = dropout
+        self.ksz = ksz
+        self.embedding_dim = embedding_dim
+
+        self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
+
+        self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
+                           dropout=self.dropout, bidirectional=True, batch_first=True)
+
+        self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=1),
+                                   nn.SELU(), nn.AlphaDropout(p=0.05),
+                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=2),
+                                   nn.SELU(), nn.AlphaDropout(p=0.05),
+                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=3),
+                                   nn.SELU(), nn.AlphaDropout(p=0.05))
+
+        # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
+        self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
+
+        # corNet
+        self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
+
+    def forward(self, input_seq, input_title, g, g_node_feature):
+        embedded_ab = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        # print('embed', embedded_seq.shape)
+
+        embedded_title = self.embedding_layer(input_title)
+
+        abstract, (_,_) = self.rnn(embedded_ab) # (bs, seq_len, emb_dim*2)
+        # outputs, _ = self.rnn(embedded_seq)
+        title, (_, _) = self.rnn(embedded_title)
+
+        abstract = abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
+        # print('output', outputs.shape)
+        title = title.permute(0, 2, 1)
+
+        abstract_conv = self.dconv(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
+        # print('dconv', abstract_conv.shape)
+        title_conv = self.dconv(title)
+
+        # get label features
+        label_feature = self.gcn(g, g_node_feature)
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 200*2])
+        # print('label_feature', label_feature.shape)
+
+        # label-wise attention (mapping different parts of the document representation to different labels)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
+                                       dim=1)
+        title_atten = torch.softmax(torch.matmul(title_conv.transpose(1, 2), label_feature.transpose(0, 1)),
+                                       dim=1)
+
+        abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, embed_dim*2, 29368)
+        title_feature = torch.matmul(title_conv, title_atten).transpose(1, 2)
+        # print('x_feature', x_feature.shape)
+
+        x_feature = torch.add(abstract_feature, title_feature) # size: (bs, embed_dim*2, 29368)
+        x = torch.sum(x_feature * label_feature, dim=2)
+        # x = torch.sigmoid(x)
+
+        cor_logit = self.cornet(x)
+        cor_logit = torch.sigmoid(cor_logit)
+        return cor_logit
+
 
 
 # class attenCNN(nn.Module):
