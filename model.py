@@ -95,10 +95,13 @@ class Baseline(nn.Module):
 
     def forward(self, input_seq, g_node_feat):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        print('embed', embedded_seq)
         embedded_seq = embedded_seq.unsqueeze(1)
+        print('embed_unsqueeze', embedded_seq)
         embedded_seq = self.dropout(embedded_seq)
 
         abstract_conv = self.conv(embedded_seq).squeeze(3)  # [bs, (n_words-ks+1), embedding_sz]
+        print('cov', abstract_conv)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feat.transpose(0, 1)), dim=1)
