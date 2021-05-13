@@ -358,7 +358,7 @@ class multichannel_dilatedCNN(nn.Module):
         abstract_conv = self.dconv(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         # print('dconv', abstract_conv.shape)
         title_conv = F.relu(self.conv(title)).squeeze(3) # (bs, seq_len-ksz+1, embedding_sz*2)
-        print('title_cov', title_conv)
+        print('title_cov', title_conv.shape)
         title_conv = title_conv.permute(0, 2, 1)
 
         # get label features
