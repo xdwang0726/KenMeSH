@@ -313,7 +313,7 @@ class dilatedCNN(nn.Module):
 
 
 class multichannel_dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
+    def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, nKernel=200, cornet_dim=1000, n_cornet_blocks=2):
         super(multichannel_dilatedCNN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -323,8 +323,11 @@ class multichannel_dilatedCNN(nn.Module):
 
         self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
 
+
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
+
+        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
 
         self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
@@ -342,7 +345,6 @@ class multichannel_dilatedCNN(nn.Module):
     def forward(self, input_seq, input_title, g, g_node_feature):
         embedded_ab = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
         # print('embed', embedded_seq.shape)
-
         embedded_title = self.embedding_layer(input_title)
 
         abstract, (_,_) = self.rnn(embedded_ab) # (bs, seq_len, emb_dim*2)
@@ -351,11 +353,12 @@ class multichannel_dilatedCNN(nn.Module):
 
         abstract = abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
-        title = title.permute(0, 2, 1)
+        title = title.unsqueeze(1)
 
         abstract_conv = self.dconv(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         # print('dconv', abstract_conv.shape)
-        title_conv = self.dconv(title)
+        title_conv = F.relu(self.conv(embedded_title)).squeeze(3) # (bs, seq_len-ksz+1, embedding_sz*2)
+        title_conv = title_conv.permute(0, 2, 1)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
