@@ -42,7 +42,9 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         if i <= num_example:
             try:
                 ids = obj["pmid"]
-                text = obj["abstractText"].strip()
+                heading = obj['title'].strip()
+                abstract = obj["abstractText"].strip()
+                text = heading + ' ' + abstract
                 original_label = obj["meshMajor"]
                 mesh_id = obj['meshId']
                 pmid.append(ids)
