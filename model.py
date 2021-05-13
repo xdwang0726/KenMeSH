@@ -354,6 +354,7 @@ class multichannel_dilatedCNN(nn.Module):
         abstract = abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
         title = title.unsqueeze(1)
+        print('title', title.shape)
 
         abstract_conv = self.dconv(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         # print('dconv', abstract_conv.shape)
