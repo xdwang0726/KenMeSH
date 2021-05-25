@@ -263,7 +263,8 @@ def main():
     parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=5)
+    parser.add_argument('--ksz_title', default=2)
+    parser.add_argument('--ksz_ab', default=5)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
@@ -296,7 +297,7 @@ def main():
 
     vocab_size = len(vocab)
 
-    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes,
+    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz_title, args.ksz_ab, num_nodes,
                        embedding_dim=200, rnn_num_layers=2, nKernel=200, cornet_dim=1000, n_cornet_blocks=2)
 
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)

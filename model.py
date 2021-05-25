@@ -316,27 +316,29 @@ class dilatedCNN(nn.Module):
 
 
 class multichannel_dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, nKernel=200, cornet_dim=1000, n_cornet_blocks=2):
+    def __init__(self, vocab_size, dropout, ksz_title, ksz_ab, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
         super(multichannel_dilatedCNN, self).__init__()
 
         self.vocab_size = vocab_size
         self.dropout = dropout
-        self.ksz = ksz
+        self.ksz_title = ksz_title
+        self.ksz_ab = ksz_ab
         self.embedding_dim = embedding_dim
 
         self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
 
-
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
 
-        self.conv = nn.Conv2d(1, nKernel, (ksz, embedding_dim))
+        self.dconv_title = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz_title, padding=1, dilation=1),
+                                  nn.SELU(),
+                                  nn.AlphaDropout(p=0.05))
 
-        self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=1),
+        self.dconv_ab = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz_ab, padding=1, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=2),
+                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz_ab, padding=1, dilation=2),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=3),
+                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz_ab, padding=1, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
@@ -356,14 +358,13 @@ class multichannel_dilatedCNN(nn.Module):
 
         abstract = abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
-        title = title.unsqueeze(1)
+        title = title.permute(0, 2, 1)
         print('title', title.shape)
 
-        abstract_conv = self.dconv(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
+        abstract_conv = self.dconv_ab(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         # print('dconv', abstract_conv.shape)
-        title_conv = F.relu(self.conv(title)) # (bs, seq_len-ksz+1, embedding_sz*2)
+        title_conv = self.dconv_title(title) # (bs, seq_len-ksz+1, embedding_sz*2)
         print('title_cov', title_conv.shape)
-        title_conv = title_conv.squeeze(3).permute(0, 2, 1)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
@@ -381,6 +382,7 @@ class multichannel_dilatedCNN(nn.Module):
         # print('x_feature', x_feature.shape)
 
         x_feature = torch.add(abstract_feature, title_feature) # size: (bs, embed_dim*2, 29368)
+        print('x_feature', x_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.sigmoid(x)
 
