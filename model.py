@@ -359,12 +359,12 @@ class multichannel_dilatedCNN(nn.Module):
         abstract = abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
         title = title.permute(0, 2, 1)
-        print('title', title.shape)
+        #print('title', title.shape)
 
         abstract_conv = self.dconv_ab(abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         # print('dconv', abstract_conv.shape)
         title_conv = self.dconv_title(title) # (bs, seq_len-ksz+1, embedding_sz*2)
-        print('title_cov', title_conv.shape)
+        # print('title_cov', title_conv.shape)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
@@ -382,7 +382,7 @@ class multichannel_dilatedCNN(nn.Module):
         # print('x_feature', x_feature.shape)
 
         x_feature = torch.add(abstract_feature, title_feature) # size: (bs, embed_dim*2, 29368)
-        print('x_feature', x_feature.shape)
+        # print('x_feature', x_feature.shape)
         x = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.sigmoid(x)
 
