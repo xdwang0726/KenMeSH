@@ -890,15 +890,13 @@ class EntityClassify(BaseRGCN):
 
 
 class MeSH_RGCN(nn.Module):
-    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, add_original_embedding, atten_dropout,
-                 embedding_dim=200):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_rgcn_size, embedding_dim=200):
         super(MeSH_RGCN, self).__init__()
-        self.add_original_embedding = add_original_embedding
-        self.embedding_dim = embedding_dim
-        self.atten_dropout = atten_dropout
+        self.vocab_size = vocab_size
+        self.nKernel = nKernel
+        self.ksz = ksz
 
-        self.content_feature = attenCNN(vocab_size, nKernel, ksz, self.add_original_embedding, self.atten_dropout,
-                                        embedding_dim=self.embedding_dim)
+        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz)
 
         self.rgcn = EntityClassify(embedding_dim, hidden_rgcn_size, embedding_dim, num_rels=2, num_bases=-1,
                                    dropout=0, use_self_loop=False, use_cuda=True, low_mem=True)
