@@ -34,7 +34,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 10000:
+        if i <= 100000:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -185,7 +185,7 @@ def test(test_dataset, model, G, feats, edge_type, edge_norm, batch_sz):
     print('Testing....')
     for text, label in test_data:
         text = text.cuda()
-        print('test_orig', label, '\n')
+        # print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
