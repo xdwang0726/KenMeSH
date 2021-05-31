@@ -23,7 +23,7 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from threshold_opt import eval
 
 
-def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file):
+def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -37,7 +37,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Start loading training data')
     logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 10000:
+        if i <= num_example:
             try:
                 ids = obj["pmid"]
                 text = obj["abstractText"].strip()
@@ -273,6 +273,7 @@ def main():
     parser.add_argument('--add_original_embedding', type=bool, default=True)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
+    parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--batch_sz', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=1)
@@ -293,16 +294,17 @@ def main():
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
                                                                                      args.test_path,
                                                                                      args.meSH_pair_path,
-                                                                                     args.word2vec_path, args.graph)
+                                                                                     args.word2vec_path, args.graph,
+                                                                                     args.num_example)
 
     vocab_size = len(vocab)
     print('arg', args.add_original_embedding)
-    model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.add_original_embedding,
-                   args.atten_dropout, args.embedding_dim, cornet_dim=1000, n_cornet_blocks=2)
+    model = CorGCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, num_nodes, args.embedding_dim,
+                   cornet_dim=1000, n_cornet_blocks=2)
 
     model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
+    # model = nn.DataParallel(model.cuda(), device_ids=[0, 1, 2, 3])
     model.to(device)
     G.to(device)
 

@@ -669,8 +669,8 @@ class CorGCN(nn.Module):
     attenCNN + GCN + CorNet
     """
 
-    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, add_original_embedding, atten_dropout,
-                 embedding_dim=200, cornet_dim=1000, n_cornet_blocks=2):
+    def __init__(self, vocab_size, nKernel, ksz, hidden_gcn_size, output_size, embedding_dim=200, cornet_dim=1000,
+                 n_cornet_blocks=2):
         super(CorGCN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -678,11 +678,8 @@ class CorGCN(nn.Module):
         self.ksz = ksz
         self.hidden_gcn_size = hidden_gcn_size
         self.output_size = output_size
-        self.add_original_embedding = add_original_embedding
-        self.atten_dropout = atten_dropout
 
-        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, self.add_original_embedding,
-                                        self.atten_dropout, embedding_dim=200)
+        self.content_feature = attenCNN(self.vocab_size, self.nKernel, self.ksz, atten_dropout=0.5, embedding_dim=200)
         self.gcn = LabelNet(hidden_gcn_size, embedding_dim, embedding_dim)
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
