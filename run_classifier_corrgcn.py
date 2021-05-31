@@ -185,7 +185,7 @@ def test(test_dataset, model, G, feats, edge_type, edge_norm, batch_sz):
     print('Testing....')
     for text, label in test_data:
         text = text.cuda()
-        print('test_orig', label, '\n')
+        # print('test_orig', label, '\n')
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
@@ -362,7 +362,6 @@ def main():
     print("MaP@5, MiP@5, MaF@5, MiF@5: ")
     for measure in label_measure_5:
         print(measure, ",")
-
 
 if __name__ == "__main__":
     main()
