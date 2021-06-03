@@ -216,6 +216,11 @@ def top_k_predicted(goldenTruth, predictions, k):
     return predicted_label
 
 
+def predicted(predictions, threshold):
+    predictions[predictions >= threshold] = 1
+    predictions[predictions < threshold] = 0
+    return predictions
+
 def getLabelIndex(labels):
     label_index = np.zeros((len(labels), len(labels[1])))
     for i in range(0, len(labels)):
@@ -331,7 +336,8 @@ def main():
 
     pred = results.data.cpu().numpy()
 
-    top_5_pred = top_k_predicted(test_labels, pred, 10)
+    # top_5_pred = top_k_predicted(test_labels, pred, 10)
+    top_5_pred = predicted(pred, 0.35)
 
     # convert binary label back to orginal ones
     top_5_mesh = mlb.inverse_transform(top_5_pred)
