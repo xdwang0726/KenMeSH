@@ -2,14 +2,15 @@
 
 
 ## Prerequisites
-dgl_gpu==0.6.1
-ijson
-sklearn
-tokenizers==0.9.3
-torch==1.6.0
-torchtext==0.6.0
-transformers==3.5.1
-tqdm==4.60.0
+----
+dgl_gpu==0.6.1 <br/>
+ijson <br/>
+sklearn <br/>
+tokenizers==0.9.3 <br/>
+torch==1.6.0 <br/>
+torchtext==0.6.0 <br/>
+transformers==3.5.1 <br/>
+tqdm==4.60.0 <br/>
 
 
 How to embed the nodes?
