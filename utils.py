@@ -15,7 +15,7 @@ def _text_iterator(text, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         texts = tokenizer(text)
-        filtered_text = [word for word in texts if word not in stopwords]
+        filtered_text = [word for word in texts if word not in stop_words]
         if yield_label:
             label = labels[i]
             yield label, ngrams_iterator(filtered_text, ngrams)
