@@ -7,17 +7,20 @@ from torchtext.data.utils import ngrams_iterator
 from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
+from nltk.corpus import stopwords
 
+stop_words = set(stopwords.words('english'))
 
 def _text_iterator(text, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         texts = tokenizer(text)
+        filtered_text = [word for word in texts if word not in stopwords]
         if yield_label:
             label = labels[i]
-            yield label, ngrams_iterator(texts, ngrams)
+            yield label, ngrams_iterator(filtered_text, ngrams)
         else:
-            yield ngrams_iterator(texts, ngrams)
+            yield ngrams_iterator(filtered_text, ngrams)
 
 
 def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
