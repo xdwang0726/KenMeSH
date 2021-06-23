@@ -298,18 +298,18 @@ def main():
                                                                                      args.num_example)
 
     vocab_size = len(vocab)
-    # model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size)
+    model = MeSH_GCN(vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size)
 
     # model = dilatedCNN(bert_config, vocab_size, args.nKernel, args.ksz, args.hidden_gcn_size, embedding_dim=200)
-    model = dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes,
-                       embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+    # model = dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes,
+    #                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     # if torch.cuda.device_count() > 1:
     #     print("num of GPUs:", torch.cuda.device_count())
     #     model = nn.DataParallel(model)
 
     # model.cnn.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-    # model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    model.content_feature.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
     # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
