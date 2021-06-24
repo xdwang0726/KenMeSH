@@ -192,9 +192,10 @@ def multitype_GCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_
     train_mesh_list = list(cooccurrence_matrix)
     edge_cooccurrence = []
     for i in edge_index:
-        item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
-        idex_item = (values.index(item[0]), values.index(item[1]))
-        edge_cooccurrence.append(idex_item)
+        if train_mesh_list[i[0]] != train_mesh_list[i[1]]:
+            item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
+            idex_item = (values.index(item[0]), values.index(item[1]))
+            edge_cooccurrence.append(idex_item)
 
     edges_parent_children = []
     with open(parent_children_file, 'r') as f:
@@ -378,9 +379,10 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     train_mesh_list = list(cooccurrence_matrix)
     edge_cooccurrence = list()
     for i in edge_index:
-        item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
-        index_item = torch.tensor([values.index(item[0]), values.index(item[1])])
-        edge_cooccurrence.append(index_item)
+        if train_mesh_list[i[0]] != train_mesh_list[i[1]]:
+            item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
+            index_item = torch.tensor([values.index(item[0]), values.index(item[1])])
+            edge_cooccurrence.append(index_item)
 
     cooccurrence_dic = {('mesh', 'cooccurrence', 'mesh'): edge_cooccurrence}
 
