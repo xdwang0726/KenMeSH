@@ -445,7 +445,11 @@ def main():
         print('Load pre-trained vectors')
         cache, name = os.path.split(args.word2vec_path)
         vectors = Vectors(name=name, cache=cache)
-        if args.graph_type == 'GCN_cooccurence':
+        if args.graph_type == 'GCN':
+            edges, node_count, label_embedding = get_edge_and_node_fatures(args.meSH_pair_path, args.mesh_parent_children_path,
+                                                                           vectors)
+            G = build_MeSH_graph(edges, node_count, label_embedding)
+        elif args.graph_type == 'GCN_cooccurence':
             edge, node_count, label_embedding = cooccurence_node_edge(args.train, args.meSH_pair_path, args.threshold, vectors)
             G = build_MeSH_graph(edge, node_count, label_embedding)
         elif args.graph_type == 'GCN_multitype':
