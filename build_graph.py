@@ -429,7 +429,7 @@ def main():
     parser.add_argument('--mesh_parent_children_path')
     parser.add_argument('--biobert')
     parser.add_argument('--output')
-    parser.add_argument('--graph_type')
+    parser.add_argument('--graph_type', type=str)
 
     args = parser.parse_args()
 
