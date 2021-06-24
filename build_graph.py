@@ -287,8 +287,6 @@ def cooccurence_node_edge(train_data_path, MeSH_id_pair_file, threshold, vectors
 
     # calculate the frequency each label in the training set
     num = np.diag(cooccurrence_matrix).tolist()
-    # num_label = cooccurrence_matrix.sum(axis=1)
-    # num = num_label.tolist()
 
     # get co-occurrence edges
     edge_frame = cooccurrence_matrix.div(num, axis='index')
@@ -299,9 +297,10 @@ def cooccurence_node_edge(train_data_path, MeSH_id_pair_file, threshold, vectors
     train_mesh_list = list(cooccurrence_matrix)
     edge_cooccurrence = []
     for i in edge_index:
-        item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
-        idex_item = (values.index(item[0]), values.index(item[1]))
-        edge_cooccurrence.append(idex_item)
+        if train_mesh_list[i[0]] != train_mesh_list[i[1]]:
+            item = (train_mesh_list[i[0]], train_mesh_list[i[1]])
+            idex_item = (values.index(item[0]), values.index(item[1]))
+            edge_cooccurrence.append(idex_item)
 
     print('get label embeddings')
     label_embedding = torch.zeros(0)
@@ -448,7 +447,9 @@ def main():
             edge, node_count, label_embedding = cooccurence_node_edge(args.train, args.meSH_pair_path, args.threshold, vectors)
             G = build_MeSH_graph(edge, node_count, label_embedding)
         elif args.graph_type == 'GCN_multitype':
-            edge, node_count, label_embedding = cooccurence_node_edge(args.train, args.meSH_pair_path, args.threshold, vectors)
+            edge, node_count, label_embedding =multitype_GCN_get_node_and_edges(args.train, args.meSH_pair_path,
+                                                                                args.mesh_parent_children_path, args.threshold,
+                                                                                vectors)
             G = build_MeSH_graph(edge, node_count, label_embedding)
         elif args.graph_type == 'RGCN':
             edge_dic, label_embedding = RGCN_get_node_and_edges(args.train, args.meSH_pair_path,
