@@ -288,9 +288,9 @@ class dilatedCNN(nn.Module):
         print('embed', embedded_seq.shape)
 
         # outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
-        packed_seq, _ = pack_padded_sequence(embedded_seq, lengths=input_length, batch_first=True, enforce_sorted=False)
-        print('packed_seq', packed_seq.shape)
-        padded_pack = pad_packed_sequence(packed_seq)
+        packed_seq = pack_padded_sequence(embedded_seq, input_length, batch_first=True, enforce_sorted=False)
+        #print('packed_seq', packed_seq.shape)
+        padded_pack = pad_packed_sequence(packed_seq)[0]
         print('padded_pack', padded_pack.shape)
         outputs, _ = self.rnn(padded_pack)
 
