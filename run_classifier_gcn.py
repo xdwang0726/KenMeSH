@@ -140,12 +140,15 @@ def generate_batch(batch):
 
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
+        text_length = [len(seq) for seq in text]
+        print('text_length', text_length)
         text = pad_sequence(text, ksz=10, batch_first=True)
-        return text, label
+        return text, text_length, label
     else:
         text = [entry for entry in batch]
+        text_length = [len(seq) for seq in text]
         text = pad_sequence(text, ksz=10, batch_first=True)
-        return text
+        return text, text_length
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
@@ -161,12 +164,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
     print("Training....")
     for epoch in range(num_epochs):
-        for i, (text, label) in enumerate(train_data):
+        for i, (text, text_length, label) in enumerate(train_data):
 
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            text, label, G, G.ndata['feat'] = text.to(device), label.to(device), G.to(device), G.ndata['feat'].to(
-                device)
-            output = model(text, G, G.ndata['feat'])
+            text, text_length, label, G, G.ndata['feat'] = text.to(device), text_length.to(device), label.to(device), G.to(device), G.ndata['feat'].to(device)
+            output = model(text, text_length, G, G.ndata['feat'])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
@@ -191,12 +193,12 @@ def test(test_dataset, model, G, batch_sz, device):
     pred = torch.zeros(0).cuda()
     ori_label = []
     print('Testing....')
-    for text, label in test_data:
-        text, G, G.ndata['feat'] = text.cuda(), G.to(device), G.ndata['feat'].to(device)
+    for text, text_length, label in test_data:
+        text, text_length, G, G.ndata['feat'] = text.cuda(), text_length.to(device), G.to(device), G.ndata['feat'].to(device)
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(text, G, G.ndata['feat'])
+            output = model(text, text_length, G, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened

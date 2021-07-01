@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
 from transformers import BertModel
 from transformers.modeling_bert import BertPreTrainedModel
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 ########## Embedding ##########
@@ -282,12 +283,16 @@ class dilatedCNN(nn.Module):
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
-    def forward(self, input_seq, g, g_node_feature):
+    def forward(self, input_seq, input_length, g, g_node_feature):
         embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
-        # print('embed', embedded_seq.shape)
+        print('embed', embedded_seq.shape)
 
         # outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
-        outputs, _ = self.rnn(embedded_seq)
+        packed_seq, _ = pack_padded_sequence(embedded_seq, lengths=input_length, batch_first=True)
+        print('packed_seq', packed_seq.shape)
+        padded_pack = pad_packed_sequence(packed_seq)
+        print('padded_pack', padded_pack.shape)
+        outputs, _ = self.rnn(padded_pack)
 
         outputs = outputs.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
