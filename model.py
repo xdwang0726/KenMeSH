@@ -292,7 +292,7 @@ class dilatedCNN(nn.Module):
         #print('packed_seq', packed_seq.shape)
         packed_output, (_,_) = self.rnn(packed_seq)
         outputs, _ = pad_packed_sequence(packed_output, batch_first=True)
-        print('outputs', outputs.shape)
+        # print('outputs', outputs.shape)
 
         outputs = outputs.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
