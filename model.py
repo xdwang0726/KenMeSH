@@ -314,10 +314,10 @@ class dilatedCNN(nn.Module):
                                        dim=1)
         # print('abstract_atten', abstract_atten.shape)
         x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
-        print('x_feature', x_feature.shape)
+        # print('x_feature', x_feature.shape)
 
         x = torch.squeeze(self.linear(x_feature), -1)
-        print('x', x.shape)
+        # print('x', x.shape)
         # x = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.sigmoid(x)
 
