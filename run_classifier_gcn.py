@@ -141,7 +141,6 @@ def generate_batch(batch):
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
         text_length = [len(seq) for seq in text]
-        print('text_length', text_length)
         text = pad_sequence(text, ksz=10, batch_first=True)
         return text, text_length, label
     else:
