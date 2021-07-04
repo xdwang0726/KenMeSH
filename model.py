@@ -313,8 +313,7 @@ class dilatedCNN(nn.Module):
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
                                        dim=1)
         # print('abstract_atten', abstract_atten.shape)
-        # x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, embed_dim*2, 29368)
-        x_feature = torch.matmul(abstract_conv, abstract_atten)
+        x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
         print('x_feature', x_feature.shape)
 
         x = torch.squeeze(self.linear(x_feature), -1)
