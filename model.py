@@ -269,6 +269,7 @@ class dilatedCNN(nn.Module):
                            dropout=self.dropout, bidirectional=True, batch_first=True)
         # self.rnn = nn.GRU(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
         #                   dropout=self.dropout, bidirectional=True, batch_first=True)
+        self.emb_drop = nn.Dropout(0.5)
 
         self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
@@ -280,20 +281,23 @@ class dilatedCNN(nn.Module):
         # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
 
+        # linear
+        self.linear = nn.Linear(self.embedding_dim*2, 1)
+
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
     def forward(self, input_seq, input_length, g, g_node_feature):
-        embedded_seq = self.embedding_layer(input_seq)  # size: (bs, seq_len, embed_dim)
+        embedded_seq = self.emb_drop(self.embedding_layer(input_seq))  # size: (bs, seq_len, embed_dim)
         # print('embed', embedded_seq.shape)
 
-        # outputs, (_,_) = self.rnn(embedded_seq) # (bs, seq_len, emb_dim*2)
         packed_seq = pack_padded_sequence(embedded_seq, input_length, batch_first=True, enforce_sorted=False)
         #print('packed_seq', packed_seq.shape)
         packed_output, (_,_) = self.rnn(packed_seq)
-        outputs, _ = pad_packed_sequence(packed_output, batch_first=True)
+        outputs, _ = pad_packed_sequence(packed_output, batch_first=True)  # (bs, seq_len, emb_dim*2)
         # print('outputs', outputs.shape)
 
+        # outputs = outputs[:, :, :self.embedding_dim] + outputs[:, :, self.embedding_dim:]
         outputs = outputs.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         # print('output', outputs.shape)
 
@@ -309,10 +313,13 @@ class dilatedCNN(nn.Module):
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
                                        dim=1)
         # print('abstract_atten', abstract_atten.shape)
-        x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, embed_dim*2, 29368)
+        # x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, embed_dim*2, 29368)
+        x_feature = torch.matmul(abstract_conv, abstract_atten)
         # print('x_feature', x_feature.shape)
 
-        x = torch.sum(x_feature * label_feature, dim=2)
+        x = torch.squeeze(self.linear(x_feature), -1)
+        print('x', x.shape)
+        # x = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.sigmoid(x)
 
         cor_logit = self.cornet(x)
