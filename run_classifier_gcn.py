@@ -136,7 +136,10 @@ def generate_batch(batch):
     """
     # check if the dataset if train or test
     if len(batch[0]) == 2:
-        label = [entry[0] for entry in batch]
+        # label = [entry[0] for entry in batch]
+        label = []
+        for entry in batch:
+            print('entry', type(entry[0]), entry[0])
 
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
