@@ -139,7 +139,9 @@ def generate_batch(batch):
         # label = [entry[0] for entry in batch]
         label = []
         for entry in batch:
-            print('entry', type(entry[0]), entry[0])
+            entry[0].insert(0, 'BOS')
+            entry[0].append('EOS')
+            label.append(entry[0])
 
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
