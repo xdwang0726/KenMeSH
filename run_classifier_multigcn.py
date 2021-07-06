@@ -208,6 +208,7 @@ def test(test_dataset, model, G, batch_sz, device):
         abstract_length = torch.Tensor(abstract_length)
         title_length = torch.Tensor(title_length)
         abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+        G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
