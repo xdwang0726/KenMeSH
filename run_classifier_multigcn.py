@@ -40,6 +40,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             try:
                 ids = obj["pmid"]
                 heading = obj['title'].strip()
+                heading = heading.translate(str.maketrans('', '', '[]'))
                 print('heading', type(heading), heading)
                 if len(heading) == 0:
                     print('paper ', ids, ' does not have title!')
@@ -51,7 +52,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                         original_label = obj["meshMajor"]
                         mesh_id = obj['meshId']
                         pmid.append(ids)
-                        title.append(heading.translate(str.maketrans('', '', '[]')))
+                        title.append(heading)
                         all_text.append(text)
                         label.append(original_label)
                         label_id.append(mesh_id)
