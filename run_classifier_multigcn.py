@@ -49,6 +49,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                         continue
                     else:
                         text = obj["abstractText"].strip()
+                        text = text.translate(str.maketrans('', '', '[]'))
                         original_label = obj["meshMajor"]
                         mesh_id = obj['meshId']
                         pmid.append(ids)
