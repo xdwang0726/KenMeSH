@@ -177,6 +177,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     for epoch in range(num_epochs):
         for i, (label, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            abstract_length = torch.Tensor(abstract_length)
+            title_length = torch.Tensor(title_length)
             abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
             output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
@@ -203,6 +205,8 @@ def test(test_dataset, model, G, batch_sz, device):
     ori_label = []
     print('Testing....')
     for label, abstract, title, abstract_length, title_length in test_data:
+        abstract_length = torch.Tensor(abstract_length)
+        title_length = torch.Tensor(title_length)
         abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
