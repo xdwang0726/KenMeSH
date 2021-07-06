@@ -51,7 +51,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                         original_label = obj["meshMajor"]
                         mesh_id = obj['meshId']
                         pmid.append(ids)
-                        title.append(heading)
+                        title.append(heading.translate(str.maketrans('', '', '[]')))
                         all_text.append(text)
                         label.append(original_label)
                         label_id.append(mesh_id)
