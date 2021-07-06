@@ -368,7 +368,7 @@ class multichannel_dilatedCNN(nn.Module):
 
         # get title content features
         embedded_title = self.embedding_layer(input_title)
-        print('title_length', title_length)
+        # print('title_length', title_length)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
 
         packed_output_title, (_,_) = self.rnn(packed_title)
@@ -376,7 +376,7 @@ class multichannel_dilatedCNN(nn.Module):
         # outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
         title_atten = torch.softmax(torch.matmul(output_unpacked_title, label_feature.transpose(0, 1)), dim=1)
         title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
-        print('title_feature', title_feature.shape)
+        # print('title_feature', title_feature.shape)
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
