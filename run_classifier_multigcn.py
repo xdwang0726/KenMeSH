@@ -40,14 +40,17 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             try:
                 ids = obj["pmid"]
                 heading = obj['title'].strip()
-                text = obj["abstractText"].strip()
-                original_label = obj["meshMajor"]
-                mesh_id = obj['meshId']
-                pmid.append(ids)
-                title.append(heading)
-                all_text.append(text)
-                label.append(original_label)
-                label_id.append(mesh_id)
+                if not heading:
+                    print('paper ', ids, ' does not have title!')
+                else:
+                    text = obj["abstractText"].strip()
+                    original_label = obj["meshMajor"]
+                    mesh_id = obj['meshId']
+                    pmid.append(ids)
+                    title.append(heading)
+                    all_text.append(text)
+                    label.append(original_label)
+                    label_id.append(mesh_id)
             except AttributeError:
                 print(obj["pmid"].strip())
         else:
