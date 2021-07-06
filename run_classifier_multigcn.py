@@ -147,19 +147,23 @@ def generate_batch(batch):
 
         # padding according to the maximum sequence length in batch
         abstract = [entry[1] for entry in batch]
+        abstract_length = [len(seq) for seq in abstract]
         abstract = pad_sequence(abstract, ksz=10, batch_first=True)
 
         title = [entry[2] for entry in batch]
+        title_length = [len(seq) for seq in title]
         title = pad_sequence(title, ksz=10, batch_first=True)
-        return label, abstract, title
+        return label, abstract, title, abstract_length, title_length
 
     else:
         abstract = [entry[0] for entry in batch]
+        abstract_length = [len(seq) for seq in abstract]
         abstract = pad_sequence(abstract, batch_first=True)
 
         title = [entry[1] for entry in batch]
+        title_length = [len(seq) for seq in title]
         title = pad_sequence(title, batch_first=True)
-        return abstract, title
+        return abstract, title, abstract_length, title_length
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
@@ -171,10 +175,11 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     #    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
-        for i, (label, abstract, title) in enumerate(train_data):
+        for i, (label, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            abstract, title, label, G = abstract.to(device), title.to(device), label.to(device), G.to(device)
-            output = model(abstract, title, G, G.ndata['feat'])
+            abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
+            G = G.to(device)
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
@@ -197,28 +202,17 @@ def test(test_dataset, model, G, batch_sz, device):
     pred = torch.zeros(0).to(device)
     ori_label = []
     print('Testing....')
-    for label, abstract, title in test_data:
-        abstract, title = abstract.to(device), title.to(device)
+    for label, abstract, title, abstract_length, title_length in test_data:
+        abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(abstract, title, G, G.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
     return pred, flattened
 
-
-# predicted binary labels
-# find the top k labels in the predicted label set
-# def top_k_predicted(predictions, k):
-#     predicted_label = np.zeros(predictions.shape)
-#     for i in range(len(predictions)):
-#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
-#         for j in top_k_index:
-#             predicted_label[i][j] = 1
-#     predicted_label = predicted_label.astype(np.int64)
-#     return predicted_label
 
 def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
@@ -263,8 +257,7 @@ def main():
     parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz_title', default=2)
-    parser.add_argument('--ksz_ab', default=5)
+    parser.add_argument('--ksz', default=5)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--add_original_embedding', type=bool, default=True)
@@ -297,7 +290,7 @@ def main():
 
     vocab_size = len(vocab)
 
-    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz_title, args.ksz_ab, num_nodes,
+    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes,
                        embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
 
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
