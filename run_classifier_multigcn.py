@@ -40,6 +40,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             try:
                 ids = obj["pmid"]
                 heading = obj['title'].strip()
+                print('heading', type(heading), heading)
                 if not heading:
                     print('paper ', ids, ' does not have title!')
                 else:
