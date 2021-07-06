@@ -351,6 +351,10 @@ class multichannel_dilatedCNN(nn.Module):
         # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
 
+        # weight adaptive layer
+        self.linear_weight1 = torch.nn.Linear(self.embedding_dim * 2, 1)
+        self.linear_weight2 = torch.nn.Linear(self.embedding_dim * 2, 1)
+
         # linear
         self.linear = nn.Linear(self.embedding_dim * 2, 1)
 
@@ -370,6 +374,7 @@ class multichannel_dilatedCNN(nn.Module):
         # outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
         title_atten = torch.softmax(torch.matmul(output_unpacked_title, label_feature.transpose(0, 1)), dim=1)
         title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        print('title_feature', title_feature.shape)
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
@@ -380,11 +385,21 @@ class multichannel_dilatedCNN(nn.Module):
         abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)), dim=1)
         abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
-        # print('x_feature', x_feature.shape)
+        print('abstract_feature', abstract_feature.shape)
 
-        # document feature
-        x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
+        # get document feature
+        # x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
+        # x = torch.squeeze(self.linear(x_feature), -1)
+
+        # get document feature with attention fusion
+        factor1 = torch.sigmoid(self.linear_weight1(title_feature))
+        factor2 = torch.sigmoid(self.linear_weight2(abstract_feature))
+        factor1 = factor1 / (factor1 + factor2)
+        factor2 = 1 - factor1
+
+        x_feature = factor1 * title_feature + factor2 * abstract_feature
         x = torch.squeeze(self.linear(x_feature), -1)
+        print('x_feature', x.shape)
 
         # add CorNet
         cor_logit = self.cornet(x)
