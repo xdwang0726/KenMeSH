@@ -160,7 +160,11 @@ def generate_batch(batch):
         abstract = pad_sequence(abstract, ksz=10, batch_first=True)
 
         title = [entry[2] for entry in batch]
-        title_length = [len(seq) for seq in title]
+        title_length = []
+        for i, seq in enumerate(title):
+            if len(seq) == 0:
+                print('title', seq, abstract(i))
+            title_length.append(len(seq))
         title = pad_sequence(title, ksz=10, batch_first=True)
         return label, abstract, title, abstract_length, title_length
 

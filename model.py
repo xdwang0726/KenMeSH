@@ -387,7 +387,7 @@ class multichannel_dilatedCNN(nn.Module):
         abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)), dim=1)
         abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
-        print('abstract_feature', abstract_feature.shape)
+        # print('abstract_feature', abstract_feature.shape)
 
         # get document feature
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
