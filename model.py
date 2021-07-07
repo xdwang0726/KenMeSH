@@ -366,7 +366,7 @@ class multichannel_dilatedCNN(nn.Module):
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 200*2])
 
         # get title content features
-        embedded_title = self.embedding_layer(input_title)
+        embedded_title = self.embedding_layer(input_title.long())
         # print('title_length', title_length)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
 
