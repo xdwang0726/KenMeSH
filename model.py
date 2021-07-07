@@ -323,7 +323,6 @@ class dilatedCNN(nn.Module):
 
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
-        print('output', cor_logit, cor_logit.shape)
         return cor_logit
 
 
@@ -356,7 +355,7 @@ class multichannel_dilatedCNN(nn.Module):
         # self.linear_weight2 = torch.nn.Linear(self.embedding_dim * 2, 1)
 
         # linear
-        self.linear = nn.Linear(self.embedding_dim * 2, 1)
+        # self.linear = nn.Linear(self.embedding_dim * 2, 1)
 
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
@@ -391,7 +390,8 @@ class multichannel_dilatedCNN(nn.Module):
 
         # get document feature
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
-        x = torch.squeeze(self.linear(x_feature), -1)
+        x = torch.sum(x_feature * label_feature, dim=2)
+        # x = torch.squeeze(self.linear(x_feature), -1)
 
         # # get document feature with attention fusion
         # factor1 = torch.sigmoid(self.linear_weight1(title_feature))
