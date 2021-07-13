@@ -292,35 +292,26 @@ class dilatedCNN(nn.Module):
         # print('embed', embedded_seq.shape)
 
         packed_seq = pack_padded_sequence(embedded_seq, input_length, batch_first=True, enforce_sorted=False)
-        #print('packed_seq', packed_seq.shape)
         packed_output, (_,_) = self.rnn(packed_seq)
         outputs, _ = pad_packed_sequence(packed_output, batch_first=True)  # (bs, seq_len, emb_dim*2)
-        # print('outputs', outputs.shape)
 
         # outputs = outputs[:, :, :self.embedding_dim] + outputs[:, :, self.embedding_dim:]
         outputs = outputs.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
-        # print('output', outputs.shape)
-
         abstract_conv = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
-        # print('dconv', abstract_conv.shape)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 200*2])
-        # print('label_feature', label_feature.shape)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)),
                                        dim=1)
-        # print('abstract_atten', abstract_atten.shape)
         x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
-        # print('x_feature', x_feature.shape)
 
-        x = torch.squeeze(self.linear(x_feature), -1)
-        # print('x', x.shape)
-        # x = torch.sum(x_feature * label_feature, dim=2)
-        # x = torch.sigmoid(x)
+        # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
+        x = torch.sum(x_feature * label_feature, dim=2)
 
+        # CorNet
         cor_logit = self.cornet(x)
         cor_logit = torch.sigmoid(cor_logit)
         return cor_logit
@@ -347,12 +338,7 @@ class multichannel_dilatedCNN(nn.Module):
                                    nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
-        # self.content_final = nn.Linear(embedding_dim, embedding_dim*2)
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
-
-        # weight adaptive layer
-        # self.linear_weight1 = torch.nn.Linear(self.embedding_dim * 2, 1)
-        # self.linear_weight2 = torch.nn.Linear(self.embedding_dim * 2, 1)
 
         # linear
         # self.linear = nn.Linear(self.embedding_dim * 2, 1)
@@ -391,17 +377,7 @@ class multichannel_dilatedCNN(nn.Module):
         # get document feature
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
         x = torch.sum(x_feature * label_feature, dim=2)
-        # x = torch.squeeze(self.linear(x_feature), -1)
-
-        # # get document feature with attention fusion
-        # factor1 = torch.sigmoid(self.linear_weight1(title_feature))
-        # factor2 = torch.sigmoid(self.linear_weight2(abstract_feature))
-        # factor1 = factor1 / (factor1 + factor2)
-        # factor2 = 1 - factor1
-        #
-        # x_feature = factor1 * title_feature + factor2 * abstract_feature
-        # x = torch.squeeze(self.linear(x_feature), -1)
-        # print('x_feature', x.shape)
+        # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
 
         # add CorNet
         cor_logit = self.cornet(x)
