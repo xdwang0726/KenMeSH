@@ -25,7 +25,7 @@ class FocalLoss(nn.Module):
         neg_p_sub = torch.where(targets > zeros, zeros, inputs)
         per_entry_cross_ent = -self.alpha * (pos_p_sub ** self.gamma) * torch.log(torch.clamp(inputs, 1e-8, 1.0)) - (
                     1 - self.alpha) * (neg_p_sub ** self.gamma) * torch.log(torch.clamp(1.0 - inputs, 1e-8, 1.0))
-        return per_entry_cross_ent.sum()
+        return per_entry_cross_ent.mean()
 
 
 
