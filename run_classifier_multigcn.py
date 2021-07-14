@@ -13,7 +13,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
-from focal_loss import *
+from losses import *
 # import EarlyStopping
 # from pytorchtools import EarlyStopping
 
@@ -334,7 +334,8 @@ def main():
 
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     # criterion = nn.BCELoss()
-    criterion = FocalLoss()
+    # criterion = FocalLoss()
+    criterion = AsymmetricLossOptimized()
 
     # training
     print("Start training!")
