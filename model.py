@@ -346,10 +346,11 @@ class multichannel_dilatedCNN(nn.Module):
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
-    def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature):
+    def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature, g_c, g_node_feature_c):
         # get label features
         label_feature = self.gcn(g, g_node_feature)
-        label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 200*2])
+        label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
+        label_feature = torch.cat((label_feature, label_cooccurence_feature), dim=1)  # torch.Size([29368, 200*2])
 
         # get title content features
         embedded_title = self.embedding_layer(input_title.long())

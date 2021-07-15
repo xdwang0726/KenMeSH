@@ -22,7 +22,7 @@ from utils_multi import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 
 
-def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example):
+def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, graph_cooccurence_file, num_example):
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
@@ -124,6 +124,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
+    G_c = load_graphs(graph_cooccurence_file)[0][0]
 
     print('graph', G.ndata['feat'].shape)
 
@@ -131,7 +132,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # G = build_MeSH_graph(edges, node_count, label_embedding)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G
+    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -182,7 +183,7 @@ def generate_batch(batch):
         return abstract, title, abstract_length, title_length
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
+def train(train_dataset, model, mlb, G, G_c, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
                             num_workers=num_workers)
 
@@ -197,7 +198,8 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             title_length = torch.Tensor(title_length)
             abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
-            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+            G_c = G_c.to(device)
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'], G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
@@ -215,7 +217,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test_dataset, model, G, batch_sz, device):
+def test(test_dataset, model, G, G_c, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
     pred = torch.zeros(0).to(device)
     ori_label = []
@@ -225,10 +227,11 @@ def test(test_dataset, model, G, batch_sz, device):
         title_length = torch.Tensor(title_length)
         abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
+        G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
         ori_label.append(label)
         flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'], G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
@@ -272,6 +275,7 @@ def main():
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--mesh_parent_children_path')
     parser.add_argument('--graph')
+    parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
 
@@ -302,11 +306,12 @@ def main():
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
+    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, G_c = prepare_dataset(args.train_path,
                                                                                      args.test_path,
                                                                                      args.meSH_pair_path,
                                                                                      args.word2vec_path,
                                                                                      args.graph,
+                                                                                     args. graph_cooccurence,
                                                                                      args.num_example)
 
     vocab_size = len(vocab)
@@ -322,6 +327,7 @@ def main():
 
     model.to(device)
     G.to(device)
+    G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
@@ -333,17 +339,17 @@ def main():
     #     model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
-    # criterion = nn.BCELoss()
+    criterion = nn.BCELoss()
     # criterion = FocalLoss()
-    criterion = AsymmetricLossOptimized()
+    # criterion = AsymmetricLossOptimized()
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+    train(train_dataset, model, mlb, G, G_c, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
     # testing
-    results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    results, test_labels = test(test_dataset, model, G, G_c, args.batch_sz, device)
     # print('predicted:', results, '\n')
 
     test_label_transform = mlb.fit_transform(test_labels)
