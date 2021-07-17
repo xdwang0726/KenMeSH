@@ -2,16 +2,16 @@ import argparse
 import os
 import timeit
 
-from dgl.data.utils import save_graphs
 import dgl
 import ijson
 import numpy as np
 import pandas as pd
 import spacy
 import torch
+from dgl.data.utils import save_graphs
 from torchtext.vocab import Vectors
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoConfig
+from transformers import AutoTokenizer
 from transformers import BertModel
 
 
