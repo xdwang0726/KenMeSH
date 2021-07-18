@@ -360,13 +360,13 @@ class multichannel_dilatedCNN(nn.Module):
 
         packed_output_title, (_,_) = self.rnn(packed_title)
         output_unpacked_title, _ = pad_packed_sequence(packed_output_title, batch_first=True)  # (bs, seq_len, emb_dim*2)
-        outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
+        # outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
 
-        # title_atten = torch.softmax(torch.matmul(output_unpacked_title, label_feature.transpose(0, 1)), dim=1)
-        # title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        title_atten = torch.softmax(torch.matmul(output_unpacked_title, label_feature.transpose(0, 1)), dim=1)
+        title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
-        title_atten = torch.softmax(torch.matmul(outputs_title, g_node_feature.transpose(0, 1)), dim=1)
-        title_feature = torch.matmul(outputs_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
+        # title_atten = torch.softmax(torch.matmul(outputs_title, g_node_feature.transpose(0, 1)), dim=1)
+        # title_feature = torch.matmul(outputs_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
         # print('title_feature', title_feature.shape)
 
         # get abstract content features
@@ -374,23 +374,23 @@ class multichannel_dilatedCNN(nn.Module):
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
         packed_output_abstract, (_,_) = self.rnn(packed_abstract)
         output_unpacked_abstract, _ = pad_packed_sequence(packed_output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
-        outputs_abstract = output_unpacked_abstract[:, :, :self.embedding_dim] + output_unpacked_abstract[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
+        # outputs_abstract = output_unpacked_abstract[:, :, :self.embedding_dim] + output_unpacked_abstract[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
 
-        # outputs_abstract = output_unpacked_abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
-        # abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
-        # abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)), dim=1)
-        # abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        outputs_abstract = output_unpacked_abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
+        abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
+        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)), dim=1)
+        abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
         # print('abstract_feature', abstract_feature.shape)
 
-        outputs_abstract = outputs_abstract.permute(0, 2, 1)  # (bs, emb_dim, seq_length)
-        abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim, seq_len-ksz+1)
-        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feature.transpose(0, 1)), dim=1)
-        abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
+        # outputs_abstract = outputs_abstract.permute(0, 2, 1)  # (bs, emb_dim, seq_length)
+        # abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim, seq_len-ksz+1)
+        # abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feature.transpose(0, 1)), dim=1)
+        # abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
 
 
         # get document feature
-        # x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
-        x_feature = torch.cat((title_feature, abstract_feature), dim=2)  # size: (bs, 29368, embed_dim*2)
+        x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
+        # x_feature = torch.cat((title_feature, abstract_feature), dim=2)  # size: (bs, 29368, embed_dim*2)
         x = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
 
