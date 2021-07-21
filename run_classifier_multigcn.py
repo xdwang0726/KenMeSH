@@ -198,6 +198,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             title_length = torch.Tensor(title_length)
             abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
+            G.ndata['feat'] = G.ndata['feat'].to(device)
             # G_c = G_c.to(device)
             output = model(abstract, title, abstract_length, title_length, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
