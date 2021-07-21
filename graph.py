@@ -102,7 +102,7 @@ class MultiHeadGATLayer(nn.Module):
 #         return h
 
 class GAT(nn.Module):
-    def __init__(self, in_node_feats, hidden_gat_size, num_classes, num_heads=2):
+    def __init__(self, in_node_feats, hidden_gat_size, num_classes, num_heads=1):
         super(GAT, self).__init__()
         self.gat1 = GATConv(in_node_feats, hidden_gat_size, num_heads, feat_drop=0.0, attn_drop=0.0, negative_slope=0.2, residual=False,
                             activation=None, allow_zero_in_degree=True, bias=True)
@@ -111,8 +111,9 @@ class GAT(nn.Module):
 
     def forward(self, g, features):
         x = self.gat1(g, features)
+        x = x.squeeze(dim=1)
         print('gat1', x.shape)
         x = F.elu(x)
         x = self.gat2(g, x)
-        return x
+        return x.squeeze(dim=1)
 

@@ -4,22 +4,21 @@ import os
 import pickle
 import sys
 
+# import EarlyStopping
+# from pytorchtools import EarlyStopping
+import dgl
 import ijson
 import numpy as np
-import torch
-import torch.nn as nn
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
 from tqdm import tqdm
-from losses import *
-# import EarlyStopping
-# from pytorchtools import EarlyStopping
 
-from model import MeSH_GCN_Multi, multichannel_dilatedCNN
-from utils_multi import MeSH_indexing, pad_sequence
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
+from losses import *
+from model import multichannel_dilatedCNN
+from utils_multi import MeSH_indexing, pad_sequence
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
@@ -327,6 +326,7 @@ def main():
 
     model.to(device)
     G = G.to(device)
+    G = dgl.add_self_loop(G)
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
