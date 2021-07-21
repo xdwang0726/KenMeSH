@@ -326,7 +326,7 @@ def main():
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
-    G.to(device)
+    G = G.to(device)
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
