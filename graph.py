@@ -111,6 +111,7 @@ class GAT(nn.Module):
 
     def forward(self, g, features):
         x = self.gat1(g, features)
+        print('gat1', x.shape)
         x = F.elu(x)
         x = self.gat2(g, x)
         return x
