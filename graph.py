@@ -87,6 +87,7 @@ class MultiHeadGATLayer(nn.Module):
 class GAT(nn.Module):
     def __init__(self, g, in_dim, hidden_dim, out_dim, num_heads):
         super(GAT, self).__init__()
+        g = g.to('cuda')
         self.layer1 = MultiHeadGATLayer(g, in_dim, hidden_dim, num_heads)
         # Be aware that the input dimension is hidden_dim*num_heads since
         #   multiple head outputs are concatenated together. Also, only
@@ -95,6 +96,7 @@ class GAT(nn.Module):
 
     def forward(self, h):
         h = self.layer1(h)
+        print(h.device)
         h = F.elu(h)
         h = self.layer2(h)
         return h
