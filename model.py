@@ -318,7 +318,7 @@ class dilatedCNN(nn.Module):
 
 
 class multichannel_dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, dropout, ksz, output_size, g, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
+    def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
         super(multichannel_dilatedCNN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -339,7 +339,7 @@ class multichannel_dilatedCNN(nn.Module):
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         # self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
-        self.gat = GAT(g, embedding_dim, embedding_dim, embedding_dim, output_size)
+        self.gat = GAT(embedding_dim, embedding_dim, embedding_dim)
 
         # linear
         # self.linear = nn.Linear(self.embedding_dim * 2, 1)
@@ -347,10 +347,11 @@ class multichannel_dilatedCNN(nn.Module):
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
-    def forward(self, input_abstract, input_title, ab_length, title_length, g_node_feature): #g_c, g_node_feature_c):
+    def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature): #g_c, g_node_feature_c):
         # get label features
         # label_feature = self.gcn(g, g_node_feature)
-        label_feature = self.gat(g_node_feature)
+        label_feature = self.gat(g, g_node_feature)
+        print('label', label_feature.shape)
         # label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
         # label_feature = torch.cat((label_feature, label_cooccurence_feature), dim=1)  # torch.Size([29368, 200*2])

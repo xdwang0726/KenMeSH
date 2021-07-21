@@ -84,19 +84,34 @@ class MultiHeadGATLayer(nn.Module):
             return torch.mean(torch.stack(head_outs))
 
 
-class GAT(nn.Module):
-    def __init__(self, g, in_dim, hidden_dim, out_dim, num_heads):
-        super(GAT, self).__init__()
-        g = g.to('cuda')
-        self.layer1 = MultiHeadGATLayer(g, in_dim, hidden_dim, num_heads)
-        # Be aware that the input dimension is hidden_dim*num_heads since
-        #   multiple head outputs are concatenated together. Also, only
-        #   one attention head in the output layer.
-        self.layer2 = MultiHeadGATLayer(g, hidden_dim * num_heads, out_dim, 1)
+# class GAT(nn.Module):
+#     def __init__(self, g, in_dim, hidden_dim, out_dim, num_heads):
+#         super(GAT, self).__init__()
+#         g = g.to('cuda')
+#         self.layer1 = MultiHeadGATLayer(g, in_dim, hidden_dim, num_heads)
+#         # Be aware that the input dimension is hidden_dim*num_heads since
+#         #   multiple head outputs are concatenated together. Also, only
+#         #   one attention head in the output layer.
+#         self.layer2 = MultiHeadGATLayer(g, hidden_dim * num_heads, out_dim, 1)
+#
+#     def forward(self, h):
+#         h = self.layer1(h)
+#         print(h.device)
+#         h = F.elu(h)
+#         h = self.layer2(h)
+#         return h
 
-    def forward(self, h):
-        h = self.layer1(h)
-        print(h.device)
-        h = F.elu(h)
-        h = self.layer2(h)
-        return h
+class GAT(nn.Module):
+    def __init__(self, in_node_feats, hidden_gat_size, num_classes, num_heads=2):
+        super(GAT, self).__init__()
+        self.gat1 = GATConv(in_node_feats, hidden_gat_size, num_heads, feat_drop=0.0, attn_drop=0.0, negative_slope=0.2, residual=False,
+                            activation=None, allow_zero_in_degree=False, bias=True)
+        self.gat2 = GATConv(hidden_gat_size, num_classes, num_heads, feat_drop=0.0, attn_drop=0.0, negative_slope=0.2, residual=False,
+                            activation=None, allow_zero_in_degree=False, bias=True)
+
+    def forward(self, g, features):
+        x = self.gat1(g, features)
+        x = F.elu(x)
+        x = self.gat2(g, x)
+        return x
+
