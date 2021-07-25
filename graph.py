@@ -43,17 +43,17 @@ class GAT(nn.Module):
         # input projection (no residual)
         self.gat_layers.append(GATConv(
             in_node_feats, hidden_gat_size, heads[0],
-            feat_drop, attn_drop, negative_slope, False, self.activation))
+            feat_drop, attn_drop, negative_slope, False, self.activation, True))
         # hidden layers
         for l in range(1, num_layers):
             # due to multi-head, the in_dim = num_hidden * num_heads
             self.gat_layers.append(GATConv(
                 hidden_gat_size * heads[l-1], hidden_gat_size, heads[l],
-                feat_drop, attn_drop, negative_slope, residual, self.activation))
+                feat_drop, attn_drop, negative_slope, residual, self.activation, True))
         # output projection
         self.gat_layers.append(GATConv(
             hidden_gat_size * heads[-2], num_classes, heads[-1],
-            feat_drop, attn_drop, negative_slope, residual, None))
+            feat_drop, attn_drop, negative_slope, residual, None, True))
 
     def forward(self, inputs):
         h = inputs
@@ -61,6 +61,7 @@ class GAT(nn.Module):
             h = self.gat_layers[l](self.g, h).flatten(1)
         # output projection
         logits = self.gat_layers[-1](self.g, h).mean(1)
+        print('logits', logits.shape)
         return logits
 
 
