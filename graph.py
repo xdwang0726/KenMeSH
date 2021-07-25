@@ -24,6 +24,7 @@ from dgl.nn.pytorch import GATConv
 
 class GAT(nn.Module):
     def __init__(self,
+                 device,
                  g,
                  num_layers,
                  in_node_feats,
@@ -36,7 +37,7 @@ class GAT(nn.Module):
                  negative_slope=0.2,
                  residual=False):
         super(GAT, self).__init__()
-        self.g = g.cuda()
+        self.g = g.to(device)
         self.num_layers = num_layers
         self.gat_layers = nn.ModuleList()
         self.activation = activation

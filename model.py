@@ -342,8 +342,7 @@ class multichannel_dilatedCNN(nn.Module):
         # self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         # self.gat = GAT(embedding_dim, embedding_dim, embedding_dim)
         heads = ([gat_num_heads] * gat_num_layers) + [gat_num_out_heads]
-        G.to(device)
-        self.gat = GAT(G, num_layers=2, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim, num_classes=embedding_dim, heads=heads)
+        self.gat = GAT(device, G, num_layers=2, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim, num_classes=embedding_dim, heads=heads)
         # linear
         # self.linear = nn.Linear(self.embedding_dim * 2, 1)
 
