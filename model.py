@@ -318,8 +318,8 @@ class dilatedCNN(nn.Module):
 
 
 class multichannel_dilatedCNN(nn.Module):
-    def __init__(self, vocab_size, dropout, ksz, output_size, G, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000,
-                 n_cornet_blocks=2, gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1):
+    def __init__(self, vocab_size, dropout, ksz, output_size, G, device, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000,
+                 n_cornet_blocks=2, gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1,):
         super(multichannel_dilatedCNN, self).__init__()
 
         self.vocab_size = vocab_size
@@ -342,6 +342,7 @@ class multichannel_dilatedCNN(nn.Module):
         # self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         # self.gat = GAT(embedding_dim, embedding_dim, embedding_dim)
         heads = ([gat_num_heads] * gat_num_layers) + [gat_num_out_heads]
+        G.to(device)
         self.gat = GAT(G, num_layers=2, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim, num_classes=embedding_dim, heads=heads)
         # linear
         # self.linear = nn.Linear(self.embedding_dim * 2, 1)
