@@ -32,8 +32,8 @@ class GAT(nn.Module):
                  num_classes,
                  heads,
                  activation=F.elu,
-                 feat_drop=0.6,
-                 attn_drop=0.6,
+                 feat_drop=0,
+                 attn_drop=0,
                  negative_slope=0.2,
                  residual=False):
         super(GAT, self).__init__()
