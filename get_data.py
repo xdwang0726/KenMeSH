@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--allMesh')
     parser.add_argument('--MeshID')
     parser.add_argument('--train_json')
-    parser.add_argument('--years', type=list, default=['2018'])
+    parser.add_argument('--years', type=list, default=['2012', '2013', '2014', '2015', '2016'])
     args = parser.parse_args()
 
     """ mapping mesh terms to meshIDs """
@@ -45,22 +45,23 @@ def main():
     for i, obj in enumerate(tqdm(objects)):
         data_point = {}
         if obj['year'] in args.years:
-            if i <= 20000:
-                try:
-                    ids = obj['pmid']
-                    title = obj['title']
-                    text = obj['abstractText'].strip()
-                    label = obj["meshMajor"]
-                    data_point['pmid'] = ids
-                    data_point['title'] = title
-                    data_point['abstractText'] = text
-                    data_point['meshMajor'] = label
-                    data_point['meshId'] = from_mesh2id(label, mapping_id)
-                    dataset.append(data_point)
-                except AttributeError:
-                    print(obj["pmid"])
-            else:
-                break
+            try:
+                ids = obj['pmid']
+                title = obj['title']
+                text = obj['abstractText'].strip()
+                label = obj["meshMajor"]
+                journal = obj['journal']
+                data_point['pmid'] = ids
+                data_point['title'] = title
+                data_point['abstractText'] = text
+                data_point['meshMajor'] = label
+                data_point['meshId'] = from_mesh2id(label, mapping_id)
+                data_point['journal'] = journal
+                dataset.append(data_point)
+            except AttributeError:
+                print(obj["pmid"])
+        else:
+            break
 
     print('Total number of articles: ', len(dataset))
     print('Finished Loading Data!')
