@@ -30,10 +30,16 @@ def journal_stats(data_path):
         journal_info = {'counts': 0, 'mesh_counts': {}}
         if journal in journal_dict:
             journal_info['counts'] = journal_info['counts'] + 1
-            mesh_counts[journal] = [mesh_counts[journal], label_id[i]]
+            if journal in mesh_counts:
+                mesh_counts[journal] = [mesh_counts[journal], label_id[i]]
+            else:
+                mesh_counts[journal] = [label_id[i]]
         else:
             journal_info['counts'] = 1
-            mesh_counts[journal] = [label_id[i]]
+            if journal in mesh_counts:
+                mesh_counts[journal] = [mesh_counts[journal], label_id[i]]
+            else:
+                mesh_counts[journal] = [label_id[i]]
         journal_dict[journal] = journal_info
     print('journal_dict', journal_dict)
     print('mesh_counts', mesh_counts)
