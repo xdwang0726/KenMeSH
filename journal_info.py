@@ -34,7 +34,7 @@ def journal_stats(data_path):
         else:
             journal_info['counts'] = 1
             mesh_counts[journal] = [label_id[i]]
-        journal_info[journal] = journal_info
+        journal_dict[journal] = journal_info
     print('journal_dict', journal_dict)
     print('mesh_counts', mesh_counts)
     for i, ids in enumerate(list(mesh_counts.values())):
@@ -48,6 +48,7 @@ def journal_stats(data_path):
         else:
             print(journal_name, 'is not in the list')
 
+    print('final_journal_dict', journal_dict)
     return journal_dict
 
 
