@@ -42,8 +42,8 @@ def journal_stats(data_path):
         else:
             print(journal_name, 'is not in the list')
 
-    # print('final_journal_dict', journal_dict)
-    return journal_dict
+    sorted_journal = dict(sorted(journal_dict.items(), key=lambda item: item[1]['counts'], reverse=True))
+    return sorted_journal
 
 
 def main():
