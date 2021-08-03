@@ -23,8 +23,8 @@ def journal_stats(data_path):
 
     journal_dict = {}
     mesh_counts = {}
+    journal_info = {'counts': 0, 'mesh_counts': {}}
     for i, journal in enumerate(journals):
-        journal_info = {'counts': 0, 'mesh_counts': {}}
         if journal in journal_dict:
             journal_info['counts'] = journal_info['counts'] + 1
             if journal in mesh_counts:
@@ -50,7 +50,7 @@ def journal_stats(data_path):
         else:
             print(journal_name, 'is not in the list')
 
-    print('final_journal_dict', journal_dict)
+    # print('final_journal_dict', journal_dict)
     return journal_dict
 
 
