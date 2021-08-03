@@ -35,7 +35,8 @@ def journal_stats(data_path):
             journal_info['counts'] = 1
             mesh_counts[journal] = [label_id[i]]
         journal_info[journal] = journal_info
-
+    print('journal_dict', journal_dict)
+    print('mesh_counts', mesh_counts)
     for i, ids in enumerate(list(mesh_counts.values())):
         flat_list = []
         for item in ids:
