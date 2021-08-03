@@ -13,22 +13,18 @@ def journal_stats(data_path):
     label_id = []
     journals = []
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 100:
-            try:
-                journal = obj['journal']
-                mesh_id = obj['meshId']
-                label_id.append(mesh_id)
-                journals.append(journal)
-            except AttributeError:
-                print(obj["pmid"].strip())
-        else:
-            break
+        try:
+            journal = obj['journal']
+            mesh_id = obj['meshId']
+            label_id.append(mesh_id)
+            journals.append(journal)
+        except AttributeError:
+            print(obj["pmid"].strip())
 
     journal_dict = {}
     mesh_counts = {}
     for i, journal in enumerate(journals):
         journal_info = {'counts': 0, 'mesh_counts': {}}
-        # print('label_id', label_id)
         if journal in journal_dict:
             journal_info['counts'] = journal_info['counts'] + 1
             if journal in mesh_counts:
@@ -42,8 +38,7 @@ def journal_stats(data_path):
             else:
                 mesh_counts[journal] = [label_id[i]]
         journal_dict[journal] = journal_info
-    print('journal_dict', journal_dict)
-    print('mesh_counts', mesh_counts)
+
     for i, ids in enumerate(list(mesh_counts.values())):
         flat_list = []
         for item in ids:
