@@ -40,8 +40,7 @@ def journal_stats(data_path):
         flat_list = []
         for item in ids:
             flat_list.append(item)
-        print(flat_list)
-        occurrences = Counter(flat_list)
+        occurrences = Counter(flat_list[0])
         journal_name = list(mesh_counts.keys())[i]
         if journal_name in journal_dict:
             journal_dict[journal_name]['mesh_counts'] = dict(occurrences)
