@@ -29,27 +29,19 @@ def journal_stats(data_path):
     for i, journal in enumerate(journals):
         if journal in journal_dict:
             journal_dict[journal]['counts'] = journal_dict[journal]['counts'] + 1
-            if journal in mesh_counts:
-                mesh_counts[journal].append(label_id[i])
-            else:
-                mesh_counts[journal] = [label_id[i]]
-                print('true')
+            mesh_counts[journal].append(label_id[i])
         else:
             journal_dict[journal] = dict.fromkeys(['counts', 'mesh_counts'])
             journal_dict[journal]['counts'] = 1
-            if journal in mesh_counts:
-                print('false')
-                mesh_counts[journal].append(label_id[i])
-            else:
-                mesh_counts[journal] = [label_id[i]]
+            mesh_counts[journal] = [label_id[i]]
 
-    print('mesh_counts', mesh_counts)
     for i, ids in enumerate(list(mesh_counts.values())):
         flat_list = [item for sublist in ids for item in sublist]
-        occurrences = Counter(flat_list)
+        occurrences = dict(Counter(flat_list))
         journal_name = list(mesh_counts.keys())[i]
         if journal_name in journal_dict:
-            journal_dict[journal_name]['mesh_counts'] = dict(occurrences)
+            sorted_occurrence = dict(sorted(occurrences.items(), key=lambda item: item[1], reverse=True))
+            journal_dict[journal_name]['mesh_counts'] = sorted_occurrence
         else:
             print(journal_name, 'is not in the list')
 
