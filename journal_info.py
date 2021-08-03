@@ -33,9 +33,12 @@ def journal_stats(data_path):
                 mesh_counts[journal].append(label_id[i])
             else:
                 mesh_counts[journal] = [label_id[i]]
+                print('true')
         else:
+            journal_dict[journal] = dict.fromkeys(['counts', 'mesh_counts'])
             journal_dict[journal]['counts'] = 1
             if journal in mesh_counts:
+                print('false')
                 mesh_counts[journal].append(label_id[i])
             else:
                 mesh_counts[journal] = [label_id[i]]
