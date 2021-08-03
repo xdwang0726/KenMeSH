@@ -30,9 +30,10 @@ def journal_stats(data_path):
         journal_info = dict.fromkeys(['counts', 'mesh_counts'])
         mesh_counts['journal'] = mesh_counts['journal'].append(label_id[i])
         if journal in journal_dict:
-            journal_dict[journal]['counts'] = journal_info['counts'] + 1
+            journal_info['counts'] = journal_info['counts'] + 1
         else:
-            journal_info[journal]['counts'] = 1
+            journal_info['counts'] = 1
+        journal_info[journal] = journal_info
 
     for i, ids in enumerate(list(mesh_counts.values())):
         flat_list = []
