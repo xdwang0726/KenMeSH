@@ -61,7 +61,7 @@ def main():
             except AttributeError:
                 print(obj["pmid"])
         else:
-            break
+            continue
 
     print('Total number of articles: ', len(dataset))
     print('Finished Loading Data!')
