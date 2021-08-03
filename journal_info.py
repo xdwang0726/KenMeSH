@@ -25,14 +25,15 @@ def journal_stats(data_path):
             break
 
     journal_dict = {}
-    mesh_counts = {'journal': list()}
+    mesh_counts = {}
     for i, journal in enumerate(journals):
-        journal_info = {'counts': None, 'mesh_counts': list()}
-        mesh_counts['journal'] = mesh_counts['journal'].append(label_id[i])
+        journal_info = dict.fromkeys(['counts', 'mesh_counts'])
         if journal in journal_dict:
             journal_info['counts'] = journal_info['counts'] + 1
+            mesh_counts[journal] = [mesh_counts['journal'], label_id[i]]
         else:
             journal_info['counts'] = 1
+            mesh_counts[journal] = [label_id[i]]
         journal_info[journal] = journal_info
 
     for i, ids in enumerate(list(mesh_counts.values())):
