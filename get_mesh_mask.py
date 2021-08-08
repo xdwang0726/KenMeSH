@@ -9,6 +9,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
+import gensim
+
 
 from build_graph import tokenize
 
@@ -29,7 +31,7 @@ class DistributedCosineKnn:
             return np.array(idxs), np.array(dists)
 
 
-def idf_weighted_wordvec(doc, vectors):
+def idf_weighted_wordvec(doc, model):
 
     text = tokenize(doc)
 
@@ -43,7 +45,7 @@ def idf_weighted_wordvec(doc, vectors):
     # get pre-trained word embeddings
     weighted_word_vecs = torch.zeros(0)
     for word in text:
-        word_vec = vectors.__getitem__(word).reshape(1, 200)
+        word_vec = model.get_vector.reshape(1, 200)
         weighted_word_vec = torch.mul(word_vec, idfs[word]).view(1, 200)
         weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
     doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
@@ -142,7 +144,8 @@ def main():
     parser.add_argument('--save_path')
     args = parser.parse_args()
 
-    pubmed = get_knn_neighbors_mesh(args.allMesh, args.vectors, args.k)
+    model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
+    pubmed = get_knn_neighbors_mesh(args.allMesh, model, args.k)
 
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
