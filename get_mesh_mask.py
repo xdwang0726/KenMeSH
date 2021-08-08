@@ -1,20 +1,21 @@
 import argparse
 import heapq
 import json
+import string
 
+import gensim
 import ijson
+import nltk
 import numpy as np
 import torch
+from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
-import gensim
-import nltk
-from build_graph import tokenize
-from nltk.corpus import stopwords
-import string
 
+from build_graph import tokenize
+nltk.download('stopwords')
 
 class DistributedCosineKnn:
     def __init__(self, k=3):
@@ -39,10 +40,10 @@ def idf_weighted_wordvec(doc, model):
     table = str.maketrans('', '', string.punctuation)
     stripped = [w.translate(table) for w in tokens]
     # remove remaining tokens that are not alphabetic
-    words = [k.lower() for k in stripped if k.isalpha()]
+    tokens = [k.lower() for k in stripped if k.isalpha()]
     # remove stopwords
     stop_words = stopwords.words('english')
-    text = [w for w in words if not w in stop_words]
+    text = [w for w in tokens if not w in stop_words]
 
     # get idf weighted word vectors
     vectorizer = TfidfVectorizer()
@@ -54,9 +55,10 @@ def idf_weighted_wordvec(doc, model):
     # get pre-trained word embeddings
     weighted_word_vecs = torch.zeros(0)
     for word in text:
-        word_vec = model.get_vector(word).reshape(1, 200)
-        weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
-        weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
+        if word in idfs.keys():
+            word_vec = model.get_vector(word).reshape(1, 200)
+            weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
+            weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
     doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
 
     return doc_vec
@@ -143,23 +145,27 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
     return pubmed
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--allMesh')
-    parser.add_argument('--vectors')
-    parser.add_argument('--k')
-    parser.add_argument('--save_path')
-    args = parser.parse_args()
+# def main():
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--allMesh')
+#     parser.add_argument('--vectors')
+#     parser.add_argument('--k')
+#     parser.add_argument('--save_path')
+#     args = parser.parse_args()
+#
+#     model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
+#     pubmed = get_knn_neighbors_mesh(args.allMesh, model, args.k)
+#
+#     with open(args.save_path, "w") as outfile:
+#         json.dump(pubmed, outfile, indent=4)
+#
+#
+# if __name__ == "__main__":
+#     main()
 
-    model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
-    pubmed = get_knn_neighbors_mesh(args.allMesh, model, args.k)
-
-    with open(args.save_path, "w") as outfile:
-        json.dump(pubmed, outfile, indent=4)
-
-if __name__ == "__main__":
-    main()
-
-
+vectors = ''
+model = gensim.models.KeyedVectors.load_word2vec_format(vectors, binary=True)
+test = '/Users/wangxindi/Desktop/Task1a.json'
+pubmed = get_knn_neighbors_mesh(test, model, 10)
 
 
