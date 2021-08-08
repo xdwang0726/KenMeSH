@@ -56,9 +56,12 @@ def idf_weighted_wordvec(doc, model):
     weighted_word_vecs = torch.zeros(0)
     for word in text:
         if word in idfs.keys():
-            word_vec = model.get_vector(word).reshape(1, 200)
-            weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
-            weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
+            try:
+                word_vec = model.get_vector(word).reshape(1, 200)
+                weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
+                weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
+            except KeyError:
+                continue
     doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
 
     return doc_vec
