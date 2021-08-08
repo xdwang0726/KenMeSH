@@ -45,7 +45,7 @@ def idf_weighted_wordvec(doc, model):
     # get pre-trained word embeddings
     weighted_word_vecs = torch.zeros(0)
     for word in text:
-        word_vec = model.get_vector.reshape(1, 200)
+        word_vec = model.get_vector(word).reshape(1, 200)
         weighted_word_vec = torch.mul(word_vec, idfs[word]).view(1, 200)
         weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
     doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
