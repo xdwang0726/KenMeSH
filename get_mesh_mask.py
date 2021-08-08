@@ -89,9 +89,10 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
                 label.append(original_label)
                 label_id.append(mesh_id)
                 journals.append(journal)
-
+    print('Loading document done. ')
 
     # get k nearest neighors and return their mesh
+    print('start to find the k nearest neibors for each article')
     neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vecs)
     neighbors_meshs = []
     for i in range(len(doc_vecs)):
@@ -102,7 +103,9 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
             neighbors_mesh.append(mesh)
         neighbors_mesh = list(set([m for m in mesh for mesh in neighbors_mesh]))
         neighbors_meshs.append(neighbors_mesh)
+    print('finding neighbors done')
 
+    print('start collect data')
     dataset = []
     for i, doc in enumerate(title):
         data_point = {}
@@ -112,6 +115,7 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
         data_point['meshId'] = label_id[i]
         data_point['journal'] = journals[i]
         data_point['neighbors'] = neighbors_mesh[i]
+        # data_point['mesh_from_journal'] = journal_mesh
         dataset.append(data_point)
 
     pubmed = {'articles': dataset}
