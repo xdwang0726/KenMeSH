@@ -47,7 +47,7 @@ def idf_weighted_wordvec(doc, model):
     weighted_word_vecs = torch.zeros(0)
     for word in text:
         word_vec = model.get_vector(word).reshape(1, 200)
-        weighted_word_vec = torch.mul(torch.from_numpy(word_vec), torch.from_numpy(idfs[word])).view(1, 200)
+        weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
         weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
     doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
 
