@@ -52,7 +52,8 @@ def idf_weighted_wordvec(doc, vectors):
 
 
 def get_knn_neighbors_mesh(train_path, vectors, k):
-    f = open(train_path, encoding="utf8", errors='ignore')
+    print('hi')
+    f = open(train_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
     objects = ijson.items(f, 'documents.item')
 
@@ -65,6 +66,7 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
     journals = []
 
     for i, obj in enumerate(tqdm(objects)):
+        print('hi')
         ids = obj["pmid"]
         heading = obj['title'].strip()
         # heading = heading.translate(str.maketrans('', '', '[]'))
@@ -91,6 +93,8 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
         #         label_id.append(mesh_id)
         #         journals.append(journal)
         text = obj["abstract"].strip()
+        doc_vec = idf_weighted_wordvec(text, vectors)
+        doc_vecs.append(doc_vec)
         label = obj['meshId']
         pmid.append(ids)
         title.append(heading)
@@ -143,7 +147,8 @@ def main():
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
-
+if __name__ == "__main__":
+    main()
 
 
 
