@@ -145,27 +145,23 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
     return pubmed
 
 
-# def main():
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--allMesh')
-#     parser.add_argument('--vectors')
-#     parser.add_argument('--k')
-#     parser.add_argument('--save_path')
-#     args = parser.parse_args()
-#
-#     model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
-#     pubmed = get_knn_neighbors_mesh(args.allMesh, model, args.k)
-#
-#     with open(args.save_path, "w") as outfile:
-#         json.dump(pubmed, outfile, indent=4)
-#
-#
-# if __name__ == "__main__":
-#     main()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--allMesh')
+    parser.add_argument('--vectors')
+    parser.add_argument('--k')
+    parser.add_argument('--save_path')
+    args = parser.parse_args()
 
-vectors = ''
-model = gensim.models.KeyedVectors.load_word2vec_format(vectors, binary=True)
-test = '/Users/wangxindi/Desktop/Task1a.json'
-pubmed = get_knn_neighbors_mesh(test, model, 10)
+    model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
+    pubmed = get_knn_neighbors_mesh(args.allMesh, model, args.k)
+
+    with open(args.save_path, "w") as outfile:
+        json.dump(pubmed, outfile, indent=4)
+
+
+if __name__ == "__main__":
+    main()
+
 
 
