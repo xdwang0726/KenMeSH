@@ -15,6 +15,8 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import string
 
+nltk.download('punkt')
+
 
 class DistributedCosineKnn:
     def __init__(self, k=3):
