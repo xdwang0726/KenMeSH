@@ -11,11 +11,9 @@ from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 import gensim
 import nltk
-from nltk.tokenize import word_tokenize
+from build_graph import tokenize
 from nltk.corpus import stopwords
 import string
-
-nltk.download('punkt')
 
 
 class DistributedCosineKnn:
@@ -36,7 +34,7 @@ class DistributedCosineKnn:
 
 def idf_weighted_wordvec(doc, model):
 
-    tokens = word_tokenize(doc)
+    tokens = tokenize(doc)
     # remove punctuation from each word
     table = str.maketrans('', '', string.punctuation)
     stripped = [w.translate(table) for w in tokens]
