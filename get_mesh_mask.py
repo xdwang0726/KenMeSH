@@ -34,6 +34,7 @@ class DistributedCosineKnn:
 def idf_weighted_wordvec(doc, model):
 
     text = tokenize(doc)
+    text = [k.lower() for k in text]
 
     # get idf weighted word vectors
     vectorizer = TfidfVectorizer()
