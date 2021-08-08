@@ -10,9 +10,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 import gensim
-
-
-from build_graph import tokenize
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+import string
 
 
 class DistributedCosineKnn:
@@ -33,8 +34,15 @@ class DistributedCosineKnn:
 
 def idf_weighted_wordvec(doc, model):
 
-    text = tokenize(doc)
-    text = [k.lower() for k in text]
+    tokens = word_tokenize(doc)
+    # remove punctuation from each word
+    table = str.maketrans('', '', string.punctuation)
+    stripped = [w.translate(table) for w in tokens]
+    # remove remaining tokens that are not alphabetic
+    words = [k.lower() for k in stripped if k.isalpha()]
+    # remove stopwords
+    stop_words = stopwords.words('english')
+    text = [w for w in words if not w in stop_words]
 
     # get idf weighted word vectors
     vectorizer = TfidfVectorizer()
