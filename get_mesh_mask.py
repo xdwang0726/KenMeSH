@@ -66,29 +66,37 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
     for i, obj in enumerate(tqdm(objects)):
         ids = obj["pmid"]
         heading = obj['title'].strip()
-        heading = heading.translate(str.maketrans('', '', '[]'))
-        # print('heading', type(heading), heading)
-        data_point = {}
-        if len(heading) == 0:
-            print('paper ', ids, ' does not have title!')
-        else:
-            if heading == 'In process':
-                continue
-            else:
-                abstract = obj["abstractText"].strip()
-                abstract = abstract.translate(str.maketrans('', '', '[]'))
-                text = title + ' ' + abstract
-                doc_vec = idf_weighted_wordvec(text, vectors)
-                doc_vecs.append(doc_vec)
-                original_label = obj["meshMajor"]
-                mesh_id = obj['meshId']
-                journal = obj['journal']
-                pmid.append(ids)
-                title.append(heading)
-                all_text.append(abstract)
-                label.append(original_label)
-                label_id.append(mesh_id)
-                journals.append(journal)
+        # heading = heading.translate(str.maketrans('', '', '[]'))
+        # # print('heading', type(heading), heading)
+        # data_point = {}
+        # if len(heading) == 0:
+        #     print('paper ', ids, ' does not have title!')
+        # else:
+        #     if heading == 'In process':
+        #         continue
+        #     else:
+        #         abstract = obj["abstractText"].strip()
+        #         abstract = abstract.translate(str.maketrans('', '', '[]'))
+        #         text = title + ' ' + abstract
+        #         doc_vec = idf_weighted_wordvec(text, vectors)
+        #         doc_vecs.append(doc_vec)
+        #         original_label = obj["meshMajor"]
+        #         mesh_id = obj['meshId']
+        #         journal = obj['journal']
+        #         pmid.append(ids)
+        #         title.append(heading)
+        #         all_text.append(abstract)
+        #         label.append(original_label)
+        #         label_id.append(mesh_id)
+        #         journals.append(journal)
+        ids = obj["pmid"]
+        heading = obj["title"].strip()
+        text = obj["abstract"].strip()
+        label = obj['meshId']
+        pmid.append(ids)
+        title.append(heading)
+        text.append(text)
+        label.append(label)
     print('Loading document done. ')
 
     # get k nearest neighors and return their mesh
@@ -113,7 +121,7 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
         data_point['abstractText'] = all_text[i]
         data_point['meshMajor'] = label[i]
         data_point['meshId'] = label_id[i]
-        data_point['journal'] = journals[i]
+        # data_point['journal'] = journals[i]
         data_point['neighbors'] = neighbors_mesh[i]
         # data_point['mesh_from_journal'] = journal_mesh
         dataset.append(data_point)
