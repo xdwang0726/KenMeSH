@@ -8,34 +8,58 @@ import ijson
 import nltk
 import numpy as np
 import torch
+import torch.nn as nn
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
+from run_classifier_multigcn import weight_matrix
+from utils import Preprocess
+import os
+from torchtext.vocab import Vectors
+from torch.utils.data import DataLoader
+from torchtext.data.utils import get_tokenizer
 
-from build_graph import tokenize
 nltk.download('stopwords')
-
-class DistributedCosineKnn:
-    def __init__(self, k=3):
-        self.k = k
-
-    def fit(self, input_data, n_bucket=1):
-        idxs = []
-        dists = []
-        buckets = np.array_split(input_data,n_bucket)
-        for b in range(n_bucket):
-            cosim = cosine_similarity(buckets[b], input_data)
-            idx0 = [(heapq.nlargest((self.k+1), range(len(i)), i.take)) for i in cosim]
-            idxs.extend(idx0)
-            dists.extend([cosim[i][idx0[i]] for i in range(len(cosim))])
-            return np.array(idxs), np.array(dists)
+tokenizer = get_tokenizer('basic_english')
 
 
-def idf_weighted_wordvec(doc, model):
+class Embedding(nn.Module):
+    def __init__(self, weights):
 
-    tokens = tokenize(doc)
+        self.embedding = nn.Embedding.from_pretrained(weights, freeze=True)
+
+    def forward(self, inputs):
+        embeddings = self.embedding(inputs)
+        # weighed_doc_embedding = torch.mul(embeddings, doc_idfs)
+        return embeddings
+
+
+def generate_batch(batch):
+    """
+    Output:
+        text: the text entries in the data_batch are packed into a list and
+            concatenated as a single tensor for the input of nn.EmbeddingBag.
+        cls: a tensor saving the labels of individual text entries.
+    """
+    # check if the dataset if train or test
+    if len(batch[0]) == 2:
+        label = [entry[0] for entry in batch]
+
+        # padding according to the maximum sequence length in batch
+        text = [entry[1] for entry in batch]
+        length = [len(seq) for seq in text]
+        return text, length, label
+    else:
+        text = [entry for entry in batch]
+        length = [len(seq) for seq in text]
+        return text, length
+
+
+def idf_weighted_wordvec(doc):
+
+    tokens = tokenizer(doc)
     # remove punctuation from each word
     table = str.maketrans('', '', string.punctuation)
     stripped = [w.translate(table) for w in tokens]
@@ -44,35 +68,44 @@ def idf_weighted_wordvec(doc, model):
     # remove stopwords
     stop_words = stopwords.words('english')
     text = [w for w in tokens if not w in stop_words]
+    # remove single character words
+    text = [w for w in text if len(w) > 1]
 
     # get idf weighted word vectors
     vectorizer = TfidfVectorizer()
     X = vectorizer.fit_transform(text)
-    words = vectorizer.get_feature_names()
-    idf_weights = vectorizer.idf_
-    idfs = dict(zip(words, idf_weights))
+    doc_vocab = vectorizer.vocabulary_
+    idfs = vectorizer.idf_
+    doc_idfs = []
+    for t in text:
+        idf = idfs[doc_vocab[t]]
+        doc_idfs.append(idf)
+
+
+    # words = vectorizer.get_feature_names()
+    # idf_weights = vectorizer.idf_
+    # idfs = dict(zip(words, idf_weights))
+    # doc_idfs = idf(text, vectorizer)
 
     # get pre-trained word embeddings
-    weighted_word_vecs = torch.zeros(0)
-    for word in text:
-        if word in idfs.keys():
-            try:
-                word_vec = model.get_vector(word).reshape(1, 200)
-                weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
-                weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
-            except KeyError:
-                continue
-    doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
+    # weighted_word_vecs = torch.zeros(0)
+    # for word in text:
+    #     if word in idfs.keys():
+    #         try:
+    #             word_vec = model.get_vector(word).reshape(1, 200)
+    #             weighted_word_vec = torch.from_numpy(np.multiply(word_vec, idfs[word]))
+    #             weighted_word_vecs = torch.cat((weighted_word_vecs, weighted_word_vec), dim=0)
+    #         except KeyError:
+    #             continue
+    # doc_vec = torch.sum(weighted_word_vecs, dim=1) / sum(idf_weights)
+    return doc_idfs
 
-    return doc_vec
 
-
-def get_knn_neighbors_mesh(train_path, vectors, k):
+def get_knn_neighbors_mesh(train_path, vectors, device):
     f = open(train_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
     objects = ijson.items(f, 'documents.item')
 
-    doc_vecs = []
     pmid = []
     title = []
     all_text = []
@@ -107,39 +140,59 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
         #         label_id.append(mesh_id)
         #         journals.append(journal)
         text = obj["abstract"].strip()
-        doc_vec = idf_weighted_wordvec(text, vectors)
-        doc_vecs.append(doc_vec)
-        label = obj['meshId']
+        l = obj['meshId']
         pmid.append(ids)
         title.append(heading)
         all_text.append(text)
-        label.append(label)
+        label.append(l)
     print('Loading document done. ')
 
-    # get k nearest neighors and return their mesh
-    print('start to find the k nearest neibors for each article')
-    neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vecs)
-    neighbors_meshs = []
-    for i in range(len(doc_vecs)):
-        _, idxes = neighbors.kneighbors(doc_vecs[i])
-        neighbors_mesh = []
-        for idx in idxes:
-            mesh = label_id[idx]
-            neighbors_mesh.append(mesh)
-        neighbors_mesh = list(set([m for m in mesh for mesh in neighbors_mesh]))
-        neighbors_meshs.append(neighbors_mesh)
-    print('finding neighbors done')
+    # doc_idfs = idf_weighted_wordvec(all_text)
+
+    dataset = Preprocess(all_text, label)
+    vocab = dataset.get_vocab()
+
+    weights = weight_matrix(vocab, vectors)
+    model = Embedding(weights)
+    model.to(device)
+
+    data = DataLoader(dataset, batch_size=1, shuffle=True, collate_fn=generate_batch)
+    doc_vec = []
+    lengths = []
+    for i, (text, length, label) in enumerate(data):
+        text = text.to(device)
+        with torch.no_grad():
+            output = model(text)
+            doc_vec.append(output)
+            lengths.append(length)
+
+
+    # # get k nearest neighors and return their mesh
+    # print('start to find the k nearest neibors for each article')
+    # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vecs)
+    # neighbors_meshs = []
+    # for i in range(len(doc_vecs)):
+    #     _, idxes = neighbors.kneighbors(doc_vecs[i])
+    #     neighbors_mesh = []
+    #     for idx in idxes:
+    #         mesh = label_id[idx]
+    #         neighbors_mesh.append(mesh)
+    #     neighbors_mesh = list(set([m for m in mesh for mesh in neighbors_mesh]))
+    #     neighbors_meshs.append(neighbors_mesh)
+    # print('finding neighbors done')
 
     print('start collect data')
     dataset = []
-    for i, doc in enumerate(title):
+    for i, id in enumerate(pmid):
         data_point = {}
-        data_point['title'] = doc
-        data_point['abstractText'] = all_text[i]
-        data_point['meshMajor'] = label[i]
-        data_point['meshId'] = label_id[i]
+        data_point['pmid'] = id
+        data_point['doc_vec'] = doc_vec[i]
+        # data_point['title'] = title[i]
+        # data_point['abstractText'] = all_text[i]
+        # data_point['meshMajor'] = label[i]
+        # data_point['meshId'] = label_id[i]
         # data_point['journal'] = journals[i]
-        data_point['neighbors'] = neighbors_mesh[i]
+        # data_point['neighbors'] = neighbors_mesh[i]
         # data_point['mesh_from_journal'] = journal_mesh
         dataset.append(data_point)
 
@@ -151,13 +204,16 @@ def get_knn_neighbors_mesh(train_path, vectors, k):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--allMesh')
-    parser.add_argument('--vectors')
-    parser.add_argument('--k')
+    parser.add_argument('--word2vec_path')
+    parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--save_path')
     args = parser.parse_args()
 
-    model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
-    pubmed = get_knn_neighbors_mesh(args.allMesh, model, args.k)
+    # model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    cache, name = os.path.split(args.word2vec_path)
+    vectors = Vectors(name=name, cache=cache)
+    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, device)
 
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
