@@ -7,6 +7,7 @@ import ijson
 import nltk
 import torch
 import torch.nn as nn
+from itertools import islice
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from torch.utils.data import DataLoader
@@ -158,18 +159,20 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
     model.to(device)
 
     data = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=generate_batch)
-    pred = torch.zeros(0).cuda()
+    doc_vec = []
     lengths = []
     for i, (text, length, label) in enumerate(data):
         text = text.to(device)
         with torch.no_grad():
             output = model(text, length)
-            print(output.shape)
-            pred = torch.cat((pred, output), dim=0)
+            output_iter = iter(output)
+            pred = [list(islice(output_iter, elem)) for elem in length]
+            doc_vec.extend(pred)
             lengths.append(length)
 
-    doc_vec = pred.data.cpu().numpy()
-    print('number of embedding articles', len(doc_vec))
+    doc_vec = doc_vec.cpu()
+    print('number of embedding articles', len(doc_vec), type(doc_vec))
+    print('length', type(length))
     # # get k nearest neighors and return their mesh
     # print('start to find the k nearest neibors for each article')
     # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vecs)
