@@ -8,14 +8,19 @@ from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
 from nltk.corpus import stopwords
+import string
 
 stop_words = set(stopwords.words('english'))
 
 def _text_iterator(text, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
+    table = str.maketrans('', '', string.punctuation)
+
     for i, text in enumerate(text):
-        texts = tokenizer(text)
-        filtered_text = [word for word in texts if word not in stop_words]
+        tokens = tokenizer(text)
+        stripped = [w.translate(table) for w in tokens]  # remove punctuation
+        texts = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
+        filtered_text = [word for word in stripped if word not in stop_words]  # remove stopwords
         if yield_label:
             label = labels[i]
             yield label, ngrams_iterator(filtered_text, ngrams)
@@ -120,6 +125,25 @@ def MeSH_indexing(train_text, train_labels, test_text, test_labels, ngrams=1, vo
     """
 
     return _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams, vocab, include_unk)
+
+
+def _setup_preprocess(train_text, train_labels, ngrams=1, vocab=None, include_unk=False):
+    if vocab is None:
+        logging.info('Building Vocab based on {}'.format(train_text))
+        vocab = build_vocab_from_iterator(_text_iterator(train_text, train_labels, ngrams))
+    else:
+        if not isinstance(vocab, Vocab):
+            raise TypeError("Passed vocabulary is not of type Vocab")
+    logging.info('Vocab has {} entries'.format(len(vocab)))
+    logging.info('Creating training data')
+    train_data, train_labels = _create_data_from_iterator(
+        vocab, _text_iterator(train_text, labels=train_labels, ngrams=ngrams, yield_label=True), include_unk,
+        is_test=False)
+    return MultiLabelTextClassificationDataset(vocab, train_data, train_labels)
+
+
+def Preprocess(text, labels, ngrams=1, vocab=None, include_unk=False):
+    return _setup_preprocess(text, labels, ngrams, vocab, include_unk)
 
 
 class bert_MeSHDataset(torch.utils.data.Dataset):
