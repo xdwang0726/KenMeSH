@@ -191,14 +191,18 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     weights = weight_matrix(vocab, vectors)
     model = Embedding(weights)
     model.to(device)
-
+    print('1')
     data = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
+    print('2')
     # lengths = []
     for i, (text, length, label, idf) in enumerate(data):
+        print('3')
         text, idf = text.to(device), idf.to(device)
         with torch.no_grad():
+            print('4')
             output = model(text, idf)
+
             pred = torch.cat((pred, output), dim=0)
         # pred = output.data.cpu().numpy()
         # output_iter = iter(pred)
