@@ -168,11 +168,10 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
             output_iter = iter(output)
             pred = [list(islice(output_iter, elem)) for elem in length]
             doc_vec.extend(pred)
-            lengths.append(length)
+            lengths.extend(length)
 
-    doc_vec = doc_vec.cpu()
     print('number of embedding articles', len(doc_vec), type(doc_vec))
-    print('length', type(length))
+    print('length', type(lengths))
     # # get k nearest neighors and return their mesh
     # print('start to find the k nearest neibors for each article')
     # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vecs)
@@ -193,6 +192,7 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
         data_point = {}
         data_point['pmid'] = id
         data_point['doc_vec'] = doc_vec[i]
+        data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
         # data_point['meshMajor'] = label[i]
