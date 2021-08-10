@@ -120,11 +120,11 @@ def load_idf_file(idf_path):
     for i, obj in enumerate(tqdm(objects)):
         ids = obj["pmid"]
         idf = obj['weighted_doc_vec']
-        idf_len = obj['length']
+        # idf_len = obj['length']
         pmid.append(ids)
         weighted_doc_vec.append(idf)
-        lengths.append(idf_len)
-    return pmid, weighted_doc_vec, lengths
+        # lengths.append(idf_len)
+    return pmid, weighted_doc_vec
 
 
 def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
@@ -167,7 +167,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     #     except AttributeError:
     #         print(obj["pmid"].strip())
 
-    pmid_idf, idfs, idf_len = load_idf_file(idf_path)
+    pmid_idf, idfs = load_idf_file(idf_path)
 
     for i, obj in enumerate(tqdm(objects)):
         ids = obj["pmid"]
@@ -233,7 +233,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
         #print('doc_vec', type(doc_vec[i]), doc_vec[i])
         data_point['doc_vec'] = doc_vec[i]
         #print('doc_vec_len', type(lengths[i]), lengths[i])
-        data_point['doc_vec_len'] = lengths[i]
+        # data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
         # data_point['meshMajor'] = label[i]
