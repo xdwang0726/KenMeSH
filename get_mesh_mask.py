@@ -221,7 +221,7 @@ def main():
     cache, name = os.path.split(args.word2vec_path)
     vectors = Vectors(name=name, cache=cache)
     pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, device)
-
+    print('pubmed type', type(pubmed))
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
