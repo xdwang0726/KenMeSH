@@ -12,7 +12,8 @@ import string
 
 stop_words = set(stopwords.words('english'))
 
-def _text_iterator(text, labels=None, ngrams=1, yield_label=False):
+
+def _text_iterator(text, idfs, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     table = str.maketrans('', '', string.punctuation)
 
@@ -21,19 +22,21 @@ def _text_iterator(text, labels=None, ngrams=1, yield_label=False):
         stripped = [w.translate(table) for w in tokens]  # remove punctuation
         texts = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
         filtered_text = [word for word in stripped if word not in stop_words]  # remove stopwords
+        idf = idfs[i]
         if yield_label:
             label = labels[i]
-            yield label, ngrams_iterator(filtered_text, ngrams)
+            yield label, ngrams_iterator(filtered_text, ngrams), idf
         else:
-            yield ngrams_iterator(filtered_text, ngrams)
+            yield ngrams_iterator(filtered_text, ngrams), idf
 
 
 def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
     data = []
     labels = []
+    idfs = []
     with tqdm(unit_scale=0, unit='lines') as t:
         if is_test:
-            for text in iterator:
+            for text, idf in iterator:
                 if include_unk:
                     tokens = torch.tensor([vocab[token] for token in text])
                 else:
@@ -43,10 +46,11 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
                 if len(tokens) == 0:
                     logging.info('Row contains no tokens.')
                 data.append(tokens)
+                idfs.append(idf)
                 t.update(1)
-            return data
+            return data, idfs
         else:
-            for label, text in iterator:
+            for label, text, idf in iterator:
                 if include_unk:
                     tokens = torch.tensor([vocab[token] for token in text])
                 else:
@@ -57,12 +61,13 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
                     logging.info('Row contains no tokens.')
                 data.append((label, tokens))
                 labels.extend(label)
+                idfs.append(idf)
                 t.update(1)
-            return data, set(labels)
+            return data, set(labels), idfs
 
 
 class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
-    def __init__(self, vocab, data, labels=None):
+    def __init__(self, vocab, data, idfs, labels=None):
         """Initiate text-classification dataset.
          Arguments:
              vocab: Vocabulary object used for dataset.
@@ -76,6 +81,7 @@ class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
         self._vocab = vocab
         self._data = data
         self._labels = labels
+        self._idfs = idfs
 
     def __getitem__(self, i):
         return self._data[i]
@@ -92,6 +98,9 @@ class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
 
     def get_vocab(self):
         return self._vocab
+
+    def get_idfs(self):
+        return self._idfs
 
 
 def _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams=1, vocab=None, include_unk=False):
@@ -127,23 +136,23 @@ def MeSH_indexing(train_text, train_labels, test_text, test_labels, ngrams=1, vo
     return _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams, vocab, include_unk)
 
 
-def _setup_preprocess(train_text, train_labels, ngrams=1, vocab=None, include_unk=False):
+def _setup_preprocess(train_text, idfs, train_labels, ngrams=1, vocab=None, include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_text_iterator(train_text, train_labels, ngrams))
+        vocab = build_vocab_from_iterator(_text_iterator(train_text, idfs, train_labels, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
     logging.info('Vocab has {} entries'.format(len(vocab)))
     logging.info('Creating training data')
-    train_data, train_labels = _create_data_from_iterator(
-        vocab, _text_iterator(train_text, labels=train_labels, ngrams=ngrams, yield_label=True), include_unk,
+    train_data, train_labels, train_idfs = _create_data_from_iterator(
+        vocab, _text_iterator(train_text, idfs, labels=train_labels, ngrams=ngrams, yield_label=True), include_unk,
         is_test=False)
-    return MultiLabelTextClassificationDataset(vocab, train_data, train_labels)
+    return MultiLabelTextClassificationDataset(vocab, train_data, train_idfs, train_labels)
 
 
-def Preprocess(text, labels, ngrams=1, vocab=None, include_unk=False):
-    return _setup_preprocess(text, labels, ngrams, vocab, include_unk)
+def Preprocess(text, idfs, labels, ngrams=1, vocab=None, include_unk=False):
+    return _setup_preprocess(text, idfs, labels, ngrams, vocab, include_unk)
 
 
 class bert_MeSHDataset(torch.utils.data.Dataset):

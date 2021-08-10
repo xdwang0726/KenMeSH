@@ -29,11 +29,13 @@ class Embedding(nn.Module):
 
         self.embedding = nn.Embedding.from_pretrained(weights, freeze=True)
 
-    def forward(self, inputs, input_length):
+    def forward(self, inputs, idf):
         embeddings = self.embedding(inputs)
-        packed_embedding = pack_padded_sequence(embeddings, input_length, batch_first=True, enforce_sorted=False)
-        # weighed_doc_embedding = torch.mul(embeddings, doc_idfs)
-        return packed_embedding.data
+        # packed_embedding = pack_padded_sequence(embeddings, input_length, batch_first=True, enforce_sorted=False)
+        print('embedding', embeddings.shape)
+        print('idf shape', idf.shape)
+        weighed_doc_embedding = torch.mul(idf.view(idf.shape[0], idf.shape[1], 1), embeddings) / torch.sum(idf, dim=1)
+        return weighed_doc_embedding
 
 
 def generate_batch(batch):
@@ -51,12 +53,16 @@ def generate_batch(batch):
         text = [entry[1] for entry in batch]
         padded_text = pad_sequence(text, batch_first=True)
         length = [len(seq) for seq in text]
-        return padded_text, length, label
+        idf = [entry[2] for entry in batch]
+        padded_idf = pad_sequence(idf, batch_first=True)
+        return padded_text, length, label, padded_idf
     else:
         text = [entry for entry in batch]
         padded_text = pad_sequence(text, batch_first=True)
         length = [len(seq) for seq in text]
-        return padded_text, length
+        idf = [entry[2] for entry in batch]
+        padded_idf = pad_sequence(idf, batch_first=True)
+        return padded_text, length, padded_idf
 
 
 def idf_weighted_wordvec(doc):
@@ -103,10 +109,28 @@ def idf_weighted_wordvec(doc):
     return doc_idfs
 
 
-def get_knn_neighbors_mesh(train_path, vectors, device):
+def load_idf_file(idf_path):
+    f = open(idf_path, encoding="utf8")
+    objects = ijson.items(f, 'articles.item')
+
+    pmid = []
+    weighted_doc_vec = []
+    lengths = []
+
+    for i, obj in enumerate(tqdm(objects)):
+        ids = obj["pmid"]
+        idf = obj['weighted_doc_vec']
+        idf_len = obj['length']
+        pmid.append(ids)
+        weighted_doc_vec.append(idf)
+        lengths.append(idf_len)
+    return pmid, weighted_doc_vec, lengths
+
+
+def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     f = open(train_path, encoding="utf8")
-    # objects = ijson.items(f, 'articles.item')
-    objects = ijson.items(f, 'documents.item')
+    objects = ijson.items(f, 'articles.item')
+    # objects = ijson.items(f, 'documents.item')
 
     pmid = []
     title = []
@@ -115,43 +139,53 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
     label_id = []
     journals = []
 
+    # for i, obj in enumerate(tqdm(objects)):
+    #     try:
+    #         ids = obj["pmid"]
+    #         heading = obj['title'].strip()
+    #         heading = heading.translate(str.maketrans('', '', '[]'))
+    #         abstract = obj["abstractText"].strip()
+    #         clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+    #         if len(heading) == 0 or heading == 'In process':
+    #             print('paper ', ids, ' does not have title!')
+    #             continue
+    #         elif len(clean_abstract) == 0:
+    #             print('paper ', ids, ' does not have abstract!')
+    #             continue
+    #         else:
+    #             try:
+    #                 original_label = obj["meshMajor"]
+    #                 mesh_id = obj['meshId']
+    #                 journal = obj['journal']
+    #                 pmid.append(ids)
+    #                 all_text.append(abstract)
+    #                 label.append(original_label)
+    #                 label_id.appen(mesh_id)
+    #                 journals.append(journal)
+    #             except KeyError:
+    #                 print('tfidf error', ids)
+    #     except AttributeError:
+    #         print(obj["pmid"].strip())
+
+    pmid_idf, idfs, idf_len = load_idf_file(idf_path)
+
     for i, obj in enumerate(tqdm(objects)):
         ids = obj["pmid"]
-        heading = obj['title'].strip()
-        # heading = heading.translate(str.maketrans('', '', '[]'))
-        # # print('heading', type(heading), heading)
-        # data_point = {}
-        # if len(heading) == 0:
-        #     print('paper ', ids, ' does not have title!')
-        # else:
-        #     if heading == 'In process':
-        #         continue
-        #     else:
-        #         abstract = obj["abstractText"].strip()
-        #         abstract = abstract.translate(str.maketrans('', '', '[]'))
-        #         text = title + ' ' + abstract
-        #         doc_vec = idf_weighted_wordvec(text, vectors)
-        #         doc_vecs.append(doc_vec)
-        #         original_label = obj["meshMajor"]
-        #         mesh_id = obj['meshId']
-        #         journal = obj['journal']
-        #         pmid.append(ids)
-        #         title.append(heading)
-        #         all_text.append(abstract)
-        #         label.append(original_label)
-        #         label_id.append(mesh_id)
-        #         journals.append(journal)
-        text = obj["abstract"].strip()
-        l = obj['meshId']
-        pmid.append(ids)
-        title.append(heading)
-        all_text.append(text)
-        label.append(l)
+        if ids == pmid_idf[i]:
+            heading = obj['title'].strip()
+            text = obj["abstract"].strip()
+            l = obj['meshId']
+            pmid.append(ids)
+            title.append(heading)
+            all_text.append(text)
+            label.append(l)
+        else:
+            print(ids, 'Not match')
     print('Loading document done. ')
 
     # doc_idfs = idf_weighted_wordvec(all_text)
 
-    dataset = Preprocess(all_text, label)
+    dataset = Preprocess(all_text, label, idfs)
     vocab = dataset.get_vocab()
 
     weights = weight_matrix(vocab, vectors)
@@ -159,20 +193,24 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
     model.to(device)
 
     data = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=generate_batch)
-    doc_vec = []
-    lengths = []
+    pred = torch.zeros(0).cuda()
+    # lengths = []
     for i, (text, length, label) in enumerate(data):
         text = text.to(device)
         with torch.no_grad():
             output = model(text, length)
-            pred = output.data.cpu().tolist()
-            output_iter = iter(pred)
-            vecs = [list(islice(output_iter, elem)) for elem in length]
-            doc_vec.extend(vecs)
-            lengths.extend(length)
+            pred = torch.cat((pred, output), dim=0)
+        # pred = output.data.cpu().numpy()
+        # output_iter = iter(pred)
+        # vecs = [list(islice(output_iter, elem)) for elem in length]
+        # calculated weigthed idf document vectors
+
+        # doc_vec.extend(vecs)
+        # lengths.extend(length)
+    doc_vec = pred.data.cpu().numpy()
 
     print('number of embedding articles', len(doc_vec), type(doc_vec))
-    print('length', type(lengths))
+    # print('length', type(lengths))
     # # get k nearest neighors and return their mesh
     # print('start to find the k nearest neibors for each article')
     # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vecs)
@@ -219,6 +257,7 @@ def main():
     args = parser.parse_args()
 
     # model = gensim.models.KeyedVectors.load_word2vec_format(args.vectors, binary=True)
+
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     cache, name = os.path.split(args.word2vec_path)
     vectors = Vectors(name=name, cache=cache)
