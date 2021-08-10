@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from run_classifier_multigcn import weight_matrix
 from utils import Preprocess
+from torch.nn.utils.rnn import pack_padded_sequence
 
 nltk.download('stopwords')
 tokenizer = get_tokenizer('basic_english')
@@ -27,8 +28,9 @@ class Embedding(nn.Module):
 
         self.embedding = nn.Embedding.from_pretrained(weights, freeze=True)
 
-    def forward(self, inputs):
+    def forward(self, inputs, input_length):
         embeddings = self.embedding(inputs)
+        packed_title = pack_padded_sequence(embeddings, input_length, batch_first=True, enforce_sorted=False)
         # weighed_doc_embedding = torch.mul(embeddings, doc_idfs)
         return embeddings
 
@@ -153,13 +155,13 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
     model = Embedding(weights)
     model.to(device)
 
-    data = DataLoader(dataset, batch_size=1, shuffle=True, collate_fn=generate_batch)
+    data = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=generate_batch)
     doc_vec = []
     lengths = []
     for i, (text, length, label) in enumerate(data):
         text = text.to(device)
         with torch.no_grad():
-            output = model(text)
+            output = model(text, length)
             doc_vec.append(output)
             lengths.append(length)
 
