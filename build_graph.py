@@ -6,23 +6,15 @@ import dgl
 import ijson
 import numpy as np
 import pandas as pd
-import spacy
 import torch
 from dgl.data.utils import save_graphs
+from torchtext.data.utils import get_tokenizer
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 from transformers import AutoTokenizer
 from transformers import BertModel
 
-
-def tokenize(text):
-    tokens = []
-    nlp = spacy.load("en_core_web_sm")
-    doc = nlp(text)
-    for token in doc:
-        tokens.append(token.text)
-    return tokens
-
+tokenizer = get_tokenizer('basic_english')
 
 def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
     """
@@ -57,7 +49,7 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
     print('get label embeddings')
     label_embedding = torch.zeros(0)
     for key, value in tqdm(mapping_id.items()):
-        key = tokenize(key)
+        key = tokenizer(key)
         key = [k.lower() for k in key]
         embedding = []
         for k in key:
@@ -210,7 +202,7 @@ def multitype_GCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_
     print('get label embeddings')
     label_embedding = torch.zeros(0)
     for key, value in tqdm(mapping_id.items()):
-        key = tokenize(key)
+        key = tokenizer(key)
         key = [k.lower() for k in key]
         key_embedding = torch.zeros(0)
         for k in key:
@@ -306,7 +298,7 @@ def cooccurence_node_edge(train_data_path, MeSH_id_pair_file, threshold, vectors
     print('get label embeddings')
     label_embedding = torch.zeros(0)
     for key, value in tqdm(mapping_id.items()):
-        key = tokenize(key)
+        key = tokenizer(key)
         key = [k.lower() for k in key]
         key_embedding = torch.zeros(0)
         for k in key:
@@ -401,7 +393,7 @@ def RGCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_children_
     print('get label embeddings')
     label_embedding = torch.zeros(0)
     for key, value in tqdm(mapping_id.items()):
-        key = tokenize(key)
+        key = tokenizer(key)
         key = [k.lower() for k in key]
         key_embedding = torch.zeros(0)
         for k in key:

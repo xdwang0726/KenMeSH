@@ -3,11 +3,12 @@ import json
 
 import ijson
 from tqdm import tqdm
+import string
 
 """
 Extract the articles from 2012-2016 from the BioASQ dataset for Taska
-"""
 
+"""
 def from_mesh2id(labels_list, mapping_id):
     mesh_id = []
     for mesh in labels_list:
@@ -28,12 +29,16 @@ def main():
     parser.add_argument('--years', type=list, default=['2012', '2013', '2014', '2015', '2016'])
     args = parser.parse_args()
 
+    table = str.maketrans('', '', string.punctuation)
+
     """ mapping mesh terms to meshIDs """
     mapping_id = {}
     with open(args.MeshID) as f:
         for line in f:
             (key, value) = line.split('=')
             mapping_id[key] = value
+
+
 
     """ get text(abstract and title) and MeSH terms to each document """
     f = open(args.allMesh, encoding="utf8", errors='ignore')
@@ -48,16 +53,26 @@ def main():
             try:
                 ids = obj['pmid']
                 title = obj['title']
-                text = obj['abstractText'].strip()
-                label = obj["meshMajor"]
-                journal = obj['journal']
-                data_point['pmid'] = ids
-                data_point['title'] = title
-                data_point['abstractText'] = text
-                data_point['meshMajor'] = label
-                data_point['meshId'] = from_mesh2id(label, mapping_id)
-                data_point['journal'] = journal
-                dataset.append(data_point)
+                clean_title = title.translate(str.maketrans('', '', '[]'))
+                text = obj["abstractText"].strip()
+                clean_text = text.translate(table)
+                if len(clean_title) == 0 or clean_title == 'In process':
+                    print('paper ', ids, ' does not have title!')
+                    continue
+                elif len(clean_text) == 0:
+                    print('paper ', ids, ' does not have abstract!')
+                    continue
+                else:
+                    text = obj['abstractText'].strip()
+                    label = obj["meshMajor"]
+                    journal = obj['journal']
+                    data_point['pmid'] = ids
+                    data_point['title'] = title
+                    data_point['abstractText'] = text
+                    data_point['meshMajor'] = label
+                    data_point['meshId'] = from_mesh2id(label, mapping_id)
+                    data_point['journal'] = journal
+                    dataset.append(data_point)
             except AttributeError:
                 print(obj["pmid"])
         else:
@@ -75,5 +90,7 @@ def main():
 
     print('Finished writing to json file!')
 
+
 if __name__ == "__main__":
     main()
+

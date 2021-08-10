@@ -164,6 +164,7 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
         text = text.to(device)
         with torch.no_grad():
             output = model(text, length)
+            print(output.shape)
             pred = torch.cat((pred, output), dim=0)
             lengths.append(length)
 
