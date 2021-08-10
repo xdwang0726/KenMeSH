@@ -46,14 +46,16 @@ def generate_batch(batch):
         cls: a tensor saving the labels of individual text entries.
     """
     # check if the dataset if train or test
-    if len(batch[0]) == 2:
+    if len(batch[0]) == 3:
         label = [entry[0] for entry in batch]
 
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
         padded_text = pad_sequence(text, batch_first=True)
         length = [len(seq) for seq in text]
+        print('5')
         idf = [entry[2] for entry in batch]
+        print('idf', idf)
         padded_idf = pad_sequence(idf, batch_first=True)
         return padded_text, length, label, padded_idf
     else:
