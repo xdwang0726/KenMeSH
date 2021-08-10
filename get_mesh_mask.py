@@ -253,6 +253,7 @@ def main():
     parser.add_argument('--allMesh')
     parser.add_argument('--word2vec_path')
     parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--idfs_path')
     parser.add_argument('--save_path')
     args = parser.parse_args()
 
@@ -261,7 +262,7 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     cache, name = os.path.split(args.word2vec_path)
     vectors = Vectors(name=name, cache=cache)
-    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, device)
+    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, device)
     print('pubmed type', type(pubmed))
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
