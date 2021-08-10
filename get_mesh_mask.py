@@ -165,9 +165,10 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
         text = text.to(device)
         with torch.no_grad():
             output = model(text, length)
-            output_iter = iter(output)
-            pred = [list(islice(output_iter, elem)) for elem in length]
-            doc_vec.extend(pred)
+            pred = output.data.cpu().numpy()
+            output_iter = iter(pred)
+            vecs = [list(islice(output_iter, elem)) for elem in length]
+            doc_vec.extend(vecs)
             lengths.extend(length)
 
     print('number of embedding articles', len(doc_vec), type(doc_vec))
