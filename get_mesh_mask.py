@@ -165,9 +165,9 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
         text = text.to(device)
         with torch.no_grad():
             output = model(text, length)
-            pred = output.data.cpu().numpy()
+            pred = output.data.cpu().tolist()
             output_iter = iter(pred)
-            vecs = [list(islice(output_iter, elem)) for elem in length]
+            vecs = [[islice(output_iter, elem)] for elem in length]
             doc_vec.extend(vecs)
             lengths.extend(length)
 
@@ -192,10 +192,10 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
     for i, id in enumerate(pmid):
         data_point = {}
         data_point['pmid'] = id
-        print('doc_vec', type(doc_vec[i]), doc_vec[i])
+        #print('doc_vec', type(doc_vec[i]), doc_vec[i])
         data_point['doc_vec'] = doc_vec[i]
-        print('doc_vec_len', type(lengths[i]), lengths[i])
-        data_point['doc_vec_len'] = lengths[i].tolist()
+        #print('doc_vec_len', type(lengths[i]), lengths[i])
+        data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
         # data_point['meshMajor'] = label[i]
