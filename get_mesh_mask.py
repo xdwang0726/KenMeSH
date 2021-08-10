@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from run_classifier_multigcn import weight_matrix
 from utils import Preprocess
-from torch.nn.utils.rnn import pack_padded_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
 
 nltk.download('stopwords')
 tokenizer = get_tokenizer('basic_english')
@@ -48,12 +48,14 @@ def generate_batch(batch):
 
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
+        padded_text = pad_sequence(text, batch_first=True)
         length = [len(seq) for seq in text]
-        return text, length, label
+        return padded_text, length, label
     else:
         text = [entry for entry in batch]
+        padded_text = pad_sequence(text, batch_first=True)
         length = [len(seq) for seq in text]
-        return text, length
+        return padded_text, length
 
 
 def idf_weighted_wordvec(doc):
