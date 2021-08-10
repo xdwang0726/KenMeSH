@@ -23,6 +23,7 @@ tokenizer = get_tokenizer('basic_english')
 
 class Embedding(nn.Module):
     def __init__(self, weights):
+        super(Embedding, self).__init__()
 
         self.embedding = nn.Embedding.from_pretrained(weights, freeze=True)
 
