@@ -167,7 +167,7 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
             output = model(text, length)
             pred = output.data.cpu().tolist()
             output_iter = iter(pred)
-            vecs = [[islice(output_iter, elem)] for elem in length]
+            vecs = [list(islice(output_iter, elem)) for elem in length]
             doc_vec.extend(vecs)
             lengths.extend(length)
 
