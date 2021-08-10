@@ -195,10 +195,10 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     data = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
     # lengths = []
-    for i, (text, length, label) in enumerate(data):
-        text = text.to(device)
+    for i, (text, length, label, idf) in enumerate(data):
+        text, idf = text.to(device), idf.to(device)
         with torch.no_grad():
-            output = model(text, length)
+            output = model(text, idf)
             pred = torch.cat((pred, output), dim=0)
         # pred = output.data.cpu().numpy()
         # output_iter = iter(pred)
