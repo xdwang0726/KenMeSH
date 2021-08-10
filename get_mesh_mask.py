@@ -126,6 +126,7 @@ def load_idf_file(idf_path):
         pmid.append(ids)
         weighted_doc_vec.append(idf)
         # lengths.append(idf_len)
+    print('length of idf', len(pmid))
     return pmid, weighted_doc_vec
 
 
