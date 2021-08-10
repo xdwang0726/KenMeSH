@@ -192,7 +192,7 @@ def get_knn_neighbors_mesh(train_path, vectors, device):
     for i, id in enumerate(pmid):
         data_point = {}
         data_point['pmid'] = id
-        data_point['doc_vec'] = doc_vec[i]
+        data_point['doc_vec'] = doc_vec[i].tolist()
         data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
