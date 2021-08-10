@@ -1,25 +1,21 @@
 import argparse
-import heapq
 import json
+import os
 import string
 
-import gensim
 import ijson
 import nltk
-import numpy as np
 import torch
 import torch.nn as nn
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.neighbors import NearestNeighbors
-from tqdm import tqdm
-from run_classifier_multigcn import weight_matrix
-from utils import Preprocess
-import os
-from torchtext.vocab import Vectors
 from torch.utils.data import DataLoader
 from torchtext.data.utils import get_tokenizer
+from torchtext.vocab import Vectors
+from tqdm import tqdm
+
+from run_classifier_multigcn import weight_matrix
+from utils import Preprocess
 
 nltk.download('stopwords')
 tokenizer = get_tokenizer('basic_english')
