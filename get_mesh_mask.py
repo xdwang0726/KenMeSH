@@ -32,7 +32,7 @@ class Embedding(nn.Module):
         embeddings = self.embedding(inputs)
         packed_embedding = pack_padded_sequence(embeddings, input_length, batch_first=True, enforce_sorted=False)
         # weighed_doc_embedding = torch.mul(embeddings, doc_idfs)
-        return packed_embedding
+        return packed_embedding.data
 
 
 def generate_batch(batch):
