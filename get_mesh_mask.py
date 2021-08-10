@@ -113,13 +113,13 @@ def idf_weighted_wordvec(doc):
 
 def load_idf_file(idf_path):
     f = open(idf_path, encoding="utf8")
-    objects = ijson.items(f, 'articles.item')
+    object = ijson.items(f, 'articles.item')
 
     pmid = []
     weighted_doc_vec = []
     lengths = []
 
-    for i, obj in enumerate(tqdm(objects)):
+    for i, obj in enumerate(tqdm(object)):
         ids = obj["pmid"]
         idf = obj['weighted_doc_vec']
         # idf_len = obj['length']
