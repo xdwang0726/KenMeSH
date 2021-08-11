@@ -62,8 +62,8 @@ def generate_batch(batch):
     else:
         for entry in batch:
             print('entry0', entry[0])
-            print('entry1', entry[0])
-            print('entry2', entry[0])
+            print('entry1', entry[1])
+            print('entry2', entry[2])
         # text = [entry[0] for entry in batch]
         # padded_text = pad_sequence(text, batch_first=True)
         # length = [len(seq) for seq in text]
