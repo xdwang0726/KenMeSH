@@ -22,8 +22,9 @@ def _text_iterator(texts, idfs, labels=None, ngrams=1, yield_label=False):
         stripped = [w.translate(table) for w in tokens]  # remove punctuation
         clean_tokens = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
         filtered_text = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
-        print('idf', idfs)
         idf = idfs[i]
+        if i == 0:
+            print('idf', idf, type(idf))
         if yield_label:
             label = labels[i]
             yield label, ngrams_iterator(filtered_text, ngrams), idf

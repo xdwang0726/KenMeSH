@@ -5,6 +5,7 @@ import string
 
 import ijson
 import nltk
+import numpy as np
 import torch
 import torch.nn as nn
 from itertools import islice
@@ -124,13 +125,16 @@ def load_idf_file(idf_path):
         idf = obj['weighted_doc_vec']
         # idf_len = obj['length']
         pmid.append(ids)
-        weighted_doc_vec.append(idf)
+        weighted_doc_vec.append(np.array(idf))
         # lengths.append(idf_len)
     print('length of idf', len(pmid))
     return pmid, weighted_doc_vec
 
 
 def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
+
+    pmid_idf, idfs = load_idf_file(idf_path)
+
     f = open(train_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
     objects = ijson.items(f, 'documents.item')
@@ -169,8 +173,6 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     #                 print('tfidf error', ids)
     #     except AttributeError:
     #         print(obj["pmid"].strip())
-
-    pmid_idf, idfs = load_idf_file(idf_path)
 
     for i, obj in enumerate(tqdm(objects)):
         ids = obj["pmid"]
