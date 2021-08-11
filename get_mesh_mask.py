@@ -60,12 +60,16 @@ def generate_batch(batch):
         padded_idf = pad_sequence(idf, batch_first=True)
         return padded_text, length, label, padded_idf
     else:
-        text = [entry[0] for entry in batch]
-        padded_text = pad_sequence(text, batch_first=True)
-        length = [len(seq) for seq in text]
-        idf = [entry[1] for entry in batch]
-        padded_idf = pad_sequence(idf, batch_first=True)
-        return padded_text, length, padded_idf
+        for entry in batch:
+            print('entry0', entry[0])
+            print('entry1', entry[0])
+            print('entry2', entry[0])
+        # text = [entry[0] for entry in batch]
+        # padded_text = pad_sequence(text, batch_first=True)
+        # length = [len(seq) for seq in text]
+        # idf = [entry[1] for entry in batch]
+        # padded_idf = pad_sequence(idf, batch_first=True)
+        return None #padded_text, length, padded_idf
 
 
 def idf_weighted_wordvec(doc):
