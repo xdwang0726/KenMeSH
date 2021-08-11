@@ -13,15 +13,16 @@ import string
 stop_words = set(stopwords.words('english'))
 
 
-def _text_iterator(text, idfs, labels=None, ngrams=1, yield_label=False):
+def _text_iterator(texts, idfs, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     table = str.maketrans('', '', string.punctuation)
 
-    for i, text in enumerate(text):
+    for i, text in enumerate(texts):
         tokens = tokenizer(text)
         stripped = [w.translate(table) for w in tokens]  # remove punctuation
-        texts = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
-        filtered_text = [word for word in stripped if word not in stop_words]  # remove stopwords
+        clean_tokens = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
+        filtered_text = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
+        print('idf', idfs)
         idf = idfs[i]
         if yield_label:
             label = labels[i]
