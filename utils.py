@@ -45,7 +45,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
                     tokens = torch.tensor(token_ids)
                 if len(tokens) == 0:
                     logging.info('Row contains no tokens.')
-                data.append(tokens)
+                data.append(tokens, idf)
                 idfs.append(idf)
                 t.update(1)
             return data, idfs
@@ -59,7 +59,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
                     tokens = torch.tensor(token_ids)
                 if len(tokens) == 0:
                     logging.info('Row contains no tokens.')
-                data.append((label, tokens))
+                data.append((label, tokens, idf))
                 labels.extend(label)
                 idfs.append(idf)
                 t.update(1)

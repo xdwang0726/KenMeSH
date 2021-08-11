@@ -54,23 +54,17 @@ def generate_batch(batch):
         # padding according to the maximum sequence length in batch
         text = [entry[1] for entry in batch]
         padded_text = pad_sequence(text, batch_first=True)
-        length = [len(seq) for seq in text]
-        print('5')
-        idf = [entry[2] for entry in batch]
-        print('idf', idf)
-        padded_idf = pad_sequence(idf, batch_first=True)
-        return padded_text, length, label, padded_idf
-    else:
-        for entry in batch:
-            print('entry0', entry[0])
-            print('entry1', entry[1])
-            print('entry2', entry[2])
-        # text = [entry[0] for entry in batch]
-        # padded_text = pad_sequence(text, batch_first=True)
         # length = [len(seq) for seq in text]
-        # idf = [entry[1] for entry in batch]
-        # padded_idf = pad_sequence(idf, batch_first=True)
-        return None #padded_text, length, padded_idf
+        idf = [entry[2] for entry in batch]
+        padded_idf = pad_sequence(idf, batch_first=True)
+        return padded_text, label, padded_idf
+    else:
+        text = [entry[0] for entry in batch]
+        padded_text = pad_sequence(text, batch_first=True)
+        # length = [len(seq) for seq in text]
+        idf = [entry[1] for entry in batch]
+        padded_idf = pad_sequence(idf, batch_first=True)
+        return padded_text, padded_idf
 
 
 def idf_weighted_wordvec(doc):
@@ -206,7 +200,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     data = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
     # lengths = []
-    for i, (text, length, label, idf) in enumerate(data):
+    for i, (text, label, idf) in enumerate(data):
         text, idf = text.to(device), idf.to(device)
         with torch.no_grad():
             output = model(text, idf)
