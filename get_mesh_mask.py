@@ -124,17 +124,17 @@ def load_idf_file(idf_path):
         ids = obj["pmid"]
         idf = obj['weighted_doc_vec']
         idf = [float(item) for item in idf]
-        idf_len = obj['length']
+        # idf_len = obj['length']
         pmid.append(ids)
         weighted_doc_vec.append(idf)
-        lengths.append(idf_len)
-    print('length of idf', len(pmid))
-    return pmid, weighted_doc_vec, lengths
+        # lengths.append(idf_len)
+    # print('length of idf', len(pmid))
+    return pmid, weighted_doc_vec # , lengths
 
 
 def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
 
-    pmid_idf, idfs, idf_len = load_idf_file(idf_path)
+    pmid_idf, idfs = load_idf_file(idf_path)
 
     f = open(train_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
