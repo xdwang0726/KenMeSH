@@ -123,17 +123,18 @@ def load_idf_file(idf_path):
     for i, obj in enumerate(tqdm(object)):
         ids = obj["pmid"]
         idf = obj['weighted_doc_vec']
-        # idf_len = obj['length']
+        idf = [float(item) for item in idf]
+        idf_len = obj['length']
         pmid.append(ids)
-        weighted_doc_vec.append(np.array(idf))
-        # lengths.append(idf_len)
+        weighted_doc_vec.append(idf)
+        lengths.append(idf_len)
     print('length of idf', len(pmid))
-    return pmid, weighted_doc_vec
+    return pmid, weighted_doc_vec, lengths
 
 
 def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
 
-    pmid_idf, idfs = load_idf_file(idf_path)
+    pmid_idf, idfs, idf_len = load_idf_file(idf_path)
 
     f = open(train_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
@@ -196,16 +197,13 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     weights = weight_matrix(vocab, vectors)
     model = Embedding(weights)
     model.to(device)
-    print('1')
+
     data = DataLoader(dataset, batch_size=256, shuffle=False, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
-    print('2')
     # lengths = []
     for i, (text, length, label, idf) in enumerate(data):
-        print('3')
         text, idf = text.to(device), idf.to(device)
         with torch.no_grad():
-            print('4')
             output = model(text, idf)
 
             pred = torch.cat((pred, output), dim=0)
