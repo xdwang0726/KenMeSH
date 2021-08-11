@@ -56,7 +56,8 @@ def generate_batch(batch):
         padded_text = pad_sequence(text, batch_first=True)
         # length = [len(seq) for seq in text]
         idf = [entry[2] for entry in batch]
-        padded_idf = pad_sequence(idf, batch_first=True)
+        print('idf', idf)
+        padded_idf = pad_sequence(torch.Tensor(idf), batch_first=True)
         return padded_text, label, padded_idf
     else:
         text = [entry[0] for entry in batch]
