@@ -60,10 +60,10 @@ def generate_batch(batch):
         padded_idf = pad_sequence(idf, batch_first=True)
         return padded_text, length, label, padded_idf
     else:
-        text = [entry for entry in batch]
+        text = [entry[0] for entry in batch]
         padded_text = pad_sequence(text, batch_first=True)
         length = [len(seq) for seq in text]
-        idf = [entry[2] for entry in batch]
+        idf = [entry[1] for entry in batch]
         padded_idf = pad_sequence(idf, batch_first=True)
         return padded_text, length, padded_idf
 
