@@ -17,9 +17,8 @@ def _text_iterator(texts, idfs, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     table = str.maketrans('', '', string.punctuation)
 
-    for i, text in enumerate(texts):
-        idf = idfs[i]
-        tokens = tokenizer(text)
+    for i, idf in enumerate(idfs):
+        tokens = tokenizer(texts[i])
         stripped = [w.translate(table) for w in tokens]  # remove punctuation
         clean_tokens = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
         filtered_text = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
@@ -139,7 +138,7 @@ def MeSH_indexing(train_text, train_labels, test_text, test_labels, ngrams=1, vo
 def _setup_preprocess(train_text, idfs, train_labels, ngrams=1, vocab=None, include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_text_iterator(train_text, idfs, train_labels, ngrams))
+        vocab = build_vocab_from_iterator(_text_iterator(train_text, idfs, labels=train_labels, ngrams=ngrams, yield_label=False))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
