@@ -17,16 +17,17 @@ def _text_iterator(texts, idfs, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     table = str.maketrans('', '', string.punctuation)
 
-    for i, idf in enumerate(idfs):
-        tokens = tokenizer(texts[i])
+    for i, text in enumerate(texts):
+        tokens = tokenizer(text)
         stripped = [w.translate(table) for w in tokens]  # remove punctuation
         clean_tokens = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
         filtered_text = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
         if yield_label:
             label = labels[i]
+            idf = idfs[i]
             yield label, ngrams_iterator(filtered_text, ngrams), idf
         else:
-            yield ngrams_iterator(filtered_text, ngrams), idf
+            yield ngrams_iterator(filtered_text, ngrams)
 
 
 def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
