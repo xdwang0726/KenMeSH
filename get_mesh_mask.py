@@ -139,44 +139,43 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     title = []
     all_text = []
     labels = []
-    label_id = []
-
-    # for i, obj in enumerate(tqdm(objects)):
-    #     try:
-    #         ids = obj["pmid"]
-    #         heading = obj['title'].strip()
-    #         heading = heading.translate(str.maketrans('', '', '[]'))
-    #         abstract = obj["abstractText"].strip()
-    #         clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
-    #         if len(heading) == 0 or heading == 'In process':
-    #             print('paper ', ids, ' does not have title!')
-    #             continue
-    #         elif len(clean_abstract) == 0:
-    #             print('paper ', ids, ' does not have abstract!')
-    #             continue
-    #         else:
-    #             try:
-    #                 label = obj['meshId']
-    #                 pmid.append(ids)
-    #                 title.append(heading)
-    #                 all_text.append(clean_abstract)
-    #                 label_id.append(label)
-    #             except KeyError:
-    #                 print('tfidf error', ids)
-    #     except AttributeError:
-    #         print(obj["pmid"].strip())
 
     for i, obj in enumerate(tqdm(objects)):
-        ids = obj["pmid"]
-        heading = obj['title'].strip()
-        text = obj["abstract"].strip()
-        # idf = idf_weighted_wordvec(text)
-        l = obj['meshId']
-        pmid.append(ids)
-        title.append(heading)
-        all_text.append(text)
-        labels.append(l)
-    print('Loading document done. ')
+        try:
+            ids = obj["pmid"]
+            heading = obj['title'].strip()
+            heading = heading.translate(str.maketrans('', '', '[]'))
+            abstract = obj["abstractText"].strip()
+            clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+            if len(heading) == 0 or heading == 'In process':
+                print('paper ', ids, ' does not have title!')
+                continue
+            elif len(clean_abstract) == 0:
+                print('paper ', ids, ' does not have abstract!')
+                continue
+            else:
+                try:
+                    label = obj['meshId']
+                    pmid.append(ids)
+                    title.append(heading)
+                    all_text.append(clean_abstract)
+                    labels.append(label)
+                except KeyError:
+                    print('tfidf error', ids)
+        except AttributeError:
+            print(obj["pmid"].strip())
+
+    # for i, obj in enumerate(tqdm(objects)):
+    #     ids = obj["pmid"]
+    #     heading = obj['title'].strip()
+    #     text = obj["abstract"].strip()
+    #     # idf = idf_weighted_wordvec(text)
+    #     l = obj['meshId']
+    #     pmid.append(ids)
+    #     title.append(heading)
+    #     all_text.append(text)
+    #     labels.append(l)
+    # print('Loading document done. ')
 
     # doc_idfs = idf_weighted_wordvec(all_text)
 
@@ -204,35 +203,35 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
 
     print('number of embedding articles', len(doc_vec))
     # print('length', type(lengths))
-    # get k nearest neighors and return their mesh
-    print('start to find the k nearest neibors for each article')
-    neighbors = NearestNeighbors(n_neighbors=10).fit(doc_vec)
-    neighbors_meshs = []
-    for i in range(len(doc_vec)):
-        idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
-        idxes = idxes.tolist()[0]
-        neighbors_mesh = []
-        for idx in idxes:
-            mesh = labels[idx]
-            neighbors_mesh.append(mesh)
-        # print('neighbors_mesh', neighbors_mesh)
-        neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
-        neighbors_meshs.append(neighbors_mesh)
-    print('finding neighbors done')
+    # # get k nearest neighors and return their mesh
+    # print('start to find the k nearest neibors for each article')
+    # neighbors = NearestNeighbors(n_neighbors=10).fit(doc_vec)
+    # neighbors_meshs = []
+    # for i in range(len(doc_vec)):
+    #     idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
+    #     idxes = idxes.tolist()[0]
+    #     neighbors_mesh = []
+    #     for idx in idxes:
+    #         mesh = labels[idx]
+    #         neighbors_mesh.append(mesh)
+    #     # print('neighbors_mesh', neighbors_mesh)
+    #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
+    #     neighbors_meshs.append(neighbors_mesh)
+    # print('finding neighbors done')
 
     print('start collect data')
     dataset = []
     for i, id in enumerate(pmid):
         data_point = {}
         data_point['pmid'] = id
-        # data_point['doc_vec'] = doc_vec[i]
+        data_point['doc_vec'] = doc_vec[i]
         # data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
         # data_point['meshMajor'] = label[i]
         # data_point['meshId'] = label_id[i]
         # data_point['journal'] = journals[i]
-        data_point['neighbors'] = neighbors_meshs[i]
+        # data_point['neighbors'] = neighbors_meshs[i]
         # data_point['mesh_from_journal'] = journal_mesh
         dataset.append(data_point)
 
