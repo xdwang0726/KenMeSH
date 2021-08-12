@@ -35,8 +35,9 @@ class Embedding(nn.Module):
         # packed_embedding = pack_padded_sequence(embeddings, input_length, batch_first=True, enforce_sorted=False)
         # print('embedding', embeddings.shape)
         # print('idf shape', idf.shape)
-        idf = idf.view(idf.shape[0], idf.shape[1], 1)
-        weighed_doc_embedding = torch.mul(idf, embeddings) / torch.sum(idf, dim=1)
+        sum_idf = torch.sum(idf, dim=1).view(idf.shape[0], 1)
+        weigthed_idf = sum_idf.view(sum_idf.shape[0], sum_idf.shape[1], 1)
+        weighed_doc_embedding = torch.mul(weigthed_idf, embeddings)
         return weighed_doc_embedding
 
 
