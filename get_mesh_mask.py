@@ -215,6 +215,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
         for idx in idxes:
             mesh = labels[idx]
             neighbors_mesh.append(mesh)
+        print('neighbors_mesh', neighbors_mesh)
         neighbors_mesh = list(set([m for m in mesh for mesh in neighbors_mesh]))
         neighbors_meshs.append(neighbors_mesh)
     print('finding neighbors done')
