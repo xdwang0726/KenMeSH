@@ -132,8 +132,8 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     pmid_idf, idfs = load_idf_file(idf_path)
 
     f = open(train_path, encoding="utf8")
-    # objects = ijson.items(f, 'articles.item')
-    objects = ijson.items(f, 'documents.item')
+    objects = ijson.items(f, 'articles.item')
+    # objects = ijson.items(f, 'documents.item')
 
     pmid = []
     title = []
