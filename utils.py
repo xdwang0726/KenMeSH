@@ -21,7 +21,8 @@ def _text_iterator(texts, idfs, labels=None, ngrams=1, yield_label=False):
         tokens = tokenizer(text)
         stripped = [w.translate(table) for w in tokens]  # remove punctuation
         clean_tokens = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
-        filtered_text = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
+        text_nostop = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
+        filtered_text = [w for w in text_nostop if len(w) > 1]  # remove single character token
         if yield_label:
             label = labels[i]
             idf = idfs[i]

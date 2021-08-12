@@ -142,6 +142,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     pmid = []
     title = []
     all_text = []
+    idfs = []
     label = []
     label_id = []
     journals = []
@@ -176,16 +177,14 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
 
     for i, obj in enumerate(tqdm(objects)):
         ids = obj["pmid"]
-        if ids == pmid_idf[i]:
-            heading = obj['title'].strip()
-            text = obj["abstract"].strip()
-            l = obj['meshId']
-            pmid.append(ids)
-            title.append(heading)
-            all_text.append(text)
-            label.append(l)
-        else:
-            print(ids, 'Not match')
+        heading = obj['title'].strip()
+        text = obj["abstract"].strip()
+        # idf = idf_weighted_wordvec(text)
+        l = obj['meshId']
+        pmid.append(ids)
+        title.append(heading)
+        all_text.append(text)
+        label.append(l)
     print('Loading document done. ')
 
     # doc_idfs = idf_weighted_wordvec(all_text)
