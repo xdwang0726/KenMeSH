@@ -142,7 +142,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     pmid = []
     title = []
     all_text = []
-    idfs = []
+    # idfs = []
     label = []
     label_id = []
     journals = []
