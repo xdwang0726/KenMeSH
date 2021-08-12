@@ -210,6 +210,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     neighbors_meshs = []
     for i in range(len(doc_vec)):
         idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
+        idxes = idxes.tolist()[0]
         neighbors_mesh = []
         for idx in idxes:
             mesh = label_id[idx]
