@@ -117,18 +117,17 @@ def load_idf_file(idf_path):
 
     pmid = []
     weighted_doc_vec = []
-    lengths = []
 
     for i, obj in enumerate(tqdm(object)):
-        ids = obj["pmid"]
-        idf = obj['weighted_doc_vec']
-        idf = [float(item) for item in idf]
-        # idf_len = obj['length']
-        pmid.append(ids)
-        weighted_doc_vec.append(idf)
-        # lengths.append(idf_len)
-    # print('length of idf', len(pmid))
-    return pmid, weighted_doc_vec # , lengths
+        if i < 10000:
+            ids = obj["pmid"]
+            idf = obj['weighted_doc_vec']
+            idf = [float(item) for item in idf]
+            pmid.append(ids)
+            weighted_doc_vec.append(idf)
+        else:
+            break
+    return pmid, weighted_doc_vec
 
 
 def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
@@ -146,29 +145,32 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     label_id = []
 
     for i, obj in enumerate(tqdm(objects)):
-        try:
-            ids = obj["pmid"]
-            heading = obj['title'].strip()
-            heading = heading.translate(str.maketrans('', '', '[]'))
-            abstract = obj["abstractText"].strip()
-            clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
-            if len(heading) == 0 or heading == 'In process':
-                print('paper ', ids, ' does not have title!')
-                continue
-            elif len(clean_abstract) == 0:
-                print('paper ', ids, ' does not have abstract!')
-                continue
-            else:
-                try:
-                    label = obj['meshId']
-                    pmid.append(ids)
-                    title.append(heading)
-                    all_text.append(clean_abstract)
-                    label_id.append(label)
-                except KeyError:
-                    print('tfidf error', ids)
-        except AttributeError:
-            print(obj["pmid"].strip())
+        if i < 10000:
+            try:
+                ids = obj["pmid"]
+                heading = obj['title'].strip()
+                heading = heading.translate(str.maketrans('', '', '[]'))
+                abstract = obj["abstractText"].strip()
+                clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+                if len(heading) == 0 or heading == 'In process':
+                    print('paper ', ids, ' does not have title!')
+                    continue
+                elif len(clean_abstract) == 0:
+                    print('paper ', ids, ' does not have abstract!')
+                    continue
+                else:
+                    try:
+                        label = obj['meshId']
+                        pmid.append(ids)
+                        title.append(heading)
+                        all_text.append(clean_abstract)
+                        label_id.append(label)
+                    except KeyError:
+                        print('tfidf error', ids)
+            except AttributeError:
+                print(obj["pmid"].strip())
+        else:
+            break
 
     # for i, obj in enumerate(tqdm(objects)):
     #     ids = obj["pmid"]
@@ -191,7 +193,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     model = Embedding(weights)
     model.to(device)
 
-    data = DataLoader(dataset, batch_size=2048, shuffle=False, collate_fn=generate_batch)
+    data = DataLoader(dataset, batch_size=4096, shuffle=False, collate_fn=generate_batch)
     pred = torch.zeros(0).cuda()
     # lengths = []
     for i, (text, label, idf) in enumerate(data):
