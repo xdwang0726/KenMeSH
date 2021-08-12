@@ -127,7 +127,7 @@ def load_idf_file(idf_path):
     return pmid, weighted_doc_vec
 
 
-def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
+def get_knn_neighbors_mesh(train_path, vectors, idf_path, k, device):
 
     pmid_idf, idfs = load_idf_file(idf_path)
 
@@ -202,36 +202,35 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     doc_vec = pred.data.cpu().tolist()
 
     print('number of embedding articles', len(doc_vec))
-    # print('length', type(lengths))
-    # # get k nearest neighors and return their mesh
-    # print('start to find the k nearest neibors for each article')
-    # neighbors = NearestNeighbors(n_neighbors=10).fit(doc_vec)
-    # neighbors_meshs = []
-    # for i in range(len(doc_vec)):
-    #     idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
-    #     idxes = idxes.tolist()[0]
-    #     neighbors_mesh = []
-    #     for idx in idxes:
-    #         mesh = labels[idx]
-    #         neighbors_mesh.append(mesh)
-    #     # print('neighbors_mesh', neighbors_mesh)
-    #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
-    #     neighbors_meshs.append(neighbors_mesh)
-    # print('finding neighbors done')
+
+    # get k nearest neighors and return their mesh
+    print('start to find the k nearest neibors for each article')
+    neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vec)
+    neighbors_meshs = []
+    for i in range(len(tqdm(doc_vec))):
+        idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
+        idxes = idxes.tolist()[0]
+        neighbors_mesh = []
+        for idx in idxes:
+            mesh = labels[idx]
+            neighbors_mesh.append(mesh)
+        neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
+        neighbors_meshs.append(neighbors_mesh)
+    print('finding neighbors done')
 
     print('start collect data')
     dataset = []
     for i, id in enumerate(pmid):
         data_point = {}
         data_point['pmid'] = id
-        data_point['doc_vec'] = doc_vec[i]
+        # data_point['doc_vec'] = doc_vec[i]
         # data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
         # data_point['meshMajor'] = label[i]
-        # data_point['meshId'] = label_id[i]
+        # data_point['meshId'] = labels[i]
         # data_point['journal'] = journals[i]
-        # data_point['neighbors'] = neighbors_meshs[i]
+        data_point['neighbors'] = neighbors_meshs[i]
         # data_point['mesh_from_journal'] = journal_mesh
         dataset.append(data_point)
 
@@ -245,6 +244,7 @@ def main():
     parser.add_argument('--allMesh')
     parser.add_argument('--word2vec_path')
     parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--k', type=int, default=1000)
     parser.add_argument('--idfs_path')
     parser.add_argument('--save_path')
     args = parser.parse_args()
@@ -254,7 +254,7 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     cache, name = os.path.split(args.word2vec_path)
     vectors = Vectors(name=name, cache=cache)
-    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, device)
+    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
     print('pubmed type', type(pubmed))
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
