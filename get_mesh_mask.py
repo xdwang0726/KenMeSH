@@ -209,7 +209,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     neighbors = NearestNeighbors(n_neighbors=10).fit(doc_vec)
     neighbors_meshs = []
     for i in range(len(doc_vec)):
-        _, idxes = neighbors.kneighbors([doc_vec[i]])
+        idxes = neighbors.kneighbors([doc_vec[i]])
         neighbors_mesh = []
         for idx in idxes:
             mesh = label_id[idx]
