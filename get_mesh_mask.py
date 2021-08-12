@@ -212,7 +212,6 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     for i in range(len(doc_vec)):
         idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
         idxes = idxes.tolist()[0]
-        print('index', idxes)
         neighbors_mesh = []
         for idx in idxes:
             mesh = labels[idx]
@@ -233,7 +232,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
         # data_point['meshMajor'] = label[i]
         # data_point['meshId'] = label_id[i]
         # data_point['journal'] = journals[i]
-        data_point['neighbors'] = neighbors_mesh[i]
+        data_point['neighbors'] = neighbors_meshs[i]
         # data_point['mesh_from_journal'] = journal_mesh
         dataset.append(data_point)
 
