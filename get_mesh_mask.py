@@ -138,7 +138,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     pmid = []
     title = []
     all_text = []
-    label = []
+    labels = []
     label_id = []
 
     # for i, obj in enumerate(tqdm(objects)):
@@ -175,7 +175,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
         pmid.append(ids)
         title.append(heading)
         all_text.append(text)
-        label.append(l)
+        labels.append(l)
     print('Loading document done. ')
 
     # doc_idfs = idf_weighted_wordvec(all_text)
@@ -215,7 +215,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
         print('index', idxes)
         neighbors_mesh = []
         for idx in idxes:
-            mesh = label[idx]
+            mesh = labels[idx]
             neighbors_mesh.append(mesh)
         neighbors_mesh = list(set([m for m in mesh for mesh in neighbors_mesh]))
         neighbors_meshs.append(neighbors_mesh)
