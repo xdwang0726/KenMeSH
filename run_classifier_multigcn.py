@@ -61,6 +61,36 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                 print(obj["pmid"].strip())
         else:
             break
+
+
+    # for i, obj in enumerate(tqdm(objects)):
+    #     try:
+    #         ids = obj["pmid"]
+    #         heading = obj['title'].strip()
+    #         heading = heading.translate(str.maketrans('', '', '[]'))
+    #         abstract = obj["abstractText"].strip()
+    #         clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+    #         if len(heading) == 0 or heading == 'In process':
+    #             print('paper ', ids, ' does not have title!')
+    #             continue
+    #         elif len(clean_abstract) == 0:
+    #             print('paper ', ids, ' does not have abstract!')
+    #             continue
+    #         else:
+    #             try:
+    #                 original_label = obj["meshMajor"]
+    #                 mesh_id = obj['meshId']
+    #                 journal = obj['journal']
+    #                 pmid.append(ids)
+    #                 all_text.append(abstract)
+    #                 label.append(original_label)
+    #                 label_id.appen(mesh_id)
+    #                 journals.append(journal)
+    #             except KeyError:
+    #                 print('tfidf error', ids)
+    #     except AttributeError:
+    #         print(obj["pmid"].strip())
+
     print('check if title and abstract are coresponded')
     if len(all_text) == len(title):
         print('True')
