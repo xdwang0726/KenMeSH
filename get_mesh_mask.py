@@ -37,7 +37,7 @@ class Embedding(nn.Module):
         # print('idf shape', idf.shape)
         sum_idf = torch.sum(idf, dim=1).view(idf.shape[0], 1)
         weigthed_idf = sum_idf.view(sum_idf.shape[0], sum_idf.shape[1], 1)
-        weighed_doc_embedding = torch.mul(weigthed_idf, embeddings)
+        weighed_doc_embedding = torch.sum(torch.mul(weigthed_idf, embeddings), dim=1)
         return weighed_doc_embedding
 
 
@@ -205,6 +205,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
         text, idf = text.to(device), idf.to(device)
         with torch.no_grad():
             output = model(text, idf)
+            print('output', output.shape)
 
             pred = torch.cat((pred, output), dim=0)
         # pred = output.data.cpu().numpy()
