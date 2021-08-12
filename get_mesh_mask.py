@@ -180,7 +180,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
 
     # doc_idfs = idf_weighted_wordvec(all_text)
 
-    dataset = Preprocess(all_text, idfs, label)
+    dataset = Preprocess(all_text, idfs, labels)
     vocab = dataset.get_vocab()
 
     weights = weight_matrix(vocab, vectors)
