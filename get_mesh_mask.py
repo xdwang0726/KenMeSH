@@ -206,6 +206,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     # print('length', type(lengths))
     # get k nearest neighors and return their mesh
     print('start to find the k nearest neibors for each article')
+    print('length of label', len(label), type(label))
     neighbors = NearestNeighbors(n_neighbors=10).fit(doc_vec)
     neighbors_meshs = []
     for i in range(len(doc_vec)):
