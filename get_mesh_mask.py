@@ -48,7 +48,6 @@ def generate_batch(batch):
         cls: a tensor saving the labels of individual text entries.
     """
     # check if the dataset if train or test
-    print('batch length', len(batch[0]))
     if len(batch[0]) == 3:
         label = [entry[0] for entry in batch]
 
@@ -210,7 +209,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, device):
     neighbors = NearestNeighbors(n_neighbors=10).fit(doc_vec)
     neighbors_meshs = []
     for i in range(len(doc_vec)):
-        _, idxes = neighbors.kneighbors(doc_vec[i])
+        _, idxes = neighbors.kneighbors([doc_vec[i]])
         neighbors_mesh = []
         for idx in idxes:
             mesh = label_id[idx]
