@@ -168,7 +168,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     # build vocab
     print('building vocab')
-    vocab = Vocab(vectors.stoi)
+    vocab = Vocab(vectors.stoi, specials=[])
 
     # Preparing training and test datasets
     print('prepare training and test sets')
