@@ -99,6 +99,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         print(len(all_text), len(title))
     print("Finish loading training data")
     logging.info("Finish loading training data")
+    print("number of training data", len(pmid))
 
     # load test data
     # f_t = open(test_data_path, encoding="utf8")
@@ -122,25 +123,19 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #     test_label.append(label)
 
     for i, obj in enumerate(tqdm(objects)):
-        if 200000 <= i <= 210000:
+        print('1')
+        if 110000 <= i <= 120000:
             try:
                 ids = obj["pmid"]
                 heading = obj['title'].strip()
                 heading = heading.translate(str.maketrans('', '', '[]'))
-                # print('heading', type(heading), heading)
-                if len(heading) == 0:
-                    print('paper ', ids, ' does not have title!')
-                else:
-                    if heading == 'In process':
-                        continue
-                    else:
-                        text = obj["abstractText"].strip()
-                        text = text.translate(str.maketrans('', '', '[]'))
-                        mesh_id = obj['meshId']
-                        test_pmid.append(ids)
-                        test_title.append(heading)
-                        test_text.append(text)
-                        test_label.append(mesh_id)
+                text = obj["abstractText"].strip()
+                text = text.translate(str.maketrans('', '', '[]'))
+                mesh_id = obj['meshId']
+                test_pmid.append(ids)
+                test_title.append(heading)
+                test_text.append(text)
+                test_label.append(mesh_id)
             except AttributeError:
                 print(obj["pmid"].strip())
         else:
