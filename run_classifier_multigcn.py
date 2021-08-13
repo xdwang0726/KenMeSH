@@ -102,44 +102,25 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print("number of training data", len(pmid))
 
     # load test data
-    # f_t = open(test_data_path, encoding="utf8")
-    # test_objects = ijson.items(f_t, 'documents.item')
+    f_t = open(test_data_path, encoding="utf8")
+    test_objects = ijson.items(f_t, 'documents.item')
 
     test_pmid = []
     test_title = []
     test_text = []
     test_label = []
 
-    # print('Start loading test data')
-    # logging.info("Start loading test data")
-    # for obj in tqdm(test_objects):
-    #     ids = obj["pmid"]
-    #     heading = obj["title"].strip()
-    #     text = obj["abstract"].strip()
-    #     label = obj['meshId']
-    #     test_pmid.append(ids)
-    #     test_title.append(heading)
-    #     test_text.append(text)
-    #     test_label.append(label)
-
-    for i, obj in enumerate(tqdm(objects)):
-        print('1')
-        if 110000 <= i <= 120000:
-            try:
-                ids = obj["pmid"]
-                heading = obj['title'].strip()
-                heading = heading.translate(str.maketrans('', '', '[]'))
-                text = obj["abstractText"].strip()
-                text = text.translate(str.maketrans('', '', '[]'))
-                mesh_id = obj['meshId']
-                test_pmid.append(ids)
-                test_title.append(heading)
-                test_text.append(text)
-                test_label.append(mesh_id)
-            except AttributeError:
-                print(obj["pmid"].strip())
-        else:
-            break
+    print('Start loading test data')
+    logging.info("Start loading test data")
+    for obj in tqdm(test_objects):
+        ids = obj["pmid"]
+        heading = obj["title"].strip()
+        text = obj["abstract"].strip()
+        label = obj['meshId']
+        test_pmid.append(ids)
+        test_title.append(heading)
+        test_text.append(text)
+        test_label.append(label)
 
     logging.info("Finish loading test data")
 
