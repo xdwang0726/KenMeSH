@@ -12,7 +12,7 @@ import numpy as np
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
-from torchtext.vocab import Vectors
+from torchtext.vocab import Vectors, Vocab
 from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
@@ -82,6 +82,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #                 mesh_id = obj['meshId']
     #                 journal = obj['journal']
     #                 pmid.append(ids)
+    #                 title.append(heading)
     #                 all_text.append(abstract)
     #                 label.append(original_label)
     #                 label_id.appen(mesh_id)
@@ -135,13 +136,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                     else:
                         text = obj["abstractText"].strip()
                         text = text.translate(str.maketrans('', '', '[]'))
-                        original_label = obj["meshMajor"]
                         mesh_id = obj['meshId']
-                        pmid.append(ids)
-                        title.append(heading)
-                        all_text.append(text)
-                        label.append(original_label)
-                        label_id.append(mesh_id)
+                        test_pmid.append(ids)
+                        test_title.append(heading)
+                        test_text.append(text)
+                        test_label.append(mesh_id)
             except AttributeError:
                 print(obj["pmid"].strip())
         else:
@@ -162,20 +161,26 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
 
-    # Preparing training and test datasets
-    print('prepare training and test sets')
-    logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, title, label_id, test_text, test_title, test_label)
-
-    # build vocab
-    print('building vocab')
-    logging.info('Build vocab')
-    vocab = train_dataset.get_vocab()
-
     # create Vector object map tokens to vectors
     print('load pre-trained BioWord2Vec')
     cache, name = os.path.split(word2vec_path)
     vectors = Vectors(name=name, cache=cache)
+
+    # build vocab
+    print('building vocab')
+    vocab = Vocab(vectors.stoi)
+
+    # Preparing training and test datasets
+    print('prepare training and test sets')
+    logging.info('Prepare training and test sets')
+    train_dataset, test_dataset = MeSH_indexing(all_text, title, label_id, test_text, test_title, test_label, vocab=vocab)
+
+    # build vocab
+    # print('building vocab')
+    # logging.info('Build vocab')
+    # vocab = train_dataset.get_vocab()
+
+
 
     # Prepare label features
     print('Load graph')
@@ -376,7 +381,8 @@ def main():
                                     embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
                                     gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
 
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #

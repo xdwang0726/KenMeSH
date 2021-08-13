@@ -339,11 +339,11 @@ class multichannel_dilatedCNN(nn.Module):
                                    nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
-        # self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
+        self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         # self.gat = GAT(embedding_dim, embedding_dim, embedding_dim)
-        heads = ([gat_num_heads] * gat_num_layers) + [gat_num_out_heads]
-        self.gat = GAT(device, G, num_layers=gat_num_layers, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim,
-                       num_classes=embedding_dim, heads=heads)
+        # heads = ([gat_num_heads] * gat_num_layers) + [gat_num_out_heads]
+        # self.gat = GAT(device, G, num_layers=gat_num_layers, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim,
+        #                num_classes=embedding_dim, heads=heads)
         # linear
         # self.linear = nn.Linear(self.embedding_dim * 2, 1)
 
@@ -352,9 +352,9 @@ class multichannel_dilatedCNN(nn.Module):
 
     def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature): #g_c, g_node_feature_c):
         # get label features
-        # label_feature = self.gcn(g, g_node_feature)
+        label_feature = self.gcn(g, g_node_feature)
         # label_feature = self.gat(g, g_node_feature)
-        label_feature = self.gat(g_node_feature)
+        # label_feature = self.gat(g_node_feature)
         # print('label', label_feature.shape)
         # label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
@@ -394,13 +394,11 @@ class multichannel_dilatedCNN(nn.Module):
         # abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feature.transpose(0, 1)), dim=1)
         # abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
 
-
         # get document feature
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
         # x_feature = torch.cat((title_feature, abstract_feature), dim=2)  # size: (bs, 29368, embed_dim*2)
         x = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
-
 
         # add CorNet
         cor_logit = self.cornet(x)
