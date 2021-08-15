@@ -7,12 +7,28 @@ from torchtext.data.utils import ngrams_iterator
 from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
+from nltk.corpus import stopwords
+import string
+
+stop_words = set(stopwords.words('english'))
+table = str.maketrans('', '', string.punctuation)
+
+
+def text_clean(tokens):
+
+    stripped = [w.translate(table) for w in tokens]  # remove punctuation
+    clean_tokens = [w for w in stripped if w.isalpha()]  # remove non alphabetic tokens
+    text_nostop = [word for word in clean_tokens if word not in stop_words]  # remove stopwords
+    filtered_text = [w for w in text_nostop if len(w) > 1]  # remove single character token
+
+    return filtered_text
 
 
 def _vocab_iterator(text, title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         texts = tokenizer(text + title[i])
+        texts = text_clean(texts)
         if yield_label:
             label = labels[i]
             yield label, ngrams_iterator(texts, ngrams)
@@ -24,7 +40,9 @@ def _text_iterator(text, title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         texts = tokenizer(text)
+        texts = text_clean(texts)
         heading = tokenizer(title[i])
+        heading = text_clean(heading)
         if yield_label:
             label = labels[i]
             yield label, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
