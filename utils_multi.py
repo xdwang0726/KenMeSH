@@ -24,10 +24,10 @@ def text_clean(tokens):
     return filtered_text
 
 
-def _vocab_iterator(text, title, labels=None, ngrams=1, yield_label=False):
+def _vocab_iterator(train_text, train_title, test_text, test_title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
-    for i, text in enumerate(text):
-        texts = tokenizer(text + title[i])
+    for i, text in enumerate(train_text):
+        texts = tokenizer(text + train_title[i] + test_text[i] + test_title)
         texts = text_clean(texts)
         if yield_label:
             label = labels[i]
@@ -79,21 +79,11 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
                     ab_tokens = torch.tensor([vocab[token] for token in text])
                     title_tokens = torch.tensor([vocab[token] for token in title])
                 else:
-                    ab_token_ids = [vocab[token] for token in text if token in vocab.itos]
-                    # for token in text:
-                    #     if token in vocab.itos:
-                    #         continue
-                    #     else:
-                    #         token = token.replace(token, vocab.UNK)
-                    #     ab_tokens.append(vocab[token])
-
-
-                    # ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                    #                                                           for token in text]))
+                    # ab_token_ids = [vocab[token] for token in text if token in vocab.itos]
+                    ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in text]))
                     ab_tokens = torch.tensor(ab_token_ids)
-                    # title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                    #                                                              for token in title]))
-                    title_token_ids = [vocab[token] for token in title if token in vocab.itos]
+                    title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in title]))
+                    # title_token_ids = [vocab[token] for token in title if token in vocab.itos]
                     title_tokens = torch.tensor(title_token_ids)
                 if len(ab_tokens) == 0:
                     logging.info('Row contains no tokens.')
@@ -140,7 +130,7 @@ def _setup_datasets(train_text, train_title, train_labels, test_text, test_title
                     include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, train_title, train_labels, ngrams))
+        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, train_title, test_text, test_title, train_labels, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")

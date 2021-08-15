@@ -102,10 +102,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print("number of training data", len(pmid))
 
     # load test data
-    # f_t = open(test_data_path, encoding="utf8")
-    # test_objects = ijson.items(f_t, 'documents.item')
-    f_t = open(train_data_path, encoding="utf8")
-    test_objects = ijson.items(f_t, 'articles.item')
+    f_t = open(test_data_path, encoding="utf8")
+    test_objects = ijson.items(f_t, 'documents.item')
 
     test_pmid = []
     test_title = []
@@ -114,40 +112,40 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     print('Start loading test data')
     logging.info("Start loading test data")
-    # for obj in tqdm(test_objects):
-    #     ids = obj["pmid"]
-    #     heading = obj["title"].strip()
-    #     text = obj["abstract"].strip()
-    #     label = obj['meshId']
-    #     test_pmid.append(ids)
-    #     test_title.append(heading)
-    #     test_text.append(text)
-    #     test_label.append(label)
+    for obj in tqdm(test_objects):
+        ids = obj["pmid"]
+        heading = obj["title"].strip()
+        text = obj["abstract"].strip()
+        label = obj['meshId']
+        test_pmid.append(ids)
+        test_title.append(heading)
+        test_text.append(text)
+        test_label.append(label)
 
-    for i, obj in enumerate(tqdm(objects)):
-        if 100000 < i <= 120000:
-            try:
-                ids = obj["pmid"]
-                heading = obj['title'].strip()
-                heading = heading.translate(str.maketrans('', '', '[]'))
-                # print('heading', type(heading), heading)
-                if len(heading) == 0:
-                    print('paper ', ids, ' does not have title!')
-                else:
-                    if heading == 'In process':
-                        continue
-                    else:
-                        text = obj["abstractText"].strip()
-                        text = text.translate(str.maketrans('', '', '[]'))
-                        mesh_id = obj['meshId']
-                        test_pmid.append(ids)
-                        test_title.append(heading)
-                        test_text.append(text)
-                        test_label.append(mesh_id)
-            except AttributeError:
-                print(obj["pmid"].strip())
-        else:
-            break
+    # for i, obj in enumerate(tqdm(objects)):
+    #     if 100000 < i <= 120000:
+    #         try:
+    #             ids = obj["pmid"]
+    #             heading = obj['title'].strip()
+    #             heading = heading.translate(str.maketrans('', '', '[]'))
+    #             # print('heading', type(heading), heading)
+    #             if len(heading) == 0:
+    #                 print('paper ', ids, ' does not have title!')
+    #             else:
+    #                 if heading == 'In process':
+    #                     continue
+    #                 else:
+    #                     text = obj["abstractText"].strip()
+    #                     text = text.translate(str.maketrans('', '', '[]'))
+    #                     mesh_id = obj['meshId']
+    #                     test_pmid.append(ids)
+    #                     test_title.append(heading)
+    #                     test_text.append(text)
+    #                     test_label.append(mesh_id)
+    #         except AttributeError:
+    #             print(obj["pmid"].strip())
+    #     else:
+    #         break
     logging.info("Finish loading test data")
     print("number of test data", len(test_pmid))
 
@@ -170,18 +168,19 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     vectors = Vectors(name=name, cache=cache)
 
     # build vocab
-    print('building vocab')
-    vocab = Vocab(vectors.stoi, specials=[])
-    print('vocab', len(vocab.itos))
+    # print('building vocab')
+    # vocab = Vocab(vectors.stoi, specials=[])
+    # print('vocab', len(vocab.itos))
+
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, title, label_id, test_text, test_title, test_label, vocab=vocab)
+    train_dataset, test_dataset = MeSH_indexing(all_text, title, label_id, test_text, test_title, test_label)
 
     # build vocab
-    # print('building vocab')
-    # logging.info('Build vocab')
-    # vocab = train_dataset.get_vocab()
+    print('building vocab')
+    logging.info('Build vocab')
+    vocab = train_dataset.get_vocab()
 
 
 
@@ -384,8 +383,8 @@ def main():
                                     embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
                                     gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
 
-    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
-    model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #
