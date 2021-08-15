@@ -147,13 +147,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                 print(obj["pmid"].strip())
         else:
             break
-
-
-    print(len(test_title), test_title)
-    print(len(test_text),test_text)
-    print(len(test_label), test_label)
     logging.info("Finish loading test data")
-
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -176,7 +170,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # build vocab
     print('building vocab')
     vocab = Vocab(vectors.stoi, specials=[])
-
+    print('vocab', len(vocab.itos))
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
