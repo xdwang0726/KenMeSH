@@ -104,6 +104,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # load test data
     # f_t = open(test_data_path, encoding="utf8")
     # test_objects = ijson.items(f_t, 'documents.item')
+    f_t = open(train_data_path, encoding="utf8")
+    test_objects = ijson.items(f_t, 'articles.item')
 
     test_pmid = []
     test_title = []
