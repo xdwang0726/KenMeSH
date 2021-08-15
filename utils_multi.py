@@ -59,6 +59,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
                 if include_unk:
                     text = [token for token in text]
                     print('token', text)
+                    ab_tokens = [print(vocab[token], token) for token in text]
                     ab_tokens = torch.tensor([vocab[token] for token in text])
                     title_tokens = torch.tensor([vocab[token] for token in title])
                 else:
