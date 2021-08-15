@@ -24,10 +24,18 @@ def text_clean(tokens):
     return filtered_text
 
 
-def _vocab_iterator(text, title, labels=None, ngrams=1, yield_label=False):
+def _vocab_iterator(train_text, train_title, test_text, test_title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
-    for i, text in enumerate(text):
-        texts = tokenizer(text + title[i])
+    for i, text in enumerate(train_text):
+        texts = tokenizer(text + train_title[i])
+        texts = text_clean(texts)
+        if yield_label:
+            label = labels[i]
+            yield label, ngrams_iterator(texts, ngrams)
+        else:
+            yield ngrams_iterator(texts, ngrams)
+    for i, text in enumerate(test_text):
+        texts = tokenizer(text + test_title[i])
         texts = text_clean(texts)
         if yield_label:
             label = labels[i]
@@ -130,7 +138,7 @@ def _setup_datasets(train_text, train_title, train_labels, test_text, test_title
                     include_unk=False):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, train_title, train_labels, ngrams))
+        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, train_title, test_text, test_title, train_labels, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
