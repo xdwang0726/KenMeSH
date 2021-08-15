@@ -57,8 +57,8 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False):
         else:
             for label, text, title in iterator:
                 if include_unk:
+                    print('token', text)
                     ab_tokens = torch.tensor([vocab[token] for token in text])
-                    print('token id', ab_tokens)
                     title_tokens = torch.tensor([vocab[token] for token in title])
                 else:
                     ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
