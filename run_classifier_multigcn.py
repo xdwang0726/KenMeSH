@@ -122,9 +122,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #     test_text.append(text)
     #     test_label.append(label)
 
-    i = 110000
     for i, obj in enumerate(tqdm(objects)):
-        if i <= 120000:
+        if 100000 < i <= 120000:
             try:
                 ids = obj["pmid"]
                 heading = obj['title'].strip()
@@ -139,7 +138,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                         text = obj["abstractText"].strip()
                         text = text.translate(str.maketrans('', '', '[]'))
                         mesh_id = obj['meshId']
-                        pmid.append(ids)
+                        test_pmid.append(ids)
                         test_title.append(heading)
                         test_text.append(text)
                         test_label.append(mesh_id)
@@ -148,6 +147,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         else:
             break
     logging.info("Finish loading test data")
+    print("number of test data", len(test_pmid))
 
     print('load and prepare Mesh')
     # read full MeSH ID list

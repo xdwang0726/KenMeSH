@@ -133,7 +133,7 @@ def _setup_datasets(train_text, train_title, train_labels, test_text, test_title
 
 
 def MeSH_indexing(train_text, train_title, train_labels, test_text, test_title, test_labels, ngrams=1, vocab=None,
-                  include_unk=False):
+                  include_unk=True):
     """
 
     Defines MeSH_indexing datasets.
