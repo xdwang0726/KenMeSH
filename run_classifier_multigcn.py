@@ -414,6 +414,11 @@ def main():
     train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
           lr_scheduler)
     print('Finish training!')
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, args.save_model_path)
+
     # testing
     results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
     # print('predicted:', results, '\n')
