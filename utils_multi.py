@@ -27,7 +27,7 @@ def text_clean(tokens):
 def _vocab_iterator(train_text, train_title, test_text, test_title, labels=None, ngrams=1, yield_label=False):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(train_text):
-        texts = tokenizer(text + train_title[i] + test_text[i] + test_title)
+        texts = tokenizer(text + train_title[i] + test_text[i] + test_title[i])
         texts = text_clean(texts)
         if yield_label:
             label = labels[i]
