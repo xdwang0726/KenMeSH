@@ -3,6 +3,7 @@ import json
 import os
 import string
 
+import faiss
 import ijson
 import nltk
 import numpy as np
@@ -132,50 +133,50 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k, device):
     pmid_idf, idfs = load_idf_file(idf_path)
 
     f = open(train_path, encoding="utf8")
-    objects = ijson.items(f, 'articles.item')
-    # objects = ijson.items(f, 'documents.item')
+    # objects = ijson.items(f, 'articles.item')
+    objects = ijson.items(f, 'documents.item')
 
     pmid = []
     title = []
     all_text = []
     labels = []
 
-    for i, obj in enumerate(tqdm(objects)):
-        try:
-            ids = obj["pmid"]
-            heading = obj['title'].strip()
-            heading = heading.translate(str.maketrans('', '', '[]'))
-            abstract = obj["abstractText"].strip()
-            clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
-            if len(heading) == 0 or heading == 'In process':
-                print('paper ', ids, ' does not have title!')
-                continue
-            elif len(clean_abstract) == 0:
-                print('paper ', ids, ' does not have abstract!')
-                continue
-            else:
-                try:
-                    label = obj['meshId']
-                    pmid.append(ids)
-                    title.append(heading)
-                    all_text.append(clean_abstract)
-                    labels.append(label)
-                except KeyError:
-                    print('tfidf error', ids)
-        except AttributeError:
-            print(obj["pmid"].strip())
-
     # for i, obj in enumerate(tqdm(objects)):
-    #     ids = obj["pmid"]
-    #     heading = obj['title'].strip()
-    #     text = obj["abstract"].strip()
-    #     # idf = idf_weighted_wordvec(text)
-    #     l = obj['meshId']
-    #     pmid.append(ids)
-    #     title.append(heading)
-    #     all_text.append(text)
-    #     labels.append(l)
-    # print('Loading document done. ')
+    #     try:
+    #         ids = obj["pmid"]
+    #         heading = obj['title'].strip()
+    #         heading = heading.translate(str.maketrans('', '', '[]'))
+    #         abstract = obj["abstractText"].strip()
+    #         clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+    #         if len(heading) == 0 or heading == 'In process':
+    #             print('paper ', ids, ' does not have title!')
+    #             continue
+    #         elif len(clean_abstract) == 0:
+    #             print('paper ', ids, ' does not have abstract!')
+    #             continue
+    #         else:
+    #             try:
+    #                 label = obj['meshId']
+    #                 pmid.append(ids)
+    #                 title.append(heading)
+    #                 all_text.append(clean_abstract)
+    #                 labels.append(label)
+    #             except KeyError:
+    #                 print('tfidf error', ids)
+    #     except AttributeError:
+    #         print(obj["pmid"].strip())
+
+    for i, obj in enumerate(tqdm(objects)):
+        ids = obj["pmid"]
+        heading = obj['title'].strip()
+        text = obj["abstract"].strip()
+        # idf = idf_weighted_wordvec(text)
+        l = obj['meshId']
+        pmid.append(ids)
+        title.append(heading)
+        all_text.append(text)
+        labels.append(l)
+    print('Loading document done. ')
 
     # doc_idfs = idf_weighted_wordvec(all_text)
 
@@ -199,24 +200,46 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k, device):
         # vecs = [list(islice(output_iter, elem)) for elem in length]
         # calculated weigthed idf document vectors
 
-    doc_vec = pred.data.cpu().tolist()
+    # doc_vec = pred.data.cpu().tolist()
+    doc_vec = pred.data.cpu().numpy()
 
     print('number of embedding articles', len(doc_vec))
 
-    # get k nearest neighors and return their mesh
-    print('start to find the k nearest neibors for each article')
-    neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vec)
+    # get k nearest neighors and return their mesh using sklearn
+    # print('start to find the k nearest neibors for each article')
+    # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vec)
+    # neighbors_meshs = []
+    # for i in range(len(tqdm(doc_vec))):
+    #     idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
+    #     idxes = idxes.tolist()[0]
+    #     neighbors_mesh = []
+    #     for idx in idxes:
+    #         mesh = labels[idx]
+    #         neighbors_mesh.append(mesh)
+    #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
+    #     neighbors_meshs.append(neighbors_mesh)
+    # print('finding neighbors done')
+
+    # get k nearest neighors and return their mesh using faiss
+    d = doc_vec.shape[1]
+    nlist = 150
+    quantizer = faiss.IndexFlatL2(d)
+    index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
+    assert not index.is_trained
+    index.train(doc_vec)
+    assert index.is_trained
+
+    index.add(doc_vec)
     neighbors_meshs = []
-    for i in range(len(tqdm(doc_vec))):
-        idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
-        idxes = idxes.tolist()[0]
+    for i in range(tqdm(doc_vec.shape[0])):
+        _, I = index(doc_vec[i], k)
+        idxes = I[0]
         neighbors_mesh = []
         for idx in idxes:
             mesh = labels[idx]
             neighbors_mesh.append(mesh)
         neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
         neighbors_meshs.append(neighbors_mesh)
-    print('finding neighbors done')
 
     print('start collect data')
     dataset = []
