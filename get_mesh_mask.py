@@ -3,7 +3,7 @@ import json
 import os
 import string
 
-import faiss
+# import faiss
 import ijson
 import nltk
 import numpy as np
