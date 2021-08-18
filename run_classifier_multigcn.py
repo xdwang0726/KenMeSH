@@ -161,6 +161,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Total number of labels:', len(meshIDs))
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
+    mlb.fit(meshIDs)
 
     # create Vector object map tokens to vectors
     print('load pre-trained BioWord2Vec')
