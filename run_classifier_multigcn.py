@@ -239,7 +239,7 @@ def generate_batch(batch):
     else:
         abstract = [entry[0] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, batch_first=True)
+        abstract = pad_sequence(abstract, ksz=10, batch_first=True)
 
         title = [entry[1] for entry in batch]
         title_length = []
