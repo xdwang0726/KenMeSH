@@ -361,6 +361,7 @@ def main():
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
+    parser.add_argument('--model-path')
 
     parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
