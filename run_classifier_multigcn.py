@@ -30,7 +30,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     pmid = []
     train_title = []
     all_text = []
-    label = []
+    # label = []
     label_id = []
 
     print('Start loading training data')
@@ -50,12 +50,12 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                     else:
                         text = obj["abstractText"].strip()
                         text = text.translate(str.maketrans('', '', '[]'))
-                        original_label = obj["meshMajor"]
+                        # original_label = obj["meshMajor"]
                         mesh_id = obj['meshId']
                         pmid.append(ids)
                         train_title.append(heading)
                         all_text.append(text)
-                        label.append(original_label)
+                        # label.append(original_label)
                         label_id.append(mesh_id)
             except AttributeError:
                 print(obj["pmid"].strip())
@@ -108,7 +108,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # test_pmid = []
     test_title = []
     test_text = []
-    # test_label = []
+    test_label = []
 
     print('Start loading test data')
     logging.info("Start loading test data")
@@ -116,11 +116,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         # ids = obj["pmid"]
         heading = obj["title"].strip()
         text = obj["abstract"].strip()
-        # label = obj['meshId']
+        label = obj['meshId']
         # test_pmid.append(ids)
         test_title.append(heading)
         test_text.append(text)
-        # test_label.append(label)
+        test_label.append(label)
 
     # for i, obj in enumerate(tqdm(objects)):
     #     if 100000 < i <= 120000:
@@ -158,6 +158,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             mapping_id[key] = value.strip()
 
     meshIDs = list(mapping_id.values())
+
     print('Total number of labels:', len(meshIDs))
     logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
@@ -176,25 +177,19 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, None, train_title, test_title, ngrams=1, vocab=None,
-                  include_unk=False, is_test=True, is_multichannel=True)
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label, train_title, test_title, ngrams=1, vocab=None,
+                  include_unk=False, is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
     logging.info('Build vocab')
     vocab = train_dataset.get_vocab()
 
-
-
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
     # G_c = load_graphs(graph_cooccurence_file)[0][0]
-
     print('graph', G.ndata['feat'].shape)
-
-    # edges, node_count, label_embedding = get_edge_and_node_fatures(MeSH_id_pair_path, parent_children_path, vectors)
-    # G = build_MeSH_graph(edges, node_count, label_embedding)
 
     print('prepare dataset and labels graph done!')
     return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G # G_c
@@ -311,28 +306,28 @@ def test(test_dataset, model, G, batch_sz, device):
     return pred #, flattened
 
 
-# def top_k_predicted(goldenTruth, predictions, k):
-#     predicted_label = np.zeros(predictions.shape)
-#     for i in range(len(predictions)):
-#         goldenK = len(goldenTruth[i])
-#         if goldenK <= k:
-#             top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
-#         else:
-#             top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
-#         for j in top_k_index:
-#             predicted_label[i][j] = 1
-#     predicted_label = predicted_label.astype(np.int64)
-#     return predicted_label
-
-
-def top_k_predicted(predictions, k):
+def top_k_predicted(goldenTruth, predictions, k):
     predicted_label = np.zeros(predictions.shape)
     for i in range(len(predictions)):
-        top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+        goldenK = len(goldenTruth[i])
+        if goldenK <= k:
+            top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
+        else:
+            top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
         for j in top_k_index:
             predicted_label[i][j] = 1
     predicted_label = predicted_label.astype(np.int64)
     return predicted_label
+
+
+# def top_k_predicted(predictions, k):
+#     predicted_label = np.zeros(predictions.shape)
+#     for i in range(len(predictions)):
+#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+#         for j in top_k_index:
+#             predicted_label[i][j] = 1
+#     predicted_label = predicted_label.astype(np.int64)
+#     return predicted_label
 
 
 
@@ -400,91 +395,83 @@ def main():
 
     vocab_size = len(vocab)
 
-    # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-    #                                 embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
-    #                                 gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    #
-    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
+                                    gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    # model.to(device)
-    # G = G.to(device)
-    # G = dgl.add_self_loop(G)
-    # # G_c.to(device)
+    model.to(device)
+    G = G.to(device)
+    G = dgl.add_self_loop(G)
+    # G_c.to(device)
     #
-    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    # if args.fp16:
-    #     try:
-    #         from apex import amp
-    #     except ImportError:
-    #         raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-    #     model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-
-    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
-    # criterion = nn.BCELoss()
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
+    criterion = nn.BCELoss()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
     # training
-    # print("Start training!")
-    # train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
-    #       lr_scheduler)
-    # print('Finish training!')
+    print("Start training!")
+    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+          lr_scheduler)
+    print('Finish training!')
     # torch.save({
     #     'model_state_dict': model.state_dict(),
     #     'optimizer_state_dict': optimizer.state_dict(),
     # }, args.save_parameter_path)
     # print('save model')
-    # torch.save(model, args.save_model_path)
+    torch.save(model, args.save_model_path)
 
-    # load model
-    model = torch.load(args.model_path)
-
-    # testing
-    # results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
-    results = test(test_dataset, model, G, args.batch_sz, device)
-
-    # test_label_transform = mlb.fit_transform(test_labels)
-    # print('test_golden_truth', test_labels)
-
-    pred = results.data.cpu().numpy()
-
-    # top_5_pred = top_k_predicted(test_labels, pred, 10)
-    top_10_pred = top_k_predicted(pred, 10)
-
-    # convert binary label back to orginal ones
-    top_10_mesh = mlb.inverse_transform(top_10_pred)
-    # print('test_top_10:', top_5_mesh, '\n')
-    top_10_mesh = [list(item) for item in top_10_mesh]
-
-    pickle.dump(top_10_mesh, open(args.results, "wb"))
-
-    # print("\rSaving model to {}".format(args.save_model_path))
-    # torch.save(model.to('cpu'), args.save_model_path)
-
-    # # precision @k
-    # test_labelsIndex = getLabelIndex(test_label_transform)
-    # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+    # # load model
+    # model = torch.load(args.model_path)
     #
-    # for k, p in zip([1, 3, 5], precision):
-    #     print('p@{}: {:.5f}'.format(k, p))
+    # # testing
+    # # results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    # results = test(test_dataset, model, G, args.batch_sz, device)
     #
-    # # example based evaluation
-    # example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
-    # print("EMP@5, EMR@5, EMF@5")
-    # for em in example_based_measure_5:
-    #     print(em, ",")
+    # # test_label_transform = mlb.fit_transform(test_labels)
+    # # print('test_golden_truth', test_labels)
     #
-    # # label based evaluation
-    # label_measure_5 = micro_macro_eval(test_label_transform, top_5_pred)
-    # print("MaP@5, MiP@5, MaF@5, MiF@5: ")
-    # for measure in label_measure_5:
-    #     print(measure, ",")
+    # pred = results.data.cpu().numpy()
+    #
+    # # top_5_pred = top_k_predicted(test_labels, pred, 10)
+    # top_10_pred = top_k_predicted(pred, 10)
+    #
+    # # convert binary label back to orginal ones
+    # top_10_mesh = mlb.inverse_transform(top_10_pred)
+    # # print('test_top_10:', top_5_mesh, '\n')
+    # top_10_mesh = [list(item) for item in top_10_mesh]
+    #
+    # pickle.dump(top_10_mesh, open(args.results, "wb"))
+    #
+    # # print("\rSaving model to {}".format(args.save_model_path))
+    # # torch.save(model.to('cpu'), args.save_model_path)
+    #
+    # # # precision @k
+    # # test_labelsIndex = getLabelIndex(test_label_transform)
+    # # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+    # #
+    # # for k, p in zip([1, 3, 5], precision):
+    # #     print('p@{}: {:.5f}'.format(k, p))
+    # #
+    # # # example based evaluation
+    # # example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
+    # # print("EMP@5, EMR@5, EMF@5")
+    # # for em in example_based_measure_5:
+    # #     print(em, ",")
+    # #
+    # # # label based evaluation
+    # # label_measure_5 = micro_macro_eval(test_label_transform, top_5_pred)
+    # # print("MaP@5, MiP@5, MaF@5, MiF@5: ")
+    # # for measure in label_measure_5:
+    # #     print(measure, ",")
 
 
 if __name__ == "__main__":
