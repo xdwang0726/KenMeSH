@@ -367,6 +367,7 @@ def main():
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
     parser.add_argument('--results_opt')
+    parser.add_argument('--pred')
     parser.add_argument('--save-model-path')
     parser.add_argument('--model-path')
 
@@ -451,6 +452,7 @@ def main():
     # # print('test_golden_truth', test_labels)
     #
     pred = results.data.cpu().numpy()
+    pickle.dump(pred, open(args.pred, "wb"))
     #
     # # top_5_pred = top_k_predicted(test_labels, pred, 10)
     top_10_pred = top_k_predicted(pred, 10)
