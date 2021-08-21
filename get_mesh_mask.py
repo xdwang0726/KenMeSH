@@ -3,7 +3,7 @@ import json
 import os
 import string
 
-# import faiss
+import faiss
 import ijson
 import nltk
 import numpy as np
@@ -197,8 +197,8 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
             output = model(text, idf)
             pred = torch.cat((pred, output), dim=0)
 
-    doc_vec = pred.data.cpu().tolist()
-    # doc_vec = pred.data.cpu().numpy()
+    # doc_vec = pred.data.cpu().tolist()
+    doc_vecs = pred.data.cpu().numpy()
     # doc_vecs = np.array(doc_vecs)
     print('number of embedding articles', len(doc_vec))
 
@@ -218,33 +218,33 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
     # print('finding neighbors done')
 
     # get k nearest neighors and return their mesh using faiss
-    # d = doc_vecs.shape[1]
-    # nlist = 60
-    # quantizer = faiss.IndexFlatL2(d)
-    # index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
-    # assert not index.is_trained
-    # index.train(doc_vecs)
-    # assert index.is_trained
-    #
-    # index.add(doc_vecs)
-    # index.nprobe = nprobe
-    # neighbors_meshs = []
-    # for i in range(tqdm(doc_vecs.shape[0])):
-    #     _, I = index.search(doc_vecs[i].reshape(1, 200), k)
-    #     idxes = I[0]
-    #     neighbors_mesh = []
-    #     for idx in idxes:
-    #         mesh = labels[idx]
-    #         neighbors_mesh.append(mesh)
-    #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
-    #     neighbors_meshs.append(neighbors_mesh)
+    d = doc_vecs.shape[1]
+    nlist = 60
+    quantizer = faiss.IndexFlatL2(d)
+    index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
+    assert not index.is_trained
+    index.train(doc_vecs)
+    assert index.is_trained
+
+    index.add(doc_vecs)
+    index.nprobe = nprobe
+    neighbors_meshs = []
+    for i in range(tqdm(doc_vecs.shape[0])):
+        _, I = index.search(doc_vecs[i].reshape(1, 200), k)
+        idxes = I[0]
+        neighbors_mesh = []
+        for idx in idxes:
+            mesh = labels[idx]
+            neighbors_mesh.append(mesh)
+        neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
+        neighbors_meshs.append(neighbors_mesh)
 
     print('start collect data')
     dataset = []
     for i, id in enumerate(pmid):
         data_point = {}
         data_point['pmid'] = id
-        data_point['doc_vec'] = doc_vec[i]
+        data_point['doc_vec'] = doc_vecs[i]
         # data_point['doc_vec_len'] = lengths[i]
         # data_point['title'] = title[i]
         # data_point['abstractText'] = all_text[i]
