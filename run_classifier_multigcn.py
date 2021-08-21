@@ -105,22 +105,22 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     f_t = open(test_data_path, encoding="utf8")
     test_objects = ijson.items(f_t, 'documents.item')
 
-    # test_pmid = []
+    test_pmid = []
     test_title = []
     test_text = []
-    test_label = []
+    # test_label = []
 
     print('Start loading test data')
     logging.info("Start loading test data")
     for obj in tqdm(test_objects):
-        # ids = obj["pmid"]
+        ids = obj["paperid"]
         heading = obj["title"].strip()
         text = obj["abstract"].strip()
         label = obj['meshId']
-        # test_pmid.append(ids)
+        test_pmid.append(ids)
         test_title.append(heading)
         test_text.append(text)
-        test_label.append(label)
+        # test_label.append(label)
 
     # for i, obj in enumerate(tqdm(objects)):
     #     if 100000 < i <= 120000:
@@ -177,8 +177,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # Preparing training and test datasets
     print('prepare training and test sets')
     logging.info('Prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label, train_title, test_title, ngrams=1, vocab=None,
-                  include_unk=False, is_test=False, is_multichannel=True)
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, None, train_title, test_title, ngrams=1, vocab=None,
+                  include_unk=False, is_test=True, is_multichannel=True)
 
     # build vocab
     print('building vocab')
@@ -306,28 +306,28 @@ def test(test_dataset, model, G, batch_sz, device):
     return pred #, flattened
 
 
-def top_k_predicted(goldenTruth, predictions, k):
-    predicted_label = np.zeros(predictions.shape)
-    for i in range(len(predictions)):
-        goldenK = len(goldenTruth[i])
-        if goldenK <= k:
-            top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
-        else:
-            top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
-        for j in top_k_index:
-            predicted_label[i][j] = 1
-    predicted_label = predicted_label.astype(np.int64)
-    return predicted_label
-
-
-# def top_k_predicted(predictions, k):
+# def top_k_predicted(goldenTruth, predictions, k):
 #     predicted_label = np.zeros(predictions.shape)
 #     for i in range(len(predictions)):
-#         top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+#         goldenK = len(goldenTruth[i])
+#         if goldenK <= k:
+#             top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
+#         else:
+#             top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
 #         for j in top_k_index:
 #             predicted_label[i][j] = 1
 #     predicted_label = predicted_label.astype(np.int64)
 #     return predicted_label
+
+
+def top_k_predicted(predictions, k):
+    predicted_label = np.zeros(predictions.shape)
+    for i in range(len(predictions)):
+        top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+        for j in top_k_index:
+            predicted_label[i][j] = 1
+    predicted_label = predicted_label.astype(np.int64)
+    return predicted_label
 
 
 
@@ -345,6 +345,16 @@ def getLabelIndex(labels):
     return label_index
 
 
+def binarize_probs(probs, thresholds):
+    nb_classes = probs.shape[-1]
+    binarized_output = np.zeros_like(probs)
+
+    for k in range(nb_classes):
+        binarized_output[:, k] = (np.sign(probs[:, k] - thresholds[k]) + 1) // 2
+
+    return binarized_output
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path')
@@ -356,6 +366,7 @@ def main():
     parser.add_argument('--graph')
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
+    parser.add_argument('--results_opt')
     parser.add_argument('--save-model-path')
     parser.add_argument('--model-path')
 
@@ -394,62 +405,67 @@ def main():
                                                                                      args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
-
-    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
-                                    gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    #
+    # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+    #                                 embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
+    #                                 gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
-    G = G.to(device)
-    G = dgl.add_self_loop(G)
+    # model.to(device)
+    # G = G.to(device)
+    # G = dgl.add_self_loop(G)
     # G_c.to(device)
     #
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
-    criterion = nn.BCELoss()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    #
+    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
+    # criterion = nn.BCELoss()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
     # training
-    print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
-          lr_scheduler)
-    print('Finish training!')
+    # print("Start training!")
+    # train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+    #       lr_scheduler)
+    # print('Finish training!')
     # torch.save({
     #     'model_state_dict': model.state_dict(),
     #     'optimizer_state_dict': optimizer.state_dict(),
     # }, args.save_parameter_path)
     # print('save model')
-    torch.save(model, args.save_model_path)
+    # torch.save(model, args.save_model_path)
 
-    # # load model
-    # model = torch.load(args.model_path)
+    # load model
+    model = torch.load(args.model_path)
     #
-    # # testing
+    # testing
     # # results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
-    # results = test(test_dataset, model, G, args.batch_sz, device)
+    results = test(test_dataset, model, G, args.batch_sz, device)
     #
     # # test_label_transform = mlb.fit_transform(test_labels)
     # # print('test_golden_truth', test_labels)
     #
-    # pred = results.data.cpu().numpy()
+    pred = results.data.cpu().numpy()
     #
     # # top_5_pred = top_k_predicted(test_labels, pred, 10)
-    # top_10_pred = top_k_predicted(pred, 10)
+    top_10_pred = top_k_predicted(pred, 10)
     #
     # # convert binary label back to orginal ones
-    # top_10_mesh = mlb.inverse_transform(top_10_pred)
+    top_10_mesh = mlb.inverse_transform(top_10_pred)
     # # print('test_top_10:', top_5_mesh, '\n')
-    # top_10_mesh = [list(item) for item in top_10_mesh]
-    #
-    # pickle.dump(top_10_mesh, open(args.results, "wb"))
+    top_10_mesh = [list(item) for item in top_10_mesh]
+
+    pickle.dump(top_10_mesh, open(args.results, "wb"))
+
+    threshold = np.amax(np.mean(pred, axis=0))
+    static_method = binarize_probs(pred, [threshold] * num_nodes)
+    static_method_mesh = mlb.inverse_transform(static_method)
+    pickle.dump(static_method_mesh, open(args.results_opt, "wb"))
     #
     # # print("\rSaving model to {}".format(args.save_model_path))
     # # torch.save(model.to('cpu'), args.save_model_path)
