@@ -285,7 +285,7 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
 
 
 def test(test_dataset, model, G, batch_sz, device):
-    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch)
+    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
     pred = torch.zeros(0).to(device)
     ori_label = []
     print('Testing....')
