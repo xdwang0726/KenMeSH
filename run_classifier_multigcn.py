@@ -116,7 +116,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
         ids = obj["paperid"]
         heading = obj["title"].strip()
         text = obj["abstract"].strip()
-        # label = obj['meshId']
+        label = obj['meshId']
         test_pmid.append(ids)
         test_title.append(heading)
         test_text.append(text)
