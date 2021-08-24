@@ -251,6 +251,7 @@ def get_journal_mesh(journal_info, threshold):
         for i, (ids, counts) in enumerate(v['mesh_counts'].items()):
             if list(v['mesh_counts'].values())[i] / num >= threshold:
                 mesh.append(ids)
+        mesh = ','.join(mesh)
         journal_mesh[k] = mesh
 
     return journal_mesh
