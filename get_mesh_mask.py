@@ -3,7 +3,7 @@ import json
 import os
 import string
 
-import faiss
+# import faiss
 import ijson
 import nltk
 import numpy as np
@@ -129,115 +129,115 @@ def load_idf_file(idf_path):
     return pmid, weighted_doc_vec
 
 
-def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
-
-    pmid_idf, idfs = load_idf_file(idf_path)
-
-    f = open(train_path, encoding="utf8")
-    objects = ijson.items(f, 'articles.item')
-
-    pmid = []
-    title = []
-    all_text = []
-    labels = []
-
-    for i, obj in enumerate(tqdm(objects)):
-        try:
-            ids = obj["pmid"]
-            heading = obj['title'].strip()
-            heading = heading.translate(str.maketrans('', '', '[]'))
-            abstract = obj["abstractText"].strip()
-            clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
-            if len(heading) == 0 or heading == 'In process':
-                print('paper ', ids, ' does not have title!')
-                continue
-            elif len(clean_abstract) == 0:
-                print('paper ', ids, ' does not have abstract!')
-                continue
-            else:
-                try:
-                    # doc_vec, length = idf_weighted_wordvec(clean_abstract)
-                    label = obj['meshId']
-                    pmid.append(ids)
-                    title.append(heading)
-                    all_text.append(clean_abstract)
-                    labels.append(label)
-                except KeyError:
-                    print('tfidf error', ids)
-        except AttributeError:
-            print(obj["pmid"].strip())
-
-    print('Loading document done. ')
-
-    # doc_idfs = idf_weighted_wordvec(all_text)
-
-    dataset = Preprocess(all_text, idfs, labels)
-    vocab = dataset.get_vocab()
-
-    weights = weight_matrix(vocab, vectors)
-    model = Embedding(weights)
-    model.to(device)
-
-    data = DataLoader(dataset, batch_size=1024, shuffle=False, collate_fn=generate_batch)
-    pred = torch.zeros(0).cuda()
-
-    for i, (text, label, idf) in enumerate(data):
-        text, idf = text.to(device), idf.to(device)
-        with torch.no_grad():
-            output = model(text, idf)
-            pred = torch.cat((pred, output), dim=0)
-
-    doc_vecs = pred.data.cpu().numpy()
-    print('number of embedding articles', len(doc_vecs))
-
-    # get k nearest neighors and return their mesh using sklearn
-    # print('start to find the k nearest neibors for each article')
-    # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vec)
-    # neighbors_meshs = []
-    # for i in range(len(tqdm(doc_vec))):
-    #     idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
-    #     idxes = idxes.tolist()[0]
-    #     neighbors_mesh = []
-    #     for idx in idxes:
-    #         mesh = labels[idx]
-    #         neighbors_mesh.append(mesh)
-    #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
-    #     neighbors_meshs.append(neighbors_mesh)
-    # print('finding neighbors done')
-
-    # get k nearest neighors and return their mesh using faiss
-    d = doc_vecs.shape[1]
-    nlist = 60
-    quantizer = faiss.IndexFlatL2(d)
-    index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
-    assert not index.is_trained
-    index.train(doc_vecs)
-    assert index.is_trained
-
-    index.add(doc_vecs)
-    index.nprobe = nprobe
-    neighbors_meshs = []
-    for i in range(tqdm(doc_vecs.shape[0])):
-        _, I = index.search(doc_vecs[i].reshape(1, 200), k)
-        idxes = I[0]
-        neighbors_mesh = []
-        for idx in idxes:
-            mesh = labels[idx]
-            neighbors_mesh.append(mesh)
-        neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
-        neighbors_meshs.append(neighbors_mesh)
-
-    print('start collect data')
-    dataset = []
-    for i, id in enumerate(pmid):
-        data_point = {}
-        data_point['pmid'] = id
-        data_point['neighbors'] = neighbors_meshs[i]
-        dataset.append(data_point)
-
-    pubmed = {'articles': dataset}
-
-    return pubmed
+# def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
+#
+#     pmid_idf, idfs = load_idf_file(idf_path)
+#
+#     f = open(train_path, encoding="utf8")
+#     objects = ijson.items(f, 'articles.item')
+#
+#     pmid = []
+#     title = []
+#     all_text = []
+#     labels = []
+#
+#     for i, obj in enumerate(tqdm(objects)):
+#         try:
+#             ids = obj["pmid"]
+#             heading = obj['title'].strip()
+#             heading = heading.translate(str.maketrans('', '', '[]'))
+#             abstract = obj["abstractText"].strip()
+#             clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+#             if len(heading) == 0 or heading == 'In process':
+#                 print('paper ', ids, ' does not have title!')
+#                 continue
+#             elif len(clean_abstract) == 0:
+#                 print('paper ', ids, ' does not have abstract!')
+#                 continue
+#             else:
+#                 try:
+#                     # doc_vec, length = idf_weighted_wordvec(clean_abstract)
+#                     label = obj['meshId']
+#                     pmid.append(ids)
+#                     title.append(heading)
+#                     all_text.append(clean_abstract)
+#                     labels.append(label)
+#                 except KeyError:
+#                     print('tfidf error', ids)
+#         except AttributeError:
+#             print(obj["pmid"].strip())
+#
+#     print('Loading document done. ')
+#
+#     # doc_idfs = idf_weighted_wordvec(all_text)
+#
+#     dataset = Preprocess(all_text, idfs, labels)
+#     vocab = dataset.get_vocab()
+#
+#     weights = weight_matrix(vocab, vectors)
+#     model = Embedding(weights)
+#     model.to(device)
+#
+#     data = DataLoader(dataset, batch_size=1024, shuffle=False, collate_fn=generate_batch)
+#     pred = torch.zeros(0).cuda()
+#
+#     for i, (text, label, idf) in enumerate(data):
+#         text, idf = text.to(device), idf.to(device)
+#         with torch.no_grad():
+#             output = model(text, idf)
+#             pred = torch.cat((pred, output), dim=0)
+#
+#     doc_vecs = pred.data.cpu().numpy()
+#     print('number of embedding articles', len(doc_vecs))
+#
+#     # get k nearest neighors and return their mesh using sklearn
+#     # print('start to find the k nearest neibors for each article')
+#     # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vec)
+#     # neighbors_meshs = []
+#     # for i in range(len(tqdm(doc_vec))):
+#     #     idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
+#     #     idxes = idxes.tolist()[0]
+#     #     neighbors_mesh = []
+#     #     for idx in idxes:
+#     #         mesh = labels[idx]
+#     #         neighbors_mesh.append(mesh)
+#     #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
+#     #     neighbors_meshs.append(neighbors_mesh)
+#     # print('finding neighbors done')
+#
+#     # get k nearest neighors and return their mesh using faiss
+#     d = doc_vecs.shape[1]
+#     nlist = 60
+#     quantizer = faiss.IndexFlatL2(d)
+#     index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
+#     assert not index.is_trained
+#     index.train(doc_vecs)
+#     assert index.is_trained
+#
+#     index.add(doc_vecs)
+#     index.nprobe = nprobe
+#     neighbors_meshs = []
+#     for i in range(tqdm(doc_vecs.shape[0])):
+#         _, I = index.search(doc_vecs[i].reshape(1, 200), k)
+#         idxes = I[0]
+#         neighbors_mesh = []
+#         for idx in idxes:
+#             mesh = labels[idx]
+#             neighbors_mesh.append(mesh)
+#         neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
+#         neighbors_meshs.append(neighbors_mesh)
+#
+#     print('start collect data')
+#     dataset = []
+#     for i, id in enumerate(pmid):
+#         data_point = {}
+#         data_point['pmid'] = id
+#         data_point['neighbors'] = neighbors_meshs[i]
+#         dataset.append(data_point)
+#
+#     pubmed = {'articles': dataset}
+#
+#     return pubmed
 
 
 def get_journal_mesh(journal_info, threshold):
