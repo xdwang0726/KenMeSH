@@ -266,6 +266,7 @@ def read_neighbors(neighbors):
     for i, obj in enumerate(tqdm(objects)):
         ids = obj['pmid']
         mesh = obj['neighbors']
+        mesh = ','.join(mesh)
         pmid.append(ids)
         neighbors_mesh.append(mesh)
     return pmid, neighbors_mesh
