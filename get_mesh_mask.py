@@ -324,7 +324,7 @@ def main():
     parser.add_argument('--word2vec_path')
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--k', type=int, default=1000)
-    parser.add_argument('--threshold', type=int, default=0.01)
+    parser.add_argument('--threshold', type=float, default=0.01)
     parser.add_argument('--journal_info')
     parser.add_argument('--neigh_path')
     parser.add_argument('--save_path')
