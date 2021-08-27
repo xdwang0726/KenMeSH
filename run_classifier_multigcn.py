@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from losses import *
-from model import multichannel_dilatedCNN
+from model import multichannel_dilatedCNN_with_MeSH_mask
 from utils_multi import MeSH_indexing, pad_sequence
 
 
@@ -345,7 +345,7 @@ def main():
 
     vocab_size = len(vocab)
 
-    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
                                     embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
                                     gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
