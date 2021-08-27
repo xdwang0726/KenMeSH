@@ -30,72 +30,124 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     pmid = []
     train_title = []
     all_text = []
-    label = []
+    # label = []
     label_id = []
-    mesh_mask = []
 
     print('Start loading training data')
+    logging.info("Start loading training data")
     for i, obj in enumerate(tqdm(objects)):
         if i <= num_example:
             try:
-                ids = obj['pmid']
+                ids = obj["pmid"]
                 heading = obj['title'].strip()
                 heading = heading.translate(str.maketrans('', '', '[]'))
-                text = obj['abstractText'].strip()
-                text = text.translate(str.maketrans('', '', '[]'))
-                if len(heading) == 0 or heading == 'In process':
-                    print('paper %s does not have title!' % ids)
-                elif len(text) == 0:
-                    print('paper %s does not have abstract!' % ids)
-                    continue
+                # print('heading', type(heading), heading)
+                if len(heading) == 0:
+                    print('paper ', ids, ' does not have title!')
                 else:
-                    text = obj['abstractText'].strip()
-                    text = text.translate(str.maketrans('', '', '[]'))
-                    original_label = obj['meshMajor']
-                    mesh_id = obj['meshId']
-                    journal = obj['journal'].split(',')
-                    neigh = obj['neighbors'].split(',')
-                    mesh = set(journal + neigh)
-                    pmid.append(ids)
-                    train_title.append(heading)
-                    all_text.append(text)
-                    label.append(original_label)
-                    label_id.append(mesh_id)
-                    mesh_mask.append(mesh)
+                    if heading == 'In process':
+                        continue
+                    else:
+                        text = obj["abstractText"].strip()
+                        text = text.translate(str.maketrans('', '', '[]'))
+                        # original_label = obj["meshMajor"]
+                        mesh_id = obj['meshId']
+                        pmid.append(ids)
+                        train_title.append(heading)
+                        all_text.append(text)
+                        # label.append(original_label)
+                        label_id.append(mesh_id)
             except AttributeError:
-                print(obj['pmid'].strip())
+                print(obj["pmid"].strip())
         else:
             break
 
-    assert len(all_text) == len(train_title), 'title and abstract in the training set are not matching'
-    print('Finish loading training data')
-    print('number of training data %d' % len(pmid))
+
+    # for i, obj in enumerate(tqdm(objects)):
+    #     try:
+    #         ids = obj["pmid"]
+    #         heading = obj['title'].strip()
+    #         heading = heading.translate(str.maketrans('', '', '[]'))
+    #         abstract = obj["abstractText"].strip()
+    #         clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+    #         if len(heading) == 0 or heading == 'In process':
+    #             print('paper ', ids, ' does not have title!')
+    #             continue
+    #         elif len(clean_abstract) == 0:
+    #             print('paper ', ids, ' does not have abstract!')
+    #             continue
+    #         else:
+    #             try:
+    #                 original_label = obj["meshMajor"]
+    #                 mesh_id = obj['meshId']
+    #                 journal = obj['journal']
+    #                 pmid.append(ids)
+    #                 title.append(heading)
+    #                 all_text.append(abstract)
+    #                 label.append(original_label)
+    #                 label_id.appen(mesh_id)
+    #                 journals.append(journal)
+    #             except KeyError:
+    #                 print('tfidf error', ids)
+    #     except AttributeError:
+    #         print(obj["pmid"].strip())
+
+    print('check if title and abstract are coresponded')
+    if len(all_text) == len(train_title):
+        print('True')
+    else:
+        print(len(all_text), len(train_title))
+    print("Finish loading training data")
+    logging.info("Finish loading training data")
+    print("number of training data", len(pmid))
 
     # load test data
-    print('Start loading test data')
     f_t = open(test_data_path, encoding="utf8")
     test_objects = ijson.items(f_t, 'documents.item')
 
     test_pmid = []
     test_title = []
     test_text = []
-    test_label_id = []
-    test_mesh_mask = []
+    # test_label = []
 
+    print('Start loading test data')
+    logging.info("Start loading test data")
     for obj in tqdm(test_objects):
-        ids = obj['pmid']
-        heading = obj['title'].strip()
-        text = obj['abstractText'].strip()
-        mesh_id = obj['meshId']
-        journal = obj['journal'].split(',')
-        neigh = obj['neighbors'].split(',')
-        mesh = set(journal + neigh)
+        ids = obj["paperid"]
+        heading = obj["title"].strip()
+        text = obj["abstract"].strip()
+        # label = obj['meshId']
         test_pmid.append(ids)
         test_title.append(heading)
         test_text.append(text)
-        test_label_id.append(mesh_id)
-        test_mesh_mask.append(mesh)
-    print('number of test data %d' % len(test_title))
+        # test_label.append(label)
+
+    # for i, obj in enumerate(tqdm(objects)):
+    #     if 100000 < i <= 120000:
+    #         try:
+    #             ids = obj["pmid"]
+    #             heading = obj['title'].strip()
+    #             heading = heading.translate(str.maketrans('', '', '[]'))
+    #             # print('heading', type(heading), heading)
+    #             if len(heading) == 0:
+    #                 print('paper ', ids, ' does not have title!')
+    #             else:
+    #                 if heading == 'In process':
+    #                     continue
+    #                 else:
+    #                     text = obj["abstractText"].strip()
+    #                     text = text.translate(str.maketrans('', '', '[]'))
+    #                     mesh_id = obj['meshId']
+    #                     test_pmid.append(ids)
+    #                     test_title.append(heading)
+    #                     test_text.append(text)
+    #                     test_label.append(mesh_id)
+    #         except AttributeError:
+    #             print(obj["pmid"].strip())
+    #     else:
+    #         break
+    logging.info("Finish loading test data")
+    print("number of test data", len(test_title))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -106,8 +158,9 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             mapping_id[key] = value.strip()
 
     meshIDs = list(mapping_id.values())
-    print('Total number of labels %d' % len(meshIDs))
 
+    print('Total number of labels:', len(meshIDs))
+    logging.info('Total number of labels:'.format(len(meshIDs)))
     mlb = MultiLabelBinarizer(classes=meshIDs)
     mlb.fit(meshIDs)
 
@@ -116,14 +169,20 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     cache, name = os.path.split(word2vec_path)
     vectors = Vectors(name=name, cache=cache)
 
+    # build vocab
+    # print('building vocab')
+    # vocab = Vocab(vectors.stoi, specials=[])
+    # print('vocab', len(vocab.itos))
+
     # Preparing training and test datasets
     print('prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label_id, mesh_mask, test_mesh_mask,
-                                                train_title, test_title, ngrams=1, vocab=None, include_unk=False,
-                                                is_test=True, is_multichannel=True)
+    logging.info('Prepare training and test sets')
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, None, train_title, test_title, ngrams=1, vocab=None,
+                  include_unk=False, is_test=True, is_multichannel=True)
 
     # build vocab
     print('building vocab')
+    logging.info('Build vocab')
     vocab = train_dataset.get_vocab()
 
     # Prepare label features
@@ -154,29 +213,10 @@ def generate_batch(batch):
         cls: a tensor saving the labels of individual text entries.
     """
     # check if the dataset if train or test
-    if len(batch[0]) == 4:
+    if len(batch[0]) == 3:
         label = [entry[0] for entry in batch]
-        mesh_mask = [entry[1] for entry in batch]
 
         # padding according to the maximum sequence length in batch
-        abstract = [entry[2] for entry in batch]
-        abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=10, batch_first=True)
-
-        title = [entry[3] for entry in batch]
-        title_length = []
-        for i, seq in enumerate(title):
-            if len(seq) == 0:
-                length = len(seq) + 1
-            else:
-                length = len(seq)
-            title_length.append(length)
-        title = pad_sequence(title, ksz=10, batch_first=True)
-        return label, mesh_mask, abstract, title, abstract_length, title_length
-
-    else:
-        mesh_mask = [entry[0] for entry in batch]
-
         abstract = [entry[1] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
         abstract = pad_sequence(abstract, ksz=10, batch_first=True)
@@ -190,7 +230,23 @@ def generate_batch(batch):
                 length = len(seq)
             title_length.append(length)
         title = pad_sequence(title, ksz=10, batch_first=True)
-        return mesh_mask, abstract, title, abstract_length, title_length
+        return label, abstract, title, abstract_length, title_length
+
+    else:
+        abstract = [entry[0] for entry in batch]
+        abstract_length = [len(seq) for seq in abstract]
+        abstract = pad_sequence(abstract, ksz=10, batch_first=True)
+
+        title = [entry[1] for entry in batch]
+        title_length = []
+        for i, seq in enumerate(title):
+            if len(seq) == 0:
+                length = len(seq) + 1
+            else:
+                length = len(seq)
+            title_length.append(length)
+        title = pad_sequence(title, ksz=10, batch_first=True)
+        return abstract, title, abstract_length, title_length
 
 
 def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
@@ -202,16 +258,15 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
     #    early_stopping = EarlyStopping(patience=patience, verbose=True)
     print("Training....")
     for epoch in range(num_epochs):
-        for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
+        for i, (label, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             abstract_length = torch.Tensor(abstract_length)
             title_length = torch.Tensor(title_length)
-            abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+            abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
             # G_c = G_c.to(device)
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
@@ -229,41 +284,51 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
         lr_scheduler.step()
 
 
-def test(test_dataset, model, mlb, G, batch_sz, device):
+def test(test_dataset, model, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
     pred = torch.zeros(0).to(device)
     ori_label = []
     print('Testing....')
-    for label, mask, abstract, title, abstract_length, title_length in test_data:
-    # for mask, abstract, title, abstract_length, title_length in test_data:
-        mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+    #for label, abstract, title, abstract_length, title_length in test_data:
+    for abstract, title, abstract_length, title_length in test_data:
         abstract_length = torch.Tensor(abstract_length)
         title_length = torch.Tensor(title_length)
-        mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+        abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
-        ori_label.append(label)
-        flattened = [val for sublist in ori_label for val in sublist]
+        # ori_label.append(label)
+        # flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
-    return pred, flattened
+    return pred #, flattened
 
 
-def top_k_predicted(goldenTruth, predictions, k):
+# def top_k_predicted(goldenTruth, predictions, k):
+#     predicted_label = np.zeros(predictions.shape)
+#     for i in range(len(predictions)):
+#         goldenK = len(goldenTruth[i])
+#         if goldenK <= k:
+#             top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
+#         else:
+#             top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+#         for j in top_k_index:
+#             predicted_label[i][j] = 1
+#     predicted_label = predicted_label.astype(np.int64)
+#     return predicted_label
+
+
+def top_k_predicted(predictions, k):
     predicted_label = np.zeros(predictions.shape)
     for i in range(len(predictions)):
-        goldenK = len(goldenTruth[i])
-        if goldenK <= k:
-            top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
-        else:
-            top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
+        top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
         for j in top_k_index:
             predicted_label[i][j] = 1
     predicted_label = predicted_label.astype(np.int64)
     return predicted_label
+
 
 
 def getLabelIndex(labels):
@@ -341,34 +406,34 @@ def main():
                                                                                      args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
-
-    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
-                                    gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    #
+    # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+    #                                 embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
+    #                                 gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
+    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
-    G = G.to(device)
-    G = dgl.add_self_loop(G)
+    # model.to(device)
+    # G = G.to(device)
+    # G = dgl.add_self_loop(G)
     # G_c.to(device)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
-    criterion = nn.BCELoss()
+    #
+    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    #
+    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
+    # criterion = nn.BCELoss()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
     # training
-    print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
-          lr_scheduler)
-    print('Finish training!')
+    # print("Start training!")
+    # train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
+    #       lr_scheduler)
+    # print('Finish training!')
     # torch.save({
     #     'model_state_dict': model.state_dict(),
     #     'optimizer_state_dict': optimizer.state_dict(),
@@ -380,61 +445,51 @@ def main():
     model = torch.load(args.model_path)
     #
     # testing
-    results, test_labels = test(test_dataset, model, mlb, G, args.batch_sz, device)
-    # results = test(test_dataset, model, G, args.batch_sz, device)
+    # # results, test_labels = test(test_dataset, model, G, args.batch_sz, device)
+    results = test(test_dataset, model, G, args.batch_sz, device)
     #
-    test_label_transform = mlb.fit_transform(test_labels)
-    print('test_golden_truth', test_labels)
+    # # test_label_transform = mlb.fit_transform(test_labels)
+    # # print('test_golden_truth', test_labels)
     #
     pred = results.data.cpu().numpy()
+    pickle.dump(pred, open(args.pred, "wb"))
     #
-    top_10_pred = top_k_predicted(test_labels, pred, 10)
-    # top_10_pred = top_k_predicted(pred, 10)
+    # # top_5_pred = top_k_predicted(test_labels, pred, 10)
+    top_10_pred = top_k_predicted(pred, 10)
     #
-    # convert binary label back to orginal ones
+    # # convert binary label back to orginal ones
     top_10_mesh = mlb.inverse_transform(top_10_pred)
-    print('test_top_10:', top_10_mesh, '\n')
-    # top_10_mesh = [list(item) for item in top_10_mesh]
+    # # print('test_top_10:', top_5_mesh, '\n')
+    top_10_mesh = [list(item) for item in top_10_mesh]
 
-    # pickle.dump(top_10_mesh, open(args.results, "wb"))
+    pickle.dump(top_10_mesh, open(args.results, "wb"))
 
     threshold = np.amax(np.mean(pred, axis=0))
     static_method = binarize_probs(pred, [threshold] * num_nodes)
     static_method_mesh = mlb.inverse_transform(static_method)
-    # pickle.dump(static_method_mesh, open(args.results_opt, "wb"))
+    pickle.dump(static_method_mesh, open(args.results_opt, "wb"))
     #
     # # print("\rSaving model to {}".format(args.save_model_path))
     # # torch.save(model.to('cpu'), args.save_model_path)
     #
-    # # precision @k
-    test_labelsIndex = getLabelIndex(test_label_transform)
-    precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-
-    for k, p in zip([1, 3, 5], precision):
-        print('p@{}: {:.5f}'.format(k, p))
-
-    # example based evaluation
-    example_based_measure_5 = example_based_evaluation(test_labels, top_10_mesh)
-    print(" TOP 10 EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = micro_macro_eval(test_label_transform, top_10_pred)
-    print("TOP 10 MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
-
-    example_based_measure_5 = example_based_evaluation(test_labels, static_method_mesh)
-    print(" THRESHOLD EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = micro_macro_eval(test_label_transform, static_method_mesh)
-    print("THRESHOLD MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
+    # # # precision @k
+    # # test_labelsIndex = getLabelIndex(test_label_transform)
+    # # precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+    # #
+    # # for k, p in zip([1, 3, 5], precision):
+    # #     print('p@{}: {:.5f}'.format(k, p))
+    # #
+    # # # example based evaluation
+    # # example_based_measure_5 = example_based_evaluation(test_labels, top_5_mesh)
+    # # print("EMP@5, EMR@5, EMF@5")
+    # # for em in example_based_measure_5:
+    # #     print(em, ",")
+    # #
+    # # # label based evaluation
+    # # label_measure_5 = micro_macro_eval(test_label_transform, top_5_pred)
+    # # print("MaP@5, MiP@5, MaF@5, MiF@5: ")
+    # # for measure in label_measure_5:
+    # #     print(measure, ",")
 
 
 if __name__ == "__main__":
