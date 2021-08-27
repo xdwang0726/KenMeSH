@@ -344,10 +344,9 @@ def main():
                                                                                      args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
-
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2,
-                                    gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
+                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+                                    #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
     # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
