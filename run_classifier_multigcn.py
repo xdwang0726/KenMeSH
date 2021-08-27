@@ -121,9 +121,9 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, test_label_id, mesh_mask, test_mesh_mask,
+    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, mesh_mask, test_mesh_mask,  test_label_id,
                                                 train_title, test_title, ngrams=1, vocab=None, include_unk=False,
-                                                is_test=True, is_multichannel=True)
+                                                is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
