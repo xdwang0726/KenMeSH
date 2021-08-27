@@ -82,19 +82,20 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_label_id = []
     test_mesh_mask = []
 
-    for obj in tqdm(test_objects):
-        ids = obj['pmid']
-        heading = obj['title'].strip()
-        text = obj['abstractText'].strip()
-        mesh_id = obj['meshId']
-        journal = obj['journal'].split(',')
-        neigh = obj['neighbors'].split(',')
-        mesh = set(journal + neigh)
-        test_pmid.append(ids)
-        test_title.append(heading)
-        test_text.append(text)
-        test_label_id.append(mesh_id)
-        test_mesh_mask.append(mesh)
+    for i, obj in enumerate(tqdm(test_objects)):
+        if 120000 <= i <= 130000:
+            ids = obj['pmid']
+            heading = obj['title'].strip()
+            text = obj['abstractText'].strip()
+            mesh_id = obj['meshId']
+            journal = obj['journal'].split(',')
+            neigh = obj['neighbors'].split(',')
+            mesh = set(journal + neigh)
+            test_pmid.append(ids)
+            test_title.append(heading)
+            test_text.append(text)
+            test_label_id.append(mesh_id)
+            test_mesh_mask.append(mesh)
     print('number of test data %d' % len(test_title))
 
     print('load and prepare Mesh')
