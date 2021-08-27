@@ -83,7 +83,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 11000 < i <= 12000:
+        if 110000 < i <= 120000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -386,7 +386,7 @@ def main():
     # results = test(test_dataset, model, G, args.batch_sz, device)
     #
     test_label_transform = mlb.fit_transform(test_labels)
-    print('test_golden_truth', test_labels)
+    # print('test_golden_truth', test_labels)
     #
     pred = results.data.cpu().numpy()
     #
@@ -395,7 +395,8 @@ def main():
     #
     # convert binary label back to orginal ones
     top_10_mesh = mlb.inverse_transform(top_10_pred)
-    print('test_top_10:', top_10_mesh, '\n')
+    #
+    # print('test_top_10:', top_10_mesh, '\n')
     # top_10_mesh = [list(item) for item in top_10_mesh]
 
     # pickle.dump(top_10_mesh, open(args.results, "wb"))
