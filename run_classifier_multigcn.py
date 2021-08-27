@@ -83,7 +83,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if i <= 1000:
+        if 11000 < i <= 12000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -96,7 +96,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        else:
+        elif i > 120000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -379,7 +379,7 @@ def main():
     # torch.save(model, args.save_model_path)
 
     # load model
-    model = torch.load(args.model_path)
+    # model = torch.load(args.model_path)
     #
     # testing
     results, test_labels = test(test_dataset, model, mlb, G, args.batch_sz, device)

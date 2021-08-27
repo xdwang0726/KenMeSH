@@ -451,7 +451,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
 
         # get title content features
         atten_mask = label_feature.transpose(0, 1) * mask.unsqueeze(1)
-        print('atten_mask', atten_mask.shape)
+        # print('atten_mask', atten_mask.shape)
         embedded_title = self.embedding_layer(input_title.long())
         # print('title_length', title_length)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
