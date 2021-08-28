@@ -205,10 +205,10 @@ def generate_batch(batch):
 
 def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
           num_workers, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=train_sampler, shuffle=True,
-                            collate_fn=generate_batch, num_workers=num_workers)
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=train_sampler, collate_fn=generate_batch,
+                            num_workers=num_workers)
 
-    valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=valid_sampler, shuffle=True,
+    valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=valid_sampler,
                             collate_fn=generate_batch, num_workers=num_workers)
 
     num_lines = num_epochs * len(train_data)
