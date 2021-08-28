@@ -4,6 +4,13 @@ from scipy.sparse import issparse
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 
+def zero_division(x, y):
+    try:
+        return x / y
+    except ZeroDivisionError:
+        return 0
+
+
 def intersection(lst1, lst2):
     return list(set(lst1) & set(lst2))
 
@@ -128,7 +135,7 @@ def example_based_precision(CL, y_hat):
     EBP = []
 
     for i in range(len(CL)):
-        ebp = CL[i] / len(y_hat[i])
+        ebp = zero_division(CL[i], len(y_hat[i]))
         EBP.append(ebp)
 
     EBP = np.mean(EBP)
@@ -139,7 +146,7 @@ def example_based_recall(CL, y_actural):
     EBR = []
 
     for i in range(len(CL)):
-        ebr = CL[i] / len(y_actural[i])
+        ebr = zero_division(CL[i], len(y_actural[i]))
         EBR.append(ebr)
     EBR = np.mean(EBR)
     return EBR
@@ -149,7 +156,7 @@ def example_based_fscore(CL, y_actual, y_hat):
     EBF = []
 
     for i in range(len(CL)):
-        ebf = (2 * CL[i]) / (len(y_hat[i]) + len(y_actual[i]))
+        ebf = zero_division((2 * CL[i]), (len(y_hat[i]) + len(y_actual[i])))
         EBF.append(ebf)
 
     EBF = np.mean(EBF)

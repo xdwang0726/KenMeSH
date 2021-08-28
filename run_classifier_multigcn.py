@@ -1,23 +1,22 @@
 import argparse
 import logging
 import os
-import pickle
 import sys
 
-# import EarlyStopping
-# from pytorchtools import EarlyStopping
 import dgl
 import ijson
-import numpy as np
+import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
-from torchtext.vocab import Vectors, Vocab
+from torch.utils.data.sampler import SubsetRandomSampler
+from torchtext.vocab import Vectors
 from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
+from pytorchtools import EarlyStopping
 from utils_multi import MeSH_indexing, pad_sequence
 
 
@@ -83,7 +82,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 310000 < i <= 320000:
+        if 130000 < i <= 140000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -125,6 +124,14 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                                                 train_title, test_title, ngrams=1, vocab=None, include_unk=False,
                                                 is_test=False, is_multichannel=True)
 
+    # get validation set
+    valid_size = 0.2
+    indices = list(range(len(pmid)))
+    split = int(np.floor(valid_size * len(pmid)))
+    train_idx, valid_idx = indices[split:], indices[:split]
+    train_sampler = SubsetRandomSampler(train_idx)
+    valid_sampler = SubsetRandomSampler(valid_idx)
+
     # build vocab
     print('building vocab')
     vocab = train_dataset.get_vocab()
@@ -136,7 +143,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G # G_c
+    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler # G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -196,15 +203,26 @@ def generate_batch(batch):
         return mesh_mask, abstract, title, abstract_length, title_length
 
 
-def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch,
-                            num_workers=num_workers)
+def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
+          num_workers, optimizer, lr_scheduler):
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=train_sampler, shuffle=True,
+                            collate_fn=generate_batch, num_workers=num_workers)
+
+    valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=valid_sampler, shuffle=True,
+                            collate_fn=generate_batch, num_workers=num_workers)
 
     num_lines = num_epochs * len(train_data)
 
-    #    early_stopping = EarlyStopping(patience=patience, verbose=True)
+    train_losses = []
+    valid_losses = []
+    avg_train_losses = []
+    avg_valid_losses = []
+
+    early_stopping = EarlyStopping(patience=3, verbose=True)
+
     print("Training....")
     for epoch in range(num_epochs):
+        model.train()  # prep model for training
         for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
@@ -222,14 +240,55 @@ def train(train_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device,
             # print('loss', loss)
             loss.backward()
             optimizer.step()
+            train_losses.append(loss.item())  # record training loss
+
             processed_lines = i + len(train_data) * epoch
             progress = processed_lines / float(num_lines)
-            if processed_lines % 128 == 0:
+            if processed_lines % 3000 == 0:
                 sys.stderr.write(
                     "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
                         progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
+
+        model.eval()
+        for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+            abstract_length = torch.Tensor(abstract_length)
+            title_length = torch.Tensor(title_length)
+            abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+            G = G.to(device)
+            G.ndata['feat'] = G.ndata['feat'].to(device)
+            # G_c = G_c.to(device)
+            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+
+            loss = criterion(output, label)
+            valid_losses.append(loss.item())
+
+        train_loss = np.average(train_losses)
+        valid_loss = np.average(valid_losses)
+        avg_train_losses.append(train_loss)
+        avg_valid_losses.append(valid_loss)
+
+        # print('[{} / {}] Train Loss: {.5f}, Valid Loss: {.5f}'.format(epoch+1, num_epochs, train_loss, valid_loss))
+        epoch_len = len(str(num_epochs))
+
+        print_msg = (f'[{epoch:>{epoch_len}}/{num_epochs:>{epoch_len}}] ' +
+                     f'train_loss: {train_loss:.5f} ' +
+                     f'valid_loss: {valid_loss:.5f}')
+        print(print_msg)
+
+        # clear lists to track next epoch
+        train_losses = []
+        valid_losses = []
+
+        early_stopping(valid_loss, model)
+
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+    return model, avg_train_losses, avg_valid_losses
 
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
@@ -336,12 +395,8 @@ def main():
     logging.info('Device:'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G = prepare_dataset(args.train_path,
-                                                                                     args.test_path,
-                                                                                     args.meSH_pair_path,
-                                                                                     args.word2vec_path,
-                                                                                     args.graph,
-                                                                                     args.num_example) # args. graph_cooccurence,
+    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
+        args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
@@ -368,9 +423,30 @@ def main():
 
     # training
     print("Start training!")
-    train(train_dataset, model, mlb, G, args.batch_sz, args.num_epochs, criterion, device, args.num_workers, optimizer,
-          lr_scheduler)
+    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
+                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
+
+    # visualize the loss as the network trained
+    fig = plt.figure(figsize=(10, 8))
+    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
+    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
+
+    # find position of lowest validation loss
+    minposs = valid_loss.index(min(valid_loss)) + 1
+    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
+
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.ylim(0, 0.5)  # consistent scale
+    plt.xlim(0, len(train_loss) + 1)  # consistent scale
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    fig.savefig('loss_plot.png', bbox_inches='tight')
+
+
     # torch.save({
     #     'model_state_dict': model.state_dict(),
     #     'optimizer_state_dict': optimizer.state_dict(),
