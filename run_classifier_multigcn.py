@@ -5,6 +5,8 @@ import sys
 
 import dgl
 import ijson
+import random
+import torch
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -18,6 +20,20 @@ from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
 from utils_multi import MeSH_indexing, pad_sequence
+
+
+def set_seed(seed):
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)  # numpy
+    torch.manual_seed(seed)  # cpu
+    torch.cuda.manual_seed(seed)  # gpu
+    torch.backends.cudnn.deterministic = True  # cudnn
+
+
+def flatten(l):
+    flat = [i for item in l for i in item]
+    return flat
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
@@ -82,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 430000 < i <= 440000:
+        if 130000 < i <= 140000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -95,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 440000:
+        elif i > 140000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -294,23 +310,70 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
     pred = torch.zeros(0).to(device)
-    ori_label = []
+    top_k_precisions = []
+    sum_pred = 0.
+    sum_target = 0.
+    sum_product = 0.
+    tp = np.zeros(0)
+    tn = np.zeros(0)
+    fp = np.zeros(0)
+    fn = np.zeros(0)
     print('Testing....')
+    model.eval()
     for label, mask, abstract, title, abstract_length, title_length in test_data:
-    # for mask, abstract, title, abstract_length, title_length in test_data:
         mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
         abstract_length = torch.Tensor(abstract_length)
         title_length = torch.Tensor(title_length)
         mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
-        ori_label.append(label)
+        label = mlb.fit_transform(label)
+
         with torch.no_grad():
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
+
+        # calculate precision at k
+        pred = pred.data.cpu().numpy()
+        test_labelsIndex = getLabelIndex(label)
+        precisions = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+        top_k_precisions.append(precisions)
+        # calculate example-based evaluation
+        sums = example_based_evaluation(pred, label, threshold=0.5)
+        sum_pred += sums[0]
+        sum_target += sums[1]
+        sum_product += sums[2]
+        # calculate label-based evaluation
+        confusion = micro_macro_eval(pred, label, threshold=0.5)
+        tp = np.concatenate((tp, confusion[0]), axis=0)
+        tn = np.concatenate((tn, confusion[1]), axis=0)
+        fp = np.concatenate((fp, confusion[2]), axis=0)
+        fn = np.concatenate((fn, confusion[3]), axis=0)
+
+    # Evaluations
+    print('Calculate Precision at K...')
+    p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
+    p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
+    p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
+    for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
+        print('p@{}: {:.5f}'.format(k, p))
+
+    print('Calculate Example-based Evaluation')
+    ebp = sum_product / sum_pred
+    ebr = sum_product / sum_target
+    ebf = (2 * sum_product) / (sum_pred + sum_target)
+    for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
+        print('{}: {:.5f}'.format(n, m))
+
+    print('Calculate Label-based Evaluation')
+    mip = np.sum(tp) / (np.sum(tp) + np.sum(fp))
+    mir = np.sum(tp) / (np.sum(tp) + np.sum(fn))
+    mif = 2 * mir * mip / (mir + mip)
+    for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
+        print('{}: {:.5f}'.format(n, m))
+
     print('###################DONE#########################')
-    return pred, ori_label
 
 
 def top_k_predicted(goldenTruth, predictions, k):
@@ -362,10 +425,8 @@ def main():
     parser.add_argument('--graph')
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
-    parser.add_argument('--results_opt')
-    parser.add_argument('--pred')
     parser.add_argument('--save-model-path')
-    parser.add_argument('--model-path')
+    parser.add_argument('--loss')
 
     parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
@@ -373,7 +434,6 @@ def main():
     parser.add_argument('--ksz', default=3)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
-    parser.add_argument('--add_original_embedding', type=bool, default=True)
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
@@ -390,8 +450,7 @@ def main():
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # device = torch.device(args.device)
-    logging.info('Device:'.format(device))
+    print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
@@ -444,8 +503,7 @@ def main():
     plt.legend()
     plt.tight_layout()
     plt.show()
-    fig.savefig('loss_plot.png', bbox_inches='tight')
-
+    fig.savefig(args.loss, bbox_inches='tight')
 
     # torch.save({
     #     'model_state_dict': model.state_dict(),
@@ -458,63 +516,7 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    results, folded_labels = test(test_dataset, model, mlb, G, args.batch_sz, device)
-    # results = test(test_dataset, model, G, args.batch_sz, device)
-    #
-    test_labels = [val for sublist in folded_labels for val in sublist]
-    test_label_transform = mlb.fit_transform(test_labels)
-    # print('test_golden_truth', test_labels)
-    #
-    pred = results.data.cpu().numpy()
-    #
-    top_10_pred = top_k_predicted(test_labels, pred, 10)
-    # top_10_pred = top_k_predicted(pred, 10)
-    #
-    # convert binary label back to orginal ones
-    top_10_mesh = mlb.inverse_transform(top_10_pred)
-    #
-    # print('test_top_10:', top_10_mesh, '\n')
-    # top_10_mesh = [list(item) for item in top_10_mesh]
-
-    # pickle.dump(top_10_mesh, open(args.results, "wb"))
-
-    threshold = np.amax(np.mean(pred, axis=0))
-    static_method = binarize_probs(pred, [threshold] * num_nodes)
-    static_method_mesh = mlb.inverse_transform(static_method)
-    # pickle.dump(static_method_mesh, open(args.results_opt, "wb"))
-    #
-    # # print("\rSaving model to {}".format(args.save_model_path))
-    # # torch.save(model.to('cpu'), args.save_model_path)
-    #
-    # # precision @k
-    test_labelsIndex = getLabelIndex(test_label_transform)
-    precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-
-    for k, p in zip([1, 3, 5], precision):
-        print('p@{}: {:.5f}'.format(k, p))
-
-    # example based evaluation
-    example_based_measure_5 = example_based_evaluation(test_labels, top_10_mesh)
-    print(" TOP 10 EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = micro_macro_eval(test_label_transform, top_10_pred)
-    print("TOP 10 MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
-
-    example_based_measure_5 = example_based_evaluation(test_labels, static_method_mesh)
-    print(" THRESHOLD EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = micro_macro_eval(test_label_transform, static_method_mesh)
-    print("THRESHOLD MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
+    test(test_dataset, model, mlb, G, args.batch_sz, device)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 from scipy.sparse import issparse
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 
@@ -40,7 +41,7 @@ def precision_at_ks(Y_pred_scores, Y_test, ks):
                 idx = np.argsort(Y_pred_scores[i, :])[::-1]
                 Y_pred.append(set(idx[:k]))
 
-        result.append(np.mean([precision(yp, set(yt)) for yt, yp in zip(Y_test, Y_pred)]))
+        result.append([precision(yp, set(yt)) for yt, yp in zip(Y_test, Y_pred)])
     return result
 
 
@@ -119,16 +120,16 @@ def micro_f1(MiP, MiR):
 #     return result
 
 
-def micro_macro_eval(y_actual, y_hat):
-    MaP = precision_score(y_actual, y_hat, average='macro')
-    MiP = precision_score(y_actual, y_hat, average='micro')
-    MaR = recall_score(y_actual, y_hat, average='macro')
-    MiR = recall_score(y_actual, y_hat, average='micro')
-    MaF = f1_score(y_actual, y_hat, average='macro')
-    MiF = f1_score(y_actual, y_hat, average='micro')
-
-    result = [round(MaP, 5), round(MiP, 5), round(MaR, 5), round(MiR, 5), round(MaF, 5), round(MiF, 5)]
-    return result
+# def micro_macro_eval(y_actual, y_hat):
+#     MaP = precision_score(y_actual, y_hat, average='macro')
+#     MiP = precision_score(y_actual, y_hat, average='micro')
+#     MaR = recall_score(y_actual, y_hat, average='macro')
+#     MiR = recall_score(y_actual, y_hat, average='micro')
+#     MaF = f1_score(y_actual, y_hat, average='macro')
+#     MiF = f1_score(y_actual, y_hat, average='micro')
+#
+#     result = [round(MaP, 5), round(MiP, 5), round(MaR, 5), round(MiR, 5), round(MaF, 5), round(MiF, 5)]
+#    return result
 
 
 def example_based_precision(CL, y_hat):
@@ -173,14 +174,14 @@ def find_common_label(y_actual, y_hat):
     return num_common_label
 
 
-def example_based_evaluation(y_actual, y_hat):
-    num_common_label = find_common_label(y_actual, y_hat)
-
-    EBP = example_based_precision(num_common_label, y_hat)
-    EBR = example_based_recall(num_common_label, y_actual)
-    EBF = example_based_fscore(num_common_label, y_actual, y_hat)
-    result = [round(EBP, 5), round(EBR, 5), round(EBF, 5)]
-    return result
+# def example_based_evaluation(y_actual, y_hat):
+#     num_common_label = find_common_label(y_actual, y_hat)
+#
+#     EBP = example_based_precision(num_common_label, y_hat)
+#     EBR = example_based_recall(num_common_label, y_actual)
+#     EBF = example_based_fscore(num_common_label, y_actual, y_hat)
+#     result = [round(EBP, 5), round(EBR, 5), round(EBF, 5)]
+#     return result
 
 # def evalution(pred, true_label):
 #     return
@@ -212,3 +213,30 @@ def example_based_evaluation(y_actual, y_hat):
 # # Divide by min(n_pos, k) such that the best achievable score is always 1.0.
 # return float(n_relevant) / min(n_pos, k)
 # """
+
+
+def example_based_evaluation(pred, target, threshold):
+
+    pred = (pred > threshold).astype(np.int)
+
+    product = pred * target
+    sum_product = np.sum(product)
+    sum_pred = np.sum(pred)
+    sum_target = np.sum(target)
+
+    return (sum_pred, sum_target, sum_product)
+
+
+def micro_macro_eval(pred, target, threshold):
+    positive = 1
+    negative = 0
+
+    pred = (pred > threshold).astype(np.int)
+
+    tp = np.logical_and(pred == positive, target == positive).astype(np.int)
+    tn = np.logical_and(pred == negative, target == negative).astype(np.int)
+    fp = np.logical_and(pred == positive, target == negative).astype(np.int)
+    fn = np.logical_and(pred == negative, target == positive).astype(np.int)
+
+    return tp, tn, fp, fn
+
