@@ -82,7 +82,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 130000 < i <= 140000:
+        if 13000 < i <= 14000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -383,8 +383,8 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
-    parser.add_argument('--scheduler_step_sz', type=int, default=5)
-    parser.add_argument('--lr_gamma', type=float, default=0.98)
+    parser.add_argument('--scheduler_step_sz', type=int, default=2)
+    parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     args = parser.parse_args()
 
@@ -415,7 +415,8 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
+    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
