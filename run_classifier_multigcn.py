@@ -305,13 +305,12 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
         ori_label.append(label)
-        flattened = [val for sublist in ori_label for val in sublist]
         with torch.no_grad():
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             pred = torch.cat((pred, output), dim=0)
     print('###################DONE#########################')
-    return pred, flattened
+    return pred, ori_label
 
 
 def top_k_predicted(goldenTruth, predictions, k):
@@ -458,9 +457,10 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    results, test_labels = test(test_dataset, model, mlb, G, args.batch_sz, device)
+    results, folded_labels = test(test_dataset, model, mlb, G, args.batch_sz, device)
     # results = test(test_dataset, model, G, args.batch_sz, device)
     #
+    test_labels = [val for sublist in folded_labels for val in sublist]
     test_label_transform = mlb.fit_transform(test_labels)
     # print('test_golden_truth', test_labels)
     #
