@@ -346,7 +346,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         sum_product += sums[2]
         # calculate label-based evaluation
         confusion = micro_macro_eval(pred, label, threshold=0.5)
-        print(tp.size, confusion[0])
+        print(tp.size, confusion[0].size)
         tp = np.concatenate((tp, confusion[0]), axis=0)
         print('tp', tp.size)
         tn = np.concatenate((tn, confusion[1]), axis=0)
