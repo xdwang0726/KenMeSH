@@ -98,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 130000 < i <= 140000:
+        if 430000 < i <= 440000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -314,10 +314,10 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     sum_pred = 0.
     sum_target = 0.
     sum_product = 0.
-    tp = np.zeros((batch_sz, 29368))
-    tn = np.zeros((batch_sz, 29368))
-    fp = np.zeros((batch_sz, 29368))
-    fn = np.zeros((batch_sz, 29368))
+    tp = 0.
+    tn = 0.
+    fp = 0.
+    fn = 0.
     print('Testing....')
     model.eval()
     for label, mask, abstract, title, abstract_length, title_length in test_data:
@@ -346,10 +346,10 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         sum_product += sums[2]
         # calculate label-based evaluation
         confusion = micro_macro_eval(results, label, threshold=0.5)
-        tp = np.concatenate((tp, confusion[0]), axis=0)
-        tn = np.concatenate((tn, confusion[1]), axis=0)
-        fp = np.concatenate((fp, confusion[2]), axis=0)
-        fn = np.concatenate((fn, confusion[3]), axis=0)
+        tp += confusion[0]
+        tn += confusion[1]
+        fp += confusion[2]
+        fn += confusion[3]
 
     # Evaluations
     print('Calculate Precision at K...')

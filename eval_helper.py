@@ -238,5 +238,11 @@ def micro_macro_eval(pred, target, threshold):
     fp = np.logical_and(pred == positive, target == negative).astype(np.int)
     fn = np.logical_and(pred == negative, target == positive).astype(np.int)
 
-    return (tp, tn, fp, fn)
+    sum_tp = np.sum(tp)
+    sum_tn = np.sum(tn)
+    sum_fp = np.sum(fp)
+    sum_fn = np.sum(fn)
+
+
+    return (sum_tp, sum_tn, sum_fp, sum_fn)
 
