@@ -314,10 +314,10 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     sum_pred = 0.
     sum_target = 0.
     sum_product = 0.
-    tp = np.zeros(0)
-    tn = np.zeros(0)
-    fp = np.zeros(0)
-    fn = np.zeros(0)
+    tp = np.zeros((batch_sz, 29368))
+    tn = np.zeros((batch_sz, 29368))
+    fp = np.zeros((batch_sz, 29368))
+    fn = np.zeros((batch_sz, 29368))
     print('Testing....')
     model.eval()
     for label, mask, abstract, title, abstract_length, title_length in test_data:
@@ -346,7 +346,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         sum_product += sums[2]
         # calculate label-based evaluation
         confusion = micro_macro_eval(pred, label, threshold=0.5)
-        print(tp.size, confusion[0].size)
+        print(tp.shape, confusion[0].shape)
         tp = np.concatenate((tp, confusion[0]), axis=0)
         print('tp', tp.size)
         tn = np.concatenate((tn, confusion[1]), axis=0)
