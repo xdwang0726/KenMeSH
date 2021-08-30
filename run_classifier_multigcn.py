@@ -414,6 +414,27 @@ def binarize_probs(probs, thresholds):
     return binarized_output
 
 
+def plot_loss(train_loss, valid_loss, save_path):
+    # visualize the loss as the network trained
+    fig = plt.figure(figsize=(10, 8))
+    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
+    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
+
+    # find position of lowest validation loss
+    minposs = valid_loss.index(min(valid_loss)) + 1
+    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
+
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.ylim(0, 0.5)  # consistent scale
+    plt.xlim(0, len(train_loss) + 1)  # consistent scale
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    fig.savefig(save_path, bbox_inches='tight')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path')
@@ -449,6 +470,7 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
+    print('{} gpu is avaliable'.format(n_gpu))
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
@@ -458,14 +480,9 @@ def main():
 
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+                                                   embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
                                     #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
-    # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
-    # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
-    #                        args.atten_dropout, embedding_dim=args.embedding_dim)
-    #
-    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
     G = G.to(device)
@@ -473,7 +490,6 @@ def main():
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCELoss()
@@ -486,24 +502,7 @@ def main():
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
 
-    # visualize the loss as the network trained
-    fig = plt.figure(figsize=(10, 8))
-    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
-    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
-
-    # find position of lowest validation loss
-    minposs = valid_loss.index(min(valid_loss)) + 1
-    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
-
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.ylim(0, 0.5)  # consistent scale
-    plt.xlim(0, len(train_loss) + 1)  # consistent scale
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    fig.savefig(args.loss, bbox_inches='tight')
+    plot_loss(train_loss, valid_loss, args.loss)
 
     # torch.save({
     #     'model_state_dict': model.state_dict(),
