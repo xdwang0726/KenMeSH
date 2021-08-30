@@ -98,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 130000 < i <= 140000:
+        if 13000 < i <= 14000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -111,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 140000:
+        elif i > 14000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -346,7 +346,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         sum_product += sums[2]
         # calculate label-based evaluation
         confusion = micro_macro_eval(pred, label, threshold=0.5)
+        print(tp.size, confusion[0])
         tp = np.concatenate((tp, confusion[0]), axis=0)
+        print('tp', tp.size)
         tn = np.concatenate((tn, confusion[1]), axis=0)
         fp = np.concatenate((fp, confusion[2]), axis=0)
         fn = np.concatenate((fn, confusion[3]), axis=0)
