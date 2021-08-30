@@ -309,7 +309,7 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
-    pred = torch.zeros(0).to(device)
+    # pred = torch.zeros(0).to(device)
     top_k_precisions = []
     sum_pred = 0.
     sum_target = 0.
@@ -332,23 +332,21 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         with torch.no_grad():
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
-            pred = torch.cat((pred, output), dim=0)
+            # pred = torch.cat((pred, output), dim=0)
 
         # calculate precision at k
-        pred = pred.data.cpu().numpy()
+        results = output.data.cpu().numpy()
         test_labelsIndex = getLabelIndex(label)
-        precisions = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+        precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
         top_k_precisions.append(precisions)
         # calculate example-based evaluation
-        sums = example_based_evaluation(pred, label, threshold=0.5)
+        sums = example_based_evaluation(results, label, threshold=0.5)
         sum_pred += sums[0]
         sum_target += sums[1]
         sum_product += sums[2]
         # calculate label-based evaluation
-        confusion = micro_macro_eval(pred, label, threshold=0.5)
-        print(tp.shape, confusion[0].shape)
+        confusion = micro_macro_eval(results, label, threshold=0.5)
         tp = np.concatenate((tp, confusion[0]), axis=0)
-        print('tp', tp.size)
         tn = np.concatenate((tn, confusion[1]), axis=0)
         fp = np.concatenate((fp, confusion[2]), axis=0)
         fn = np.concatenate((fn, confusion[3]), axis=0)
