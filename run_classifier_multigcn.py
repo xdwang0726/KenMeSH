@@ -15,7 +15,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
@@ -98,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 13000 < i <= 14000:
+        if 130000 < i <= 140000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -111,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 14000:
+        elif i > 140000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -367,9 +367,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         print('{}: {:.5f}'.format(n, m))
 
     print('Calculate Label-based Evaluation')
-    mip = np.sum(tp) / (np.sum(tp) + np.sum(fp))
-    mir = np.sum(tp) / (np.sum(tp) + np.sum(fn))
-    mif = 2 * mir * mip / (mir + mip)
+    mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    mif = zero_division(2 * mir * mip, (mir + mip))
     for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
         print('{}: {:.5f}'.format(n, m))
 
