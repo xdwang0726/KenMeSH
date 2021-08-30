@@ -172,7 +172,7 @@ def weight_matrix(vocab, vectors, dim=200):
     return torch.from_numpy(weight_matrix)
 
 
-def generate_batch(batch, ksz):
+def generate_batch(batch):
     """
     Output:
         text: the text entries in the data_batch are packed into a list and
