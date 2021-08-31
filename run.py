@@ -99,7 +99,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 43000 < i <= 44000:
+        if 130000 < i <= 140000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -112,7 +112,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 44000:
+        elif i > 140000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -313,7 +313,7 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
-    pred = torch.zeros(0).to(device)
+    # pred = torch.zeros(0).to(device)
     top_k_precisions = []
     sum_pred = 0.
     sum_target = 0.
@@ -336,10 +336,10 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         with torch.no_grad():
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
-            pred = torch.cat((pred, output), dim=0)
+            # pred = torch.cat((pred, output), dim=0)
 
         # calculate precision at k
-        pred = pred.data.cpu().numpy()
+        pred = output.data.cpu().numpy()
         test_labelsIndex = getLabelIndex(label)
         precisions = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
         top_k_precisions.append(precisions)
@@ -418,6 +418,27 @@ def binarize_probs(probs, thresholds):
     return binarized_output
 
 
+def plot_loss(train_loss, valid_loss, save_path):
+    # visualize the loss as the network trained
+    fig = plt.figure(figsize=(10, 8))
+    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
+    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
+
+    # find position of lowest validation loss
+    minposs = valid_loss.index(min(valid_loss)) + 1
+    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
+
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.ylim(0, 0.5)  # consistent scale
+    plt.xlim(0, len(train_loss) + 1)  # consistent scale
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    fig.savefig(save_path, bbox_inches='tight')
+
+
 def dist_init(host_addr, rank, local_rank, world_size):
     torch.distributed.init_process_group("nccl", init_method=host_addr, rank=rank, world_size=world_size)
     num_gpus = torch.cuda.device_count()
@@ -458,8 +479,8 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
+    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
 
     args = parser.parse_args()
 
@@ -467,15 +488,27 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # initialize the distributed training
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
+    # hostname = socket.gethostname()
+    # ip_address = socket.gethostbyname(hostname)
 
-    world_size = int(os.environ['SLURM_NTASKS'])
-    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(os.environ.get("SLURM_LOCALID"))
-    local_rank = int(os.environ['SLURM_LOCALID'])
-    dist_init(args.init_method, rank, local_rank, world_size)
+    # world_size = int(os.environ['SLURM_NTASKS'])
+    local_rank = int(os.environ.get('SLURM_LOCALID'))
+    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + local_rank
+
+    available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',', ""))
+    current_device = int(available_gpus[local_rank])
+    torch.cuda.set_device(current_device)
+
+    print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
+    # init the process group
+    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size,
+                            rank=rank)
+    print("process group ready!")
+
+    print('From Rank: {}, ==> Making model..'.format(rank))
+    # dist_init(args.init_method, rank, local_rank, world_size)
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
@@ -494,6 +527,7 @@ def main():
 
     model.to(device)
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
+    print('From Rank: {}, ==> Preparing data..'.format(rank))
     G = G.to(device)
     G = dgl.add_self_loop(G)
     # G_c.to(device)
@@ -510,27 +544,11 @@ def main():
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler,
-                                          world_size, rank)
+                                          args.world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
-    fig = plt.figure(figsize=(10, 8))
-    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
-    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
-
-    # find position of lowest validation loss
-    minposs = valid_loss.index(min(valid_loss)) + 1
-    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
-
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.ylim(0, 0.5)  # consistent scale
-    plt.xlim(0, len(train_loss) + 1)  # consistent scale
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    fig.savefig(args.loss, bbox_inches='tight')
+    plot_loss(train_loss, valid_loss, args.loss)
 
     # torch.save({
     #     'model_state_dict': model.state_dict(),
