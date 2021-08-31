@@ -1,13 +1,14 @@
 import argparse
-import logging
 import os
+import random
+import socket
 import sys
 
 import dgl
 import ijson
-import random
-import torch
 import matplotlib.pyplot as plt
+import torch.distributed as dist
+import torch.utils.data.distributed
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
@@ -15,11 +16,11 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence
+from utils_multi import MeSH_indexing, pad_sequence, DistributedSamplerWrapper
 
 
 def set_seed(seed):
@@ -98,7 +99,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 430000 < i <= 440000:
+        if 43000 < i <= 44000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -111,7 +112,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 440000:
+        elif i > 44000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -220,11 +221,14 @@ def generate_batch(batch):
 
 
 def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
-          num_workers, optimizer, lr_scheduler):
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=train_sampler, collate_fn=generate_batch,
+          num_workers, optimizer, lr_scheduler, world_size, rank):
+    _train_sampler = DistributedSamplerWrapper(train_sampler, num_replicas=world_size, rank=rank)
+
+    train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_train_sampler, collate_fn=generate_batch,
                             num_workers=num_workers)
 
-    valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=valid_sampler,
+    _valid_sampler = DistributedSamplerWrapper(valid_sampler, num_replicas=world_size, rank=rank)
+    valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_valid_sampler,
                             collate_fn=generate_batch, num_workers=num_workers)
 
     num_lines = num_epochs * len(train_data)
@@ -367,9 +371,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         print('{}: {:.5f}'.format(n, m))
 
     print('Calculate Label-based Evaluation')
-    mip = np.sum(tp) / (np.sum(tp) + np.sum(fp))
-    mir = np.sum(tp) / (np.sum(tp) + np.sum(fn))
-    mif = 2 * mir * mip / (mir + mip)
+    mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    mif = zero_division(2 * mir * mip, (mir + mip))
     for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
         print('{}: {:.5f}'.format(n, m))
 
@@ -414,6 +418,13 @@ def binarize_probs(probs, thresholds):
     return binarized_output
 
 
+def dist_init(host_addr, rank, local_rank, world_size):
+    torch.distributed.init_process_group("nccl", init_method=host_addr, rank=rank, world_size=world_size)
+    num_gpus = torch.cuda.device_count()
+    torch.cuda.set_device(local_rank)
+    assert torch.distributed.is_initialized()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_path')
@@ -446,11 +457,25 @@ def main():
     parser.add_argument('--scheduler_step_sz', type=int, default=2)
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
+    parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
+    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--local_rank', default=0, type=int, help='rank of distributed processes')
+
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    # initialize the distributed training
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+
+    world_size = int(os.environ['SLURM_NTASKS'])
+    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(os.environ.get("SLURM_LOCALID"))
+    local_rank = int(os.environ['SLURM_LOCALID'])
+    dist_init(args.init_method, rank, local_rank, world_size)
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
@@ -468,6 +493,7 @@ def main():
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.to(device)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
     G = G.to(device)
     G = dgl.add_self_loop(G)
     # G_c.to(device)
@@ -483,7 +509,8 @@ def main():
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
+                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler,
+                                          world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
@@ -517,6 +544,8 @@ def main():
     #
     # testing
     test(test_dataset, model, mlb, G, args.batch_sz, device)
+
+
 
 
 if __name__ == "__main__":
