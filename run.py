@@ -479,7 +479,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
-    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
+    # parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
@@ -493,7 +493,7 @@ def main():
     # hostname = socket.gethostname()
     # ip_address = socket.gethostbyname(hostname)
 
-    # world_size = int(os.environ['SLURM_NTASKS'])
+    world_size = int(os.environ['SLURM_NTASKS'])
     local_rank = int(os.environ.get('SLURM_LOCALID'))
     rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + local_rank
 
@@ -503,12 +503,12 @@ def main():
 
     print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
     # init the process group
-    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size,
-                            rank=rank)
+    # dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size,
+    #                         rank=rank)
+    dist_init(args.init_method, rank, local_rank, world_size)
     print("process group ready!")
 
     print('From Rank: {}, ==> Making model..'.format(rank))
-    # dist_init(args.init_method, rank, local_rank, world_size)
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
