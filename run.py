@@ -488,7 +488,7 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
     # initialize the distributed training
     # hostname = socket.gethostname()
     # ip_address = socket.gethostbyname(hostname)
@@ -497,9 +497,9 @@ def main():
     local_rank = int(os.environ.get('SLURM_LOCALID'))
     rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + local_rank
 
-    available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',', ""))
-    current_device = int(available_gpus[local_rank])
-    torch.cuda.set_device(current_device)
+    # available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',', ""))
+    # current_device = int(available_gpus[local_rank])
+    # torch.cuda.set_device(current_device)
 
     print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
     # init the process group
