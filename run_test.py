@@ -5,6 +5,8 @@ import sys
 
 import dgl
 import ijson
+import random
+import torch
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -13,11 +15,25 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
-from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
 from utils_multi import MeSH_indexing, pad_sequence
+
+
+def set_seed(seed):
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)  # numpy
+    torch.manual_seed(seed)  # cpu
+    torch.cuda.manual_seed(seed)  # gpu
+    torch.backends.cudnn.deterministic = True  # cudnn
+
+
+def flatten(l):
+    flat = [i for item in l for i in item]
+    return flat
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
@@ -82,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 430000 < i <= 440000:
+        if 130000 < i <= 140000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -95,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 440000:
+        elif i > 140000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -171,7 +187,7 @@ def generate_batch(batch):
         # padding according to the maximum sequence length in batch
         abstract = [entry[2] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=10, batch_first=True)
+        abstract = pad_sequence(abstract, ksz=3, batch_first=True)
 
         title = [entry[3] for entry in batch]
         title_length = []
@@ -181,7 +197,7 @@ def generate_batch(batch):
             else:
                 length = len(seq)
             title_length.append(length)
-        title = pad_sequence(title, ksz=10, batch_first=True)
+        title = pad_sequence(title, ksz=3, batch_first=True)
         return label, mesh_mask, abstract, title, abstract_length, title_length
 
     else:
@@ -189,7 +205,7 @@ def generate_batch(batch):
 
         abstract = [entry[1] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=10, batch_first=True)
+        abstract = pad_sequence(abstract, ksz=3, batch_first=True)
 
         title = [entry[2] for entry in batch]
         title_length = []
@@ -199,7 +215,7 @@ def generate_batch(batch):
             else:
                 length = len(seq)
             title_length.append(length)
-        title = pad_sequence(title, ksz=10, batch_first=True)
+        title = pad_sequence(title, ksz=3, batch_first=True)
         return mesh_mask, abstract, title, abstract_length, title_length
 
 
@@ -293,24 +309,71 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
-    pred = torch.zeros(0).to(device)
-    ori_label = []
+    # pred = torch.zeros(0).to(device)
+    top_k_precisions = []
+    sum_pred = 0.
+    sum_target = 0.
+    sum_product = 0.
+    tp = 0.
+    tn = 0.
+    fp = 0.
+    fn = 0.
     print('Testing....')
+    model.eval()
     for label, mask, abstract, title, abstract_length, title_length in test_data:
-    # for mask, abstract, title, abstract_length, title_length in test_data:
         mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
         abstract_length = torch.Tensor(abstract_length)
         title_length = torch.Tensor(title_length)
         mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
-        ori_label.append(label)
+        label = mlb.fit_transform(label)
+
         with torch.no_grad():
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
-            pred = torch.cat((pred, output), dim=0)
+            # pred = torch.cat((pred, output), dim=0)
+
+        # calculate precision at k
+        results = output.data.cpu().numpy()
+        test_labelsIndex = getLabelIndex(label)
+        precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
+        top_k_precisions.append(precisions)
+        # calculate example-based evaluation
+        sums = example_based_evaluation(results, label, threshold=0.5)
+        sum_pred += sums[0]
+        sum_target += sums[1]
+        sum_product += sums[2]
+        # calculate label-based evaluation
+        confusion = micro_macro_eval(results, label, threshold=0.5)
+        tp += confusion[0]
+        tn += confusion[1]
+        fp += confusion[2]
+        fn += confusion[3]
+
+    # Evaluations
+    print('Calculate Precision at K...')
+    p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
+    p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
+    p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
+    for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
+        print('p@{}: {:.5f}'.format(k, p))
+
+    print('Calculate Example-based Evaluation')
+    ebp = sum_product / sum_pred
+    ebr = sum_product / sum_target
+    ebf = (2 * sum_product) / (sum_pred + sum_target)
+    for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
+        print('{}: {:.5f}'.format(n, m))
+
+    print('Calculate Label-based Evaluation')
+    mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    mif = zero_division(2 * mir * mip, (mir + mip))
+    for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
+        print('{}: {:.5f}'.format(n, m))
+
     print('###################DONE#########################')
-    return pred, ori_label
 
 
 def top_k_predicted(goldenTruth, predictions, k):
@@ -351,82 +414,7 @@ def binarize_probs(probs, thresholds):
     return binarized_output
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path')
-    parser.add_argument('--test_path')
-    parser.add_argument('----meSH_pair_path')
-    parser.add_argument('--word2vec_path')
-    parser.add_argument('--meSH_pair_path')
-    parser.add_argument('--mesh_parent_children_path')
-    parser.add_argument('--graph')
-    parser.add_argument('--graph_cooccurence')
-    parser.add_argument('--results')
-    parser.add_argument('--results_opt')
-    parser.add_argument('--pred')
-    parser.add_argument('--save-model-path')
-    parser.add_argument('--model-path')
-
-    parser.add_argument('--num_example', type=int, default=10000)
-    parser.add_argument('--device', default='cuda', type=str)
-    parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=3)
-    parser.add_argument('--hidden_gcn_size', type=int, default=200)
-    parser.add_argument('--embedding_dim', type=int, default=200)
-    parser.add_argument('--add_original_embedding', type=bool, default=True)
-    parser.add_argument('--dropout', type=float, default=0.2)
-    parser.add_argument('--atten_dropout', type=float, default=0.5)
-
-    parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=16)
-    parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--lr', type=float, default=1e-4)
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=0)
-    parser.add_argument('--scheduler_step_sz', type=int, default=2)
-    parser.add_argument('--lr_gamma', type=float, default=0.9)
-
-    args = parser.parse_args()
-
-    n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # device = torch.device(args.device)
-    logging.info('Device:'.format(device))
-
-    # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
-        args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
-
-    vocab_size = len(vocab)
-    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
-                                    #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
-    # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
-    # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
-    #                        args.atten_dropout, embedding_dim=args.embedding_dim)
-    #
-    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
-
-    model.to(device)
-    G = G.to(device)
-    G = dgl.add_self_loop(G)
-    # G_c.to(device)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
-    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCELoss()
-    # criterion = FocalLoss()
-    # criterion = AsymmetricLossOptimized()
-
-    # training
-    print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
-    print('Finish training!')
-
+def plot_loss(train_loss, valid_loss, save_path):
     # visualize the loss as the network trained
     fig = plt.figure(figsize=(10, 8))
     plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
@@ -444,8 +432,77 @@ def main():
     plt.legend()
     plt.tight_layout()
     plt.show()
-    fig.savefig('loss_plot.png', bbox_inches='tight')
+    fig.savefig(save_path, bbox_inches='tight')
 
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_path')
+    parser.add_argument('--test_path')
+    parser.add_argument('----meSH_pair_path')
+    parser.add_argument('--word2vec_path')
+    parser.add_argument('--meSH_pair_path')
+    parser.add_argument('--mesh_parent_children_path')
+    parser.add_argument('--graph')
+    parser.add_argument('--graph_cooccurence')
+    parser.add_argument('--results')
+    parser.add_argument('--save-model-path')
+    parser.add_argument('--loss')
+
+    parser.add_argument('--num_example', type=int, default=10000)
+    parser.add_argument('--device', default='cuda', type=str)
+    parser.add_argument('--nKernel', type=int, default=200)
+    parser.add_argument('--ksz', default=3)
+    parser.add_argument('--hidden_gcn_size', type=int, default=200)
+    parser.add_argument('--embedding_dim', type=int, default=200)
+    parser.add_argument('--dropout', type=float, default=0.2)
+    parser.add_argument('--atten_dropout', type=float, default=0.5)
+
+    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--batch_sz', type=int, default=16)
+    parser.add_argument('--num_workers', type=int, default=1)
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--weight_decay', type=float, default=0)
+    parser.add_argument('--scheduler_step_sz', type=int, default=2)
+    parser.add_argument('--lr_gamma', type=float, default=0.9)
+
+    args = parser.parse_args()
+
+    n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
+    print('{} gpu is avaliable'.format(n_gpu))
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    print('Device:{}'.format(device))
+
+    # Get dataset and label graph & Load pre-trained embeddings
+    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
+        args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
+
+    vocab_size = len(vocab)
+    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+                                                   embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+                                    #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+
+    model.to(device)
+    G = G.to(device)
+    G = dgl.add_self_loop(G)
+    # G_c.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    criterion = nn.BCELoss()
+    # criterion = FocalLoss()
+    # criterion = AsymmetricLossOptimized()
+
+    # training
+    print("Start training!")
+    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
+                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
+    print('Finish training!')
+
+    plot_loss(train_loss, valid_loss, args.loss)
 
     # torch.save({
     #     'model_state_dict': model.state_dict(),
@@ -458,63 +515,7 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    results, folded_labels = test(test_dataset, model, mlb, G, args.batch_sz, device)
-    # results = test(test_dataset, model, G, args.batch_sz, device)
-    #
-    test_labels = [val for sublist in folded_labels for val in sublist]
-    test_label_transform = mlb.fit_transform(test_labels)
-    # print('test_golden_truth', test_labels)
-    #
-    pred = results.data.cpu().numpy()
-    #
-    top_10_pred = top_k_predicted(test_labels, pred, 10)
-    # top_10_pred = top_k_predicted(pred, 10)
-    #
-    # convert binary label back to orginal ones
-    top_10_mesh = mlb.inverse_transform(top_10_pred)
-    #
-    # print('test_top_10:', top_10_mesh, '\n')
-    # top_10_mesh = [list(item) for item in top_10_mesh]
-
-    # pickle.dump(top_10_mesh, open(args.results, "wb"))
-
-    threshold = np.amax(np.mean(pred, axis=0))
-    static_method = binarize_probs(pred, [threshold] * num_nodes)
-    static_method_mesh = mlb.inverse_transform(static_method)
-    # pickle.dump(static_method_mesh, open(args.results_opt, "wb"))
-    #
-    # # print("\rSaving model to {}".format(args.save_model_path))
-    # # torch.save(model.to('cpu'), args.save_model_path)
-    #
-    # # precision @k
-    test_labelsIndex = getLabelIndex(test_label_transform)
-    precision = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
-
-    for k, p in zip([1, 3, 5], precision):
-        print('p@{}: {:.5f}'.format(k, p))
-
-    # example based evaluation
-    example_based_measure_5 = example_based_evaluation(test_labels, top_10_mesh)
-    print(" TOP 10 EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = micro_macro_eval(test_label_transform, top_10_pred)
-    print("TOP 10 MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
-
-    example_based_measure_5 = example_based_evaluation(test_labels, static_method_mesh)
-    print(" THRESHOLD EMP@5, EMR@5, EMF@5")
-    for em in example_based_measure_5:
-        print(em, ",")
-
-    # label based evaluation
-    label_measure_5 = micro_macro_eval(test_label_transform, static_method_mesh)
-    print("THRESHOLD MaP@5, MiP@5, MaF@5, MiF@5: ")
-    for measure in label_measure_5:
-        print(measure, ",")
+    test(test_dataset, model, mlb, G, args.batch_sz, device)
 
 
 if __name__ == "__main__":
