@@ -494,8 +494,8 @@ def main():
     # ip_address = socket.gethostbyname(hostname)
 
     world_size = int(os.environ['SLURM_NTASKS'])
-    local_rank = int(os.environ.get('SLURM_LOCALID'))
-    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + local_rank
+    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(os.environ.get("SLURM_LOCALID"))
+    local_rank = int(os.environ['SLURM_LOCALID'])
 
     # available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',', ""))
     # current_device = int(available_gpus[local_rank])
