@@ -494,7 +494,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
         # x_feature = torch.cat((title_feature, abstract_feature), dim=2)  # size: (bs, 29368, embed_dim*2)
         # x = torch.sum(x_feature * label_feature, dim=2)
-        x = torch.sum(x_feature * (atten_mask.transpose(0, 1)), dim=2)
+        x = torch.sum(x_feature * (atten_mask.transpose(1, 2)), dim=2)
 
         # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
 
