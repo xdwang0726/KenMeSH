@@ -447,6 +447,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # print('label', label_feature.shape)
         # label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
+        print('label_feature', label_feature.shape)
         # label_feature = torch.cat((label_feature, label_cooccurence_feature), dim=1)  # torch.Size([29368, 200*2])
 
         # get title content features
