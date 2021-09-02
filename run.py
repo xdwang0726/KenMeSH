@@ -481,6 +481,7 @@ def main():
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
     # parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
+    parser.add_argument('--local_rank', default=0, type=int)
 
     args = parser.parse_args()
 
