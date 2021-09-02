@@ -187,7 +187,7 @@ def generate_batch(batch):
         # padding according to the maximum sequence length in batch
         abstract = [entry[2] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=5, batch_first=True)
+        abstract = pad_sequence(abstract, ksz=3, batch_first=True)
 
         title = [entry[3] for entry in batch]
         title_length = []
@@ -197,7 +197,7 @@ def generate_batch(batch):
             else:
                 length = len(seq)
             title_length.append(length)
-        title = pad_sequence(title, ksz=5, batch_first=True)
+        title = pad_sequence(title, ksz=3, batch_first=True)
         return label, mesh_mask, abstract, title, abstract_length, title_length
 
     else:
@@ -205,7 +205,7 @@ def generate_batch(batch):
 
         abstract = [entry[1] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=5, batch_first=True)
+        abstract = pad_sequence(abstract, ksz=3, batch_first=True)
 
         title = [entry[2] for entry in batch]
         title_length = []
@@ -215,7 +215,7 @@ def generate_batch(batch):
             else:
                 length = len(seq)
             title_length.append(length)
-        title = pad_sequence(title, ksz=5, batch_first=True)
+        title = pad_sequence(title, ksz=3, batch_first=True)
         return mesh_mask, abstract, title, abstract_length, title_length
 
 
@@ -452,7 +452,7 @@ def main():
     parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
-    parser.add_argument('--ksz', default=5)
+    parser.add_argument('--ksz', default=3)
     parser.add_argument('--hidden_gcn_size', type=int, default=200)
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--dropout', type=float, default=0.2)
