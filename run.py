@@ -545,7 +545,7 @@ def main():
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler,
-                                          args.world_size, rank)
+                                          world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
