@@ -447,12 +447,12 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # print('label', label_feature.shape)
         # label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
-        print('label_feature', label_feature.shape)
+        # print('label_feature', label_feature.shape)
         # label_feature = torch.cat((label_feature, label_cooccurence_feature), dim=1)  # torch.Size([29368, 200*2])
 
         # get title content features
         atten_mask = label_feature.transpose(0, 1) * mask.unsqueeze(1)
-        print('atten_mask', atten_mask.shape)
+        # print('atten_mask', atten_mask.shape)
         embedded_title = self.embedding_layer(input_title.long())
         # print('title_length', title_length)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
@@ -495,7 +495,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # x_feature = torch.cat((title_feature, abstract_feature), dim=2)  # size: (bs, 29368, embed_dim*2)
         # x = torch.sum(x_feature * label_feature, dim=2)
         x = torch.sum(x_feature * (atten_mask.transpose(1, 2)), dim=2)
-        print('x', x.shape)
+        # print('x', x.shape)
 
         # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
 
