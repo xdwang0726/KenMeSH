@@ -493,8 +493,8 @@ def main():
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     # criterion = nn.BCELoss()
-    # criterion = FocalLoss()
-    criterion = AsymmetricLossOptimized()
+    criterion = FocalLoss()
+    # criterion = AsymmetricLossOptimized()
 
     # training
     print("Start training!")
