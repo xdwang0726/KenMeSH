@@ -82,7 +82,7 @@ def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
     print('count number of nodes and get edges of the graph %s' % len(new_mapping))
     with open(new_mesh_id_path, 'w') as f:
         for item in new_mapping:
-            f.write("%s\n" % item)
+            f.write("%s" % item)
 
     class_freq = {}
     for doc in label_id:
@@ -92,11 +92,11 @@ def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
             else:
                 class_freq[label] = 1
 
-    train_labels = list(class_freq.keys())
-    all_meshIDs = list(new_mapping)
-
-    missing_mesh = list(set(all_meshIDs) - set(train_labels))
-    print('missing_mesh', missing_mesh)
+    # train_labels = list(class_freq.keys())
+    # all_meshIDs = list(new_mapping)
+    #
+    # missing_mesh = list(set(all_meshIDs) - set(train_labels))
+    # print('missing_mesh', missing_mesh)
 
     neg_class_freq = {k: len(label_id) - v for k, v in class_freq.items()}
     save_data = dict(class_freq=class_freq, neg_class_freq=neg_class_freq)
