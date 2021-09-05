@@ -92,7 +92,7 @@ def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
                 class_freq[label] = 1
 
     train_labels = list(class_freq.keys())
-    all_meshIDs = list(new_mapping.values())
+    all_meshIDs = list(new_mapping)
 
     missing_mesh = list(set(all_meshIDs) - set(train_labels))
     print('missing_mesh', missing_mesh)
