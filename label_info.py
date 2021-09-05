@@ -72,15 +72,13 @@ def new_label_mapping(train_data_path, num_example, MeSH_id_pair_file, new_mesh_
             break
 
     flat_label = list(set([m for meshs in label_id for m in meshs]))
-    print(flat_label)
     print('len of mesh', len(flat_label))
     # get descriptor and MeSH mapped
     new_mapping = []
     with open(MeSH_id_pair_file, 'r') as f:
         for line in f:
             (key, value) = line.split('=')
-            print(value)
-            if value in flat_label:
+            if value.strip() in flat_label:
                 new_mapping.append(line)
 
     # count number of nodes and get parent and children edges
