@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data.sampler import WeightedRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
 
@@ -19,7 +19,7 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence
+from utils_multi import MeSH_indexing, pad_sequence, ImbalancedDatasetSampler
 
 
 def set_seed(seed):
@@ -136,7 +136,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, mesh_mask, test_mesh_mask,  test_label_id,
+    dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, mesh_mask, test_mesh_mask,  test_label_id,
                                                 train_title, test_title, ngrams=1, vocab=None, include_unk=False,
                                                 is_test=False, is_multichannel=True)
 
@@ -144,9 +144,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     valid_size = 0.2
     indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(pmid)))
-    train_idx, valid_idx = indices[split:], indices[:split]
-    train_sampler = SubsetRandomSampler(train_idx)
-    valid_sampler = SubsetRandomSampler(valid_idx)
+    # train_idx, valid_idx = indices[split:], indices[:split]
+    # train_sampler = SubsetRandomSampler(train_idx)
+    # valid_sampler = SubsetRandomSampler(valid_idx)
+    train_dataset, valid_dataset = torch.utils.data.random_split(dataset=dataset, lengths=[indices-split, split])
+    train_sampler = ImbalancedDatasetSampler(train_dataset)
 
     # build vocab
     print('building vocab')
@@ -159,7 +161,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler # G_c
+    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G, train_sampler #, valid_sampler, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -219,13 +221,13 @@ def generate_batch(batch):
         return mesh_mask, abstract, title, abstract_length, title_length
 
 
-def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
-          num_workers, optimizer, lr_scheduler):
+def train(train_dataset, train_sampler, valid_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
+          lr_scheduler):
+
     train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=train_sampler, collate_fn=generate_batch,
                             num_workers=num_workers)
 
-    valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=valid_sampler,
-                            collate_fn=generate_batch, num_workers=num_workers)
+    valid_data = DataLoader(valid_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers)
 
     num_lines = num_epochs * len(train_data)
 
@@ -475,8 +477,12 @@ def main():
     print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
-        args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
+    num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G, train_sampler = prepare_dataset(args.train_path,
+                                                                                                                   args.test_path,
+                                                                                                                   args.meSH_pair_path,
+                                                                                                                   args.word2vec_path,
+                                                                                                                   args.graph,
+                                                                                                                   args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
@@ -498,7 +504,7 @@ def main():
 
     # training
     print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
+    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_dataset, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
 
