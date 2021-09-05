@@ -53,7 +53,7 @@ def label_count(train_data_path, MeSH_id_pair_file):
     return save_data
 
 
-def new_label_mapping(train_data_path, num_example, MeSH_id_pair_file, new_mesh_id_path):
+def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
     # get MeSH in each example
     f = open(train_data_path, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
@@ -62,14 +62,11 @@ def new_label_mapping(train_data_path, num_example, MeSH_id_pair_file, new_mesh_
 
     print('Start loading training data')
     for i, obj in enumerate(tqdm(objects)):
-        if i <= num_example:
-            try:
-                mesh_id = obj['meshId']
-                label_id.append(mesh_id)
-            except AttributeError:
-                print(obj["pmid"].strip())
-        else:
-            break
+        try:
+            mesh_id = obj['meshId']
+            label_id.append(mesh_id)
+        except AttributeError:
+            print(obj["pmid"].strip())
 
     flat_label = list(set([m for meshs in label_id for m in meshs]))
     print('len of mesh', len(flat_label))
@@ -114,11 +111,10 @@ def main():
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--new_meSH_pair')
     parser.add_argument('--class_freq')
-    parser.add_argument('--num_example', type=int, default=10000)
 
     args = parser.parse_args()
 
-    save_data = new_label_mapping(args.train, args.num_example, args.meSH_pair_path, args.new_meSH_pair)
+    save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
     with open(args.class_freq, 'wb') as f:
         pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
 
