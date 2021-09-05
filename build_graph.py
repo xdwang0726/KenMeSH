@@ -16,6 +16,7 @@ from transformers import BertModel
 
 tokenizer = get_tokenizer('basic_english')
 
+
 def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
     """
 
@@ -455,20 +456,6 @@ def main():
             G = build_MeSH_RGCNgraph(edge_dic, label_embedding)
 
     save_graphs(args.output, G)
-
-    # RGCN
-    # edge_dic, label_embedding = RGCN_get_node_and_edges(args.train, args.meSH_pair_path, args.mesh_parent_children_path, args.threshold, vectors)
-    # G = build_MeSH_RGCNgraph(edge_dic, label_embedding)
-    # dgl.save_graphs(args.output, G)
-
-    # GCN - cooccurence
-    # edge, node_count, label_embedding = cooccurence_node_edge(args.train, args.meSH_pair_path, args.threshold, vectors)
-    # G = build_MeSH_graph(edge, node_count, label_embedding)
-
-    # GCN - multitype edges
-    # edges, node_count, label_embedding = multitype_GCN_get_node_and_edges(args.train, args.meSH_pair_path, args.mesh_parent_children_path, args.threshold, vectors)
-    # G = build_MeSH_GCNgraph_multitype(edges, node_count, label_embedding)
-    # save_graphs(args.output, G)
 
 
 if __name__ == "__main__":
