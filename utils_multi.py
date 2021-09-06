@@ -596,7 +596,8 @@ def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
 
     indices = randperm(sum(lengths), generator=default_generator).tolist()
-    return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+    return ([Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)],
+            [indices[offset - length: offset] for offset, length in zip(_accumulate(lengths), lengths)])
 
 
 class MultilabelBalancedRandomSampler(Sampler):
@@ -610,7 +611,7 @@ class MultilabelBalancedRandomSampler(Sampler):
     will have at least batch_size / n_classes samples as batch_size approaches infinity
     """
 
-    def __init__(self, labels, num_labels, num_examples, class_indices, mlb, indices=None, class_choice="least_sampled"):
+    def __init__(self, labels, num_labels, num_examples, class_indices, mlb, train_indices=None, class_choice="least_sampled"):
         """
         Parameters:
         -----------
@@ -626,7 +627,7 @@ class MultilabelBalancedRandomSampler(Sampler):
         self.labels = labels
         self.num_labels = num_labels
         self.num_examples = num_examples
-        self.indices = indices
+        self.indices = train_indices
         if self.indices is None:
             self.indices = range(num_examples)
 
@@ -656,7 +657,6 @@ class MultilabelBalancedRandomSampler(Sampler):
         chosen_index = np.random.choice(class_indices)
         if self.class_choice == "least_sampled":
             label_transform = self.mlb.fit_transform([self.labels[chosen_index]])
-            print('label', len(self.labels))
             for class_, indicator in enumerate(label_transform[0]):
                 if indicator == 1:
                     self.counts[class_] += 1

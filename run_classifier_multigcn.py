@@ -165,6 +165,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     valid_size = 0.2
     indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(pmid)))
+    train_dataset, valid_dataset, train_index, _ = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
@@ -179,8 +180,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #     else:
     #         samples = []
     #     class_indices.append(samples)
-    train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler)
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid)-split, split])
+    train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
 
     # Prepare label features
     print('Load graph')
