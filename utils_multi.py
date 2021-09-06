@@ -569,6 +569,9 @@ class Subset(Dataset):
     def __getitem__(self, idx):
         if isinstance(idx, list):
             return self.dataset[[self.indices[i] for i in idx]]
+        print('idx', idx)
+        print('self.indices', len(self.indices))
+        print('dataset', len(self.dataset))
         return self.dataset[self.indices[idx]]
 
     def __len__(self):
