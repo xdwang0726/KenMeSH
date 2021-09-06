@@ -552,36 +552,36 @@ class DistributedSamplerWrapper(DistributedSampler):
         return iter(itemgetter(*indexes_of_indexes)(subsampler_indexes))
 
 
-# class Subset(Dataset):
-#     r"""
-#     Subset of a dataset at specified indices.
-#     Args:
-#         dataset (Dataset): The whole Dataset
-#         indices (sequence): Indices in the whole set selected for subset
-#     """
-#     dataset: Dataset
-#     indices: Sequence
-#
-#     def __init__(self, dataset: Dataset, indices: Sequence) -> None:
-#         self.dataset = dataset
-#         self.indices = indices
-#
-#     def __getitem__(self, idx):
-#         if isinstance(idx, list):
-#             return self.dataset[[self.indices[i] for i in idx]]
-#         print('idx', idx)
-#         print('self.indices', self.indices[idx])
-#         print('dataset', len(self.dataset))
-#         return self.dataset[self.indices[idx]]
-#
-#     def __len__(self):
-#         return len(self.indices)
-#
-#     def get_labels(self):
-#         return self.dataset.get_labels()
-#
-#     def get_idfs(self):
-#         return self.dataset.get_idfs()
+class Subset(Dataset):
+    r"""
+    Subset of a dataset at specified indices.
+    Args:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+    """
+    dataset: Dataset
+    indices: Sequence
+
+    def __init__(self, dataset: Dataset, indices: Sequence) -> None:
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        if isinstance(idx, list):
+            return self.dataset[[self.indices[i] for i in idx]]
+        print('idx', idx)
+        print('self.indices', self.indices[idx])
+        print('dataset', len(self.dataset))
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def get_labels(self):
+        return self.dataset.get_labels()
+
+    def get_idfs(self):
+        return self.dataset.get_idfs()
 
 
 def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
