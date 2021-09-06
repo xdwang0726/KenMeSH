@@ -589,17 +589,17 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
         return self.num_samples
 
 
-class Subset(Dataset[T_co]):
+class Subset(Dataset):
     r"""
     Subset of a dataset at specified indices.
     Args:
         dataset (Dataset): The whole Dataset
         indices (sequence): Indices in the whole set selected for subset
     """
-    dataset: Dataset[T_co]
-    indices: Sequence[int]
+    dataset: Dataset
+    indices: Sequence
 
-    def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
+    def __init__(self, dataset: Dataset, indices: Sequence) -> None:
         self.dataset = dataset
         self.indices = indices
 
@@ -618,8 +618,8 @@ class Subset(Dataset[T_co]):
     #     return self.dataset[self.indices[idx]].get_idfs()
 
 
-def random_split(dataset: Dataset[T], lengths: Sequence[int],
-                 generator: Optional[Generator] = default_generator) -> List[Subset[T]]:
+def random_split(dataset: Dataset, lengths: Sequence,
+                 generator: default_generator) -> Subset[T]:
     r"""
     Randomly split a dataset into non-overlapping new datasets of given lengths.
     Optionally fix the generator for reproducible results, e.g.:
