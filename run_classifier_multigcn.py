@@ -98,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 1300 < i <= 1400:
+        if 130 < i <= 140:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -111,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 1400:
+        elif i > 140:
             break
     print('number of test data %d' % len(test_title))
 

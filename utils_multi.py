@@ -559,16 +559,17 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
         callback_get_label: a callback-like function which takes two arguments - dataset and index
     """
 
-    def __init__(self, dataset,indices: list = None, num_samples: int = None):
+    def __init__(self, dataset, indices: list = None, num_samples: int = None):
         # if indices is not provided, all elements in the dataset will be considered
         self.indices = list(range(len(dataset))) if indices is None else indices
-
+        print('indics', self.indices)
         # if num_samples is not provided, draw `len(indices)` samples in each iteration
         self.num_samples = len(self.indices) if num_samples is None else num_samples
-
+        print('num_sample', self.num_samples)
         # distribution of classes in the dataset
         df = pd.DataFrame()
         df["label"] = self._get_labels(dataset)
+        print('label', self._get_labels(dataset))
         df.index = self.indices
         df = df.sort_index()
 
