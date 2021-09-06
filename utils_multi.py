@@ -570,7 +570,7 @@ class Subset(Dataset):
         if isinstance(idx, list):
             return self.dataset[[self.indices[i] for i in idx]]
         print('idx', idx)
-        print('self.indices', len(self.indices))
+        print('self.indices', self.indices[idx])
         print('dataset', len(self.dataset))
         return self.dataset[self.indices[idx]]
 
