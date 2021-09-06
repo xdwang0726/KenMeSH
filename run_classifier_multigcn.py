@@ -143,15 +143,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     meshIDs = list(mapping_id.values())
     print('Total number of labels %d' % len(meshIDs))
 
-    class_indices = []
-    for ids in meshIDs:
-        if ids in list(label_sample.keys()):
-            idx = list(label_sample.keys()).index(ids)
-            samples = list(label_sample.values())[idx]
-        else:
-            samples = []
-        class_indices.append(samples)
-
     mlb = MultiLabelBinarizer(classes=meshIDs)
     mlb.fit(meshIDs)
 
@@ -177,7 +168,18 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
-    train_sampler = MultilabelBalancedRandomSampler(label_id, len(meshIDs), len(pmid), class_indices, mlb)
+    class_indices = list(label_sample.values())
+    sampler_ids = list(label_sample.keys())
+    mlb_sampler = MultiLabelBinarizer(classes=sampler_ids)
+    mlb_sampler.fit(sampler_ids)
+    # for ids in meshIDs:
+    #     if ids in list(label_sample.keys()):
+    #         idx = list(label_sample.keys()).index(ids)
+    #         samples = list(label_sample.values())[idx]
+    #     else:
+    #         samples = []
+    #     class_indices.append(samples)
+    train_sampler = MultilabelBalancedRandomSampler(label_id, len(meshIDs), len(pmid), class_indices, mlb_sampler)
     train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid)-split, split])
 
     # Prepare label features
