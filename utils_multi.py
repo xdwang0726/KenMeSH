@@ -117,7 +117,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False, is_m
                     data.append((label, mask, ab_tokens, title_tokens))
                     labels.extend(label)
                     t.update(1)
-                return data, set(labels)
+                return data, list(set(labels))
         else:
             if is_test:
                 for mask, text in iterator:
@@ -145,7 +145,7 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False, is_m
                     data.append((label, mask, tokens))
                     labels.extend(label)
                     t.update(1)
-                return data, set(labels)
+                return data, list(set(labels))
 
 
 class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
