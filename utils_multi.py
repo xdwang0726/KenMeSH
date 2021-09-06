@@ -589,7 +589,7 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
         return self.num_samples
 
 
-class Subset(Dataset[T_co]):
+class Subset(Dataset):
     r"""
     Subset of a dataset at specified indices.
 
@@ -600,7 +600,7 @@ class Subset(Dataset[T_co]):
     dataset: Dataset[T_co]
     indices: Sequence[int]
 
-    def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
+    def __init__(self, dataset: Dataset, indices: Sequence[int]) -> None:
         self.dataset = dataset
         self.indices = indices
 
