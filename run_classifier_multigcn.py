@@ -98,7 +98,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 130000 < i <= 140000:
+        if 1300 < i <= 1400:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -111,7 +111,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 140000:
+        elif i > 1400:
             break
     print('number of test data %d' % len(test_title))
 
@@ -147,7 +147,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
-    train_dataset, valid_dataset = torch.utils.data.random_split(dataset=dataset, lengths=[indices-split, split])
+    train_dataset, valid_dataset = torch.utils.data.random_split(dataset=dataset, lengths=[len(pmid)-split, split])
     train_sampler = ImbalancedDatasetSampler(train_dataset)
 
     # build vocab
