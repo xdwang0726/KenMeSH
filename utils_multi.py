@@ -596,7 +596,7 @@ class Subset(Dataset[T_co]):
         dataset (Dataset): The whole Dataset
         indices (sequence): Indices in the whole set selected for subset
     """
-    dataset: Dataset[T_co]
+    dataset: Dataset
     indices: Sequence[int]
 
     def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
@@ -618,22 +618,20 @@ class Subset(Dataset[T_co]):
     #     return self.dataset[self.indices[idx]].get_idfs()
 
 
-def random_split(dataset: Dataset, lengths: Sequence[int],
+def random_split(dataset: Dataset[T], lengths: Sequence[int],
                  generator: Optional[Generator] = default_generator) -> List[Subset[T]]:
     r"""
     Randomly split a dataset into non-overlapping new datasets of given lengths.
     Optionally fix the generator for reproducible results, e.g.:
-
     >>> random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
-
     Args:
         dataset (Dataset): Dataset to be split
         lengths (sequence): lengths of splits to be produced
         generator (Generator): Generator used for the random permutation.
     """
     # Cannot verify that dataset is Sized
-    if sum(lengths) != len(dataset):  # type: ignore[arg-type]
+    if sum(lengths) != len(dataset):
         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
 
     indices = randperm(sum(lengths), generator=generator).tolist()
-    return [Subset(dataset, indices[offset - length: offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+    return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
