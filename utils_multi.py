@@ -619,7 +619,7 @@ class Subset(Dataset):
 
 
 def random_split(dataset: Dataset, lengths: Sequence,
-                 generator: default_generator) -> Subset[T]:
+                 generator: default_generator) -> Subset:
     r"""
     Randomly split a dataset into non-overlapping new datasets of given lengths.
     Optionally fix the generator for reproducible results, e.g.:
