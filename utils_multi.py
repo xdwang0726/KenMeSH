@@ -416,7 +416,7 @@ def _create_data_from_iterator_mesh_mask(vocab, iterator, include_unk, is_test=F
                 labels.extend(label)
                 idfs.append(idf)
                 t.update(1)
-            return data, set(labels), idfs
+            return data, list(set(labels)), idfs
 
 
 class MeSHMaskDataset(torch.utils.data.Dataset):
