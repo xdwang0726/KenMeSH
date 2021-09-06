@@ -617,7 +617,7 @@ class Subset(Dataset):
         return self.dataset[self.indices[idx]].get_idfs()
 
 
-def random_split(dataset: Dataset[T], lengths: Sequence[int],
+def random_split(dataset: Dataset, lengths: Sequence[int],
                  generator: Optional[Generator] = default_generator) -> List[Subset[T]]:
     r"""
     Randomly split a dataset into non-overlapping new datasets of given lengths.
@@ -635,4 +635,4 @@ def random_split(dataset: Dataset[T], lengths: Sequence[int],
         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
 
     indices = randperm(sum(lengths), generator=generator).tolist()
-    return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+    return [Subset(dataset, indices[offset - length: offset]) for offset, length in zip(_accumulate(lengths), lengths)]
