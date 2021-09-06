@@ -1,10 +1,11 @@
 import logging
+import random
 import re
 import string
 from operator import itemgetter
-from typing import Iterator, TypeVar, Sequence, Optional, List, Generator
+from typing import Iterator, TypeVar, Sequence, List, Generator
 
-import pandas as pd
+import numpy as np
 import torch
 from nltk.corpus import stopwords
 from torch import default_generator, randperm
@@ -551,45 +552,6 @@ class DistributedSamplerWrapper(DistributedSampler):
         return iter(itemgetter(*indexes_of_indexes)(subsampler_indexes))
 
 
-class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
-    """Samples elements randomly from a given list of indices for imbalanced dataset
-    Arguments:
-        indices: a list of indices
-        num_samples: number of samples to draw
-        callback_get_label: a callback-like function which takes two arguments - dataset and index
-    """
-
-    def __init__(self, dataset, indices: list = None, num_samples: int = None):
-        # if indices is not provided, all elements in the dataset will be considered
-        self.indices = list(range(len(dataset))) if indices is None else indices
-        print('indics', self.indices)
-        # if num_samples is not provided, draw `len(indices)` samples in each iteration
-        self.num_samples = len(self.indices) if num_samples is None else num_samples
-        print('num_sample', self.num_samples)
-        # distribution of classes in the dataset
-        df = pd.DataFrame()
-        df["label"] = self._get_labels(dataset)
-        print('label', self._get_labels(dataset))
-        df.index = self.indices
-        df = df.sort_index()
-
-        label_to_count = df["label"].value_counts()
-
-        weights = 1.0 / label_to_count[df["label"]]
-
-        self.weights = torch.DoubleTensor(weights.to_list())
-
-    def _get_labels(self, dataset):
-        return dataset.get_labels()
-
-    def __iter__(self):
-
-        return (self.indices[i] for i in torch.multinomial(self.weights, self.num_samples, replacement=True))
-
-    def __len__(self):
-        return self.num_samples
-
-
 class Subset(Dataset):
     r"""
     Subset of a dataset at specified indices.
@@ -635,3 +597,87 @@ def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
 
     indices = randperm(sum(lengths), generator=default_generator).tolist()
     return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+
+
+class MultilabelBalancedRandomSampler(Sampler):
+    """
+    MultilabelBalancedRandomSampler: Given a multilabel dataset of length n_samples and
+    number of classes n_classes, samples from the data with equal probability per class
+    effectively oversampling minority classes and undersampling majority classes at the
+    same time. Note that using this sampler does not guarantee that the distribution of
+    classes in the output samples will be uniform, since the dataset is multilabel and
+    sampling is based on a single class. This does however guarantee that all classes
+    will have at least batch_size / n_classes samples as batch_size approaches infinity
+    """
+
+    def __init__(self, labels, num_labels, num_examples, class_indices, mlb, indices=None, class_choice="least_sampled"):
+        """
+        Parameters:
+        -----------
+            labels: a multi-hot encoding numpy array of shape (n_samples, n_classes)
+            indices: an arbitrary-length 1-dimensional numpy array representing a list
+            of indices to sample only from
+            class_choice: a string indicating how class will be selected for every
+            sample:
+                "least_sampled": class with the least number of sampled labels so far
+                "random": class is chosen uniformly at random
+                "cycle": the sampler cycles through the classes sequentially
+        """
+        self.labels = labels
+        self.num_labels = num_labels
+        self.num_examples = num_examples
+        self.indices = indices
+        if self.indices is None:
+            self.indices = range(num_examples)
+
+        # List of lists of example indices per class
+        self.class_indices = class_indices
+        self.mlb = mlb
+
+        self.counts = [0] * self.num_labels
+
+        assert class_choice in ["least_sampled", "random", "cycle"]
+        self.class_choice = class_choice
+        self.current_class = 0
+
+    def __iter__(self):
+        self.count = 0
+        return self
+
+    def __next__(self):
+        if self.count >= len(self.indices):
+            raise StopIteration
+        self.count += 1
+        return self.sample()
+
+    def sample(self):
+        class_ = self.get_class()
+        class_indices = self.class_indices[class_]
+        chosen_index = np.random.choice(class_indices)
+        if self.class_choice == "least_sampled":
+            label_transform = self.mlb.fit_transform(self.labels[chosen_index])
+            for class_, indicator in enumerate(label_transform):
+                if indicator == 1:
+                    self.counts[class_] += 1
+        return chosen_index
+
+    def get_class(self):
+        if self.class_choice == "random":
+            class_ = random.randint(0, self.num_labels - 1)
+        elif self.class_choice == "cycle":
+            class_ = self.current_class
+            self.current_class = (self.current_class + 1) % self.num_labels
+        elif self.class_choice == "least_sampled":
+            min_count = self.counts[0]
+            min_classes = [0]
+            for class_ in range(1, self.num_labels):
+                if self.counts[class_] < min_count:
+                    min_count = self.counts[class_]
+                    min_classes = [class_]
+                if self.counts[class_] == min_count:
+                    min_classes.append(class_)
+            class_ = np.random.choice(min_classes)
+        return class_
+
+    def __len__(self):
+        return len(self.indices)

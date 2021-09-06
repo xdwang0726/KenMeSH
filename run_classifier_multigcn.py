@@ -19,7 +19,7 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence, ImbalancedDatasetSampler, random_split
+from utils_multi import MeSH_indexing, pad_sequence, MultilabelBalancedRandomSampler, random_split
 
 
 def set_seed(seed):
@@ -34,6 +34,21 @@ def set_seed(seed):
 def flatten(l):
     flat = [i for item in l for i in item]
     return flat
+
+
+def label_appears_in_sample(label_id):
+
+    """ build a label-sample dictionary, where {label1: [sample2, sample3, ...], label2: [sample5, sample2, ...], ..}"""
+
+    label_sample = {}
+    for i, doc in enumerate(label_id):
+        for label in doc:
+            if label in label_sample:
+                label_sample[label].append(i)
+            else:
+                label_sample[label] = []
+                label_sample[label].append(i)
+    return label_sample
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
@@ -86,6 +101,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('Finish loading training data')
     print('number of training data %d' % len(pmid))
 
+    label_sample = label_appears_in_sample(label_id)
+
     # load test data
     print('Start loading test data')
     f_t = open(test_data_path, encoding="utf8")
@@ -126,6 +143,12 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     meshIDs = list(mapping_id.values())
     print('Total number of labels %d' % len(meshIDs))
 
+    class_indices = []
+    for ids in meshIDs:
+        idx = list(label_sample.keys()).index(ids)
+        samples = list(label_sample.values())[idx]
+        class_indices.append(samples)
+
     mlb = MultiLabelBinarizer(classes=meshIDs)
     mlb.fit(meshIDs)
 
@@ -151,8 +174,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
+    train_sampler = MultilabelBalancedRandomSampler(label_id, len(meshIDs), len(pmid), class_indices, mlb)
     train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid)-split, split])
-    train_sampler = ImbalancedDatasetSampler(train_dataset)
 
     # Prepare label features
     print('Load graph')
