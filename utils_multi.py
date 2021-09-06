@@ -624,7 +624,6 @@ class MultilabelBalancedRandomSampler(Sampler):
                 "cycle": the sampler cycles through the classes sequentially
         """
         self.labels = labels
-        print('label', len(self.labels))
         self.num_labels = num_labels
         self.num_examples = num_examples
         self.indices = indices
@@ -633,7 +632,6 @@ class MultilabelBalancedRandomSampler(Sampler):
 
         # List of lists of example indices per class
         self.class_indices = class_indices
-        print('class_indices1', len(self.class_indices))
         self.mlb = mlb
 
         self.counts = [0] * self.num_labels
@@ -654,13 +652,12 @@ class MultilabelBalancedRandomSampler(Sampler):
 
     def sample(self):
         class_ = self.get_class()
-        print('class', class_)
-        print('class_index', len(self.class_indices))
         class_indices = self.class_indices[class_]
         chosen_index = np.random.choice(class_indices)
         if self.class_choice == "least_sampled":
-            label_transform = self.mlb.fit_transform(self.labels[chosen_index])
-            for class_, indicator in enumerate(label_transform):
+            label_transform = self.mlb.fit_transform([self.labels[chosen_index]])
+            print('label', len(self.labels))
+            for class_, indicator in enumerate(label_transform[0]):
                 if indicator == 1:
                     self.counts[class_] += 1
         return chosen_index
@@ -673,18 +670,14 @@ class MultilabelBalancedRandomSampler(Sampler):
             self.current_class = (self.current_class + 1) % self.num_labels
         elif self.class_choice == "least_sampled":
             min_count = self.counts[0]
-            print('min_count', min_count)
             min_classes = [0]
             for class_ in range(1, self.num_labels):
-                print('class_1', class_)
-                print('self.counts', len(self.counts), self.counts[class_])
                 if self.counts[class_] < min_count:
                     min_count = self.counts[class_]
                     min_classes = [class_]
                 if self.counts[class_] == min_count:
                     min_classes.append(class_)
             class_ = np.random.choice(min_classes)
-            print('class_2', class_)
         return class_
 
     def __len__(self):
