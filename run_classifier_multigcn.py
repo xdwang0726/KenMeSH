@@ -140,6 +140,10 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                                                 train_title, test_title, ngrams=1, vocab=None, include_unk=False,
                                                 is_test=False, is_multichannel=True)
 
+    # build vocab
+    print('building vocab')
+    vocab = dataset.get_vocab()
+
     # get validation set
     valid_size = 0.2
     indices = list(range(len(pmid)))
@@ -149,10 +153,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # valid_sampler = SubsetRandomSampler(valid_idx)
     train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid)-split, split])
     train_sampler = ImbalancedDatasetSampler(train_dataset)
-
-    # build vocab
-    print('building vocab')
-    vocab = train_dataset.get_vocab()
 
     # Prepare label features
     print('Load graph')
