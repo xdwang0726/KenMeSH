@@ -2,17 +2,22 @@ import logging
 import re
 import string
 from operator import itemgetter
-from typing import Iterator
+from typing import Iterator, TypeVar, Sequence, Optional, List, Generator
 
 import pandas as pd
 import torch
 from nltk.corpus import stopwords
+from torch import default_generator, randperm
+from torch._utils import _accumulate
 from torch.utils.data import Dataset, Sampler, DistributedSampler
 from torchtext.data.utils import get_tokenizer
 from torchtext.data.utils import ngrams_iterator
 from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
+
+T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
 
 stop_words = set(stopwords.words('english'))
 table = str.maketrans('', '', string.punctuation)
@@ -554,7 +559,7 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
         callback_get_label: a callback-like function which takes two arguments - dataset and index
     """
 
-    def __init__(self, dataset, indices: list = None, num_samples: int = None):
+    def __init__(self, dataset,indices: list = None, num_samples: int = None):
         # if indices is not provided, all elements in the dataset will be considered
         self.indices = list(range(len(dataset))) if indices is None else indices
 
@@ -577,7 +582,57 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
         return dataset.get_labels()
 
     def __iter__(self):
+
         return (self.indices[i] for i in torch.multinomial(self.weights, self.num_samples, replacement=True))
 
     def __len__(self):
         return self.num_samples
+
+
+class Subset(Dataset[T_co]):
+    r"""
+    Subset of a dataset at specified indices.
+
+    Args:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+    """
+    dataset: Dataset[T_co]
+    indices: Sequence[int]
+
+    def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def get_labels(self, idx):
+        return self.dataset[self.indices[idx]].get_labels()
+
+    def get_idfs(self, idx):
+        return self.dataset[self.indices[idx]].get_idfs()
+
+
+def random_split(dataset: Dataset[T], lengths: Sequence[int],
+                 generator: Optional[Generator] = default_generator) -> List[Subset[T]]:
+    r"""
+    Randomly split a dataset into non-overlapping new datasets of given lengths.
+    Optionally fix the generator for reproducible results, e.g.:
+
+    >>> random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
+
+    Args:
+        dataset (Dataset): Dataset to be split
+        lengths (sequence): lengths of splits to be produced
+        generator (Generator): Generator used for the random permutation.
+    """
+    # Cannot verify that dataset is Sized
+    if sum(lengths) != len(dataset):  # type: ignore[arg-type]
+        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+
+    indices = randperm(sum(lengths), generator=generator).tolist()
+    return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]

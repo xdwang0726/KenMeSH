@@ -19,7 +19,7 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from losses import *
 from model import multichannel_dilatedCNN_with_MeSH_mask
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence, ImbalancedDatasetSampler
+from utils_multi import MeSH_indexing, pad_sequence, ImbalancedDatasetSampler, random_split
 
 
 def set_seed(seed):
@@ -147,7 +147,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
-    train_dataset, valid_dataset = torch.utils.data.random_split(dataset=dataset, lengths=[len(pmid)-split, split])
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid)-split, split])
     train_sampler = ImbalancedDatasetSampler(train_dataset)
 
     # build vocab
