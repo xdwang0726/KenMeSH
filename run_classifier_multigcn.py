@@ -259,6 +259,7 @@ def train(train_dataset, train_sampler, valid_dataset, model, mlb, G, batch_sz, 
 
     valid_data = DataLoader(valid_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers)
 
+    print('train', len(train_data))
     num_lines = num_epochs * len(train_data)
 
     train_losses = []
