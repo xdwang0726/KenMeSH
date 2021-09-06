@@ -611,11 +611,11 @@ class Subset(Dataset):
     def __len__(self):
         return len(self.indices)
 
-    def get_labels(self, idx):
-        return self.dataset.get_labels()[self.indices[idx]]
+    def get_labels(self):
+        return self.dataset[self.indices].get_labels()
 
-    def get_idfs(self, idx):
-        return self.datasetget_idfs()[self.indices[idx]]
+    def get_idfs(self):
+        return self.dataset[self.indices].get_idfs()
 
 
 def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
