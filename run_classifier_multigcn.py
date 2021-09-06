@@ -145,8 +145,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     class_indices = []
     for ids in meshIDs:
-        idx = list(label_sample.keys()).index(ids)
-        samples = list(label_sample.values())[idx]
+        if ids in list(label_sample.keys()):
+            idx = list(label_sample.keys()).index(ids)
+            samples = list(label_sample.values())[idx]
+        else:
+            samples = []
         class_indices.append(samples)
 
     mlb = MultiLabelBinarizer(classes=meshIDs)
