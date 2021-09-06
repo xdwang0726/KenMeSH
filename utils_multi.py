@@ -652,6 +652,8 @@ class MultilabelBalancedRandomSampler(Sampler):
 
     def sample(self):
         class_ = self.get_class()
+        print('class', class_)
+        print('class_index', len(self.class_indices))
         class_indices = self.class_indices[class_]
         chosen_index = np.random.choice(class_indices)
         if self.class_choice == "least_sampled":
