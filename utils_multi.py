@@ -596,7 +596,7 @@ class Subset(Dataset[T_co]):
         dataset (Dataset): The whole Dataset
         indices (sequence): Indices in the whole set selected for subset
     """
-    dataset: Dataset
+    dataset: Dataset[T_co]
     indices: Sequence[int]
 
     def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
