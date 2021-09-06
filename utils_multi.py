@@ -612,7 +612,9 @@ class Subset(Dataset):
         return len(self.indices)
 
     def get_labels(self):
-        return self.dataset.get_labels()[self.indices]
+        print('original label', self.dataset.get_labels(), type(self.dataset.get_labels()))
+        print('indeces', self.indices)
+        return [self.dataset.get_labels()[i] for i in self.indices]
 
     def get_idfs(self):
         return self.dataset.get_idfs()[self.indices]
