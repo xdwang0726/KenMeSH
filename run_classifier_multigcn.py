@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
@@ -166,7 +166,8 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(pmid)))
     print('indices', len(pmid), split)
-    (train_dataset, valid_dataset), (train_index, _) = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
+    # (train_dataset, valid_dataset), (train_index, _) = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
@@ -181,7 +182,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #     else:
     #         samples = []
     #     class_indices.append(samples)
-    train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
+    train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler)#, #train_index)
 
     # Prepare label features
     print('Load graph')
