@@ -552,133 +552,131 @@ class DistributedSamplerWrapper(DistributedSampler):
         return iter(itemgetter(*indexes_of_indexes)(subsampler_indexes))
 
 
-class Subset(Dataset):
-    r"""
-    Subset of a dataset at specified indices.
-    Args:
-        dataset (Dataset): The whole Dataset
-        indices (sequence): Indices in the whole set selected for subset
-    """
-    dataset: Dataset
-    indices: Sequence
-
-    def __init__(self, dataset: Dataset, indices: Sequence) -> None:
-        self.dataset = dataset
-        self.indices = indices
-
-    def __getitem__(self, idx):
-        new_idx = self.indices[idx]
-        # if isinstance(idx, list):
-        #     return self.dataset[[self.indices[i] for i in idx]]
-
-        return self.dataset[new_idx]
-
-    def __len__(self):
-        print('subset length', len(self.indices))
-        return len(self.indices)
-
-
-def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
-    r"""
-    Randomly split a dataset into non-overlapping new datasets of given lengths.
-    Optionally fix the generator for reproducible results, e.g.:
-    >>> random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
-    Args:
-        dataset (Dataset): Dataset to be split
-        lengths (sequence): lengths of splits to be produced
-        generator (Generator): Generator used for the random permutation.
-    """
-    # Cannot verify that dataset is Sized
-    if sum(lengths) != len(dataset):
-        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
-
-    indices = randperm(sum(lengths), generator=default_generator).tolist()
-    return ([Subset(dataset, indices[offset - length: offset]) for offset, length in zip(_accumulate(lengths), lengths)],
-            [indices[offset - length: offset] for offset, length in zip(_accumulate(lengths), lengths)])
-
-
-class MultilabelBalancedRandomSampler(Sampler):
-    """
-    MultilabelBalancedRandomSampler: Given a multilabel dataset of length n_samples and
-    number of classes n_classes, samples from the data with equal probability per class
-    effectively oversampling minority classes and undersampling majority classes at the
-    same time. Note that using this sampler does not guarantee that the distribution of
-    classes in the output samples will be uniform, since the dataset is multilabel and
-    sampling is based on a single class. This does however guarantee that all classes
-    will have at least batch_size / n_classes samples as batch_size approaches infinity
-    """
-
-    def __init__(self, labels, num_labels, num_examples, class_indices, mlb, train_indices=None, class_choice="least_sampled"):
-        """
-        Parameters:
-        -----------
-            labels: a multi-hot encoding numpy array of shape (n_samples, n_classes)
-            indices: an arbitrary-length 1-dimensional numpy array representing a list
-            of indices to sample only from
-            class_choice: a string indicating how class will be selected for every
-            sample:
-                "least_sampled": class with the least number of sampled labels so far
-                "random": class is chosen uniformly at random
-                "cycle": the sampler cycles through the classes sequentially
-        """
-        self.labels = labels
-        self.num_labels = num_labels
-        self.num_examples = num_examples
-        self.indices = train_indices
-        if self.indices is None:
-            self.indices = range(num_examples)
-
-        # List of lists of example indices per class
-        self.class_indices = class_indices
-        self.mlb = mlb
-
-        self.counts = [0] * self.num_labels
-
-        assert class_choice in ["least_sampled", "random", "cycle"]
-        self.class_choice = class_choice
-        self.current_class = 0
-
-    def __iter__(self):
-        self.count = 0
-        return self
-
-    def __next__(self):
-        print('len indices', len(self.indices))
-        if self.count >= len(self.indices):
-            raise StopIteration
-        self.count += 1
-        print('count smapler', self.count)
-        print('smaple', self.sample())
-        return self.sample()
-
-    def sample(self):
-        class_ = self.get_class()
-        class_indices = self.class_indices[class_]
-        chosen_index = np.random.choice(class_indices)
-        if self.class_choice == "least_sampled":
-            label_transform = self.mlb.fit_transform([self.labels[chosen_index]])
-            for class_, indicator in enumerate(label_transform[0]):
-                if indicator == 1:
-                    self.counts[class_] += 1
-        return chosen_index
-
-    def get_class(self):
-        if self.class_choice == "random":
-            class_ = random.randint(0, self.num_labels - 1)
-        elif self.class_choice == "cycle":
-            class_ = self.current_class
-            self.current_class = (self.current_class + 1) % self.num_labels
-        elif self.class_choice == "least_sampled":
-            min_count = self.counts[0]
-            min_classes = [0]
-            for class_ in range(1, self.num_labels):
-                if self.counts[class_] < min_count:
-                    min_count = self.counts[class_]
-                    min_classes = [class_]
-                if self.counts[class_] == min_count:
-                    min_classes.append(class_)
-            class_ = np.random.choice(min_classes)
-        return class_
-
-    def __len__(self):
-        return len(self.indices)
+# class Subset(Dataset):
+#     r"""
+#     Subset of a dataset at specified indices.
+#     Args:
+#         dataset (Dataset): The whole Dataset
+#         indices (sequence): Indices in the whole set selected for subset
+#     """
+#     dataset: Dataset
+#     indices: Sequence
+#
+#     def __init__(self, dataset: Dataset, indices: Sequence) -> None:
+#         self.dataset = dataset
+#         self.indices = indices
+#
+#     def __getitem__(self, idx):
+#         new_idx = self.indices[idx]
+#         # if isinstance(idx, list):
+#         #     return self.dataset[[self.indices[i] for i in idx]]
+#
+#         return self.dataset[new_idx]
+#
+#     def __len__(self):
+#         print('subset length', len(self.indices))
+#         return len(self.indices)
+#
+#
+# def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
+#     r"""
+#     Randomly split a dataset into non-overlapping new datasets of given lengths.
+#     Optionally fix the generator for reproducible results, e.g.:
+#     >>> random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
+#     Args:
+#         dataset (Dataset): Dataset to be split
+#         lengths (sequence): lengths of splits to be produced
+#         generator (Generator): Generator used for the random permutation.
+#     """
+#     # Cannot verify that dataset is Sized
+#     if sum(lengths) != len(dataset):
+#         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+#
+#     indices = randperm(sum(lengths), generator=default_generator).tolist()
+#     return ([Subset(dataset, indices[offset - length: offset]) for offset, length in zip(_accumulate(lengths), lengths)],
+#             [indices[offset - length: offset] for offset, length in zip(_accumulate(lengths), lengths)])
+#
+#
+# class MultilabelBalancedRandomSampler(Sampler):
+#     """
+#     MultilabelBalancedRandomSampler: Given a multilabel dataset of length n_samples and
+#     number of classes n_classes, samples from the data with equal probability per class
+#     effectively oversampling minority classes and undersampling majority classes at the
+#     same time. Note that using this sampler does not guarantee that the distribution of
+#     classes in the output samples will be uniform, since the dataset is multilabel and
+#     sampling is based on a single class. This does however guarantee that all classes
+#     will have at least batch_size / n_classes samples as batch_size approaches infinity
+#     """
+#
+#     def __init__(self, labels, num_labels, num_examples, class_indices, mlb, train_indices=None, class_choice="least_sampled"):
+#         """
+#         Parameters:
+#         -----------
+#             labels: a multi-hot encoding numpy array of shape (n_samples, n_classes)
+#             indices: an arbitrary-length 1-dimensional numpy array representing a list
+#             of indices to sample only from
+#             class_choice: a string indicating how class will be selected for every
+#             sample:
+#                 "least_sampled": class with the least number of sampled labels so far
+#                 "random": class is chosen uniformly at random
+#                 "cycle": the sampler cycles through the classes sequentially
+#         """
+#         self.labels = labels
+#         self.num_labels = num_labels
+#         self.num_examples = num_examples
+#         self.indices = train_indices
+#         if self.indices is None:
+#             self.indices = range(num_examples)
+#
+#         # List of lists of example indices per class
+#         self.class_indices = class_indices
+#         self.mlb = mlb
+#
+#         self.counts = [0] * self.num_labels
+#
+#         assert class_choice in ["least_sampled", "random", "cycle"]
+#         self.class_choice = class_choice
+#         self.current_class = 0
+#
+#     def __iter__(self):
+#         self.count = 0
+#         return self
+#
+#     def __next__(self):
+#         if self.count >= len(self.indices):
+#             raise StopIteration
+#         self.count += 1
+#         print('smaple', self.sample())
+#         return self.sample()
+#
+#     def sample(self):
+#         class_ = self.get_class()
+#         class_indices = self.class_indices[class_]
+#         chosen_index = np.random.choice(class_indices)
+#         if self.class_choice == "least_sampled":
+#             label_transform = self.mlb.fit_transform([self.labels[chosen_index]])
+#             for class_, indicator in enumerate(label_transform[0]):
+#                 if indicator == 1:
+#                     self.counts[class_] += 1
+#         return chosen_index
+#
+#     def get_class(self):
+#         if self.class_choice == "random":
+#             class_ = random.randint(0, self.num_labels - 1)
+#         elif self.class_choice == "cycle":
+#             class_ = self.current_class
+#             self.current_class = (self.current_class + 1) % self.num_labels
+#         elif self.class_choice == "least_sampled":
+#             min_count = self.counts[0]
+#             min_classes = [0]
+#             for class_ in range(1, self.num_labels):
+#                 if self.counts[class_] < min_count:
+#                     min_count = self.counts[class_]
+#                     min_classes = [class_]
+#                 if self.counts[class_] == min_count:
+#                     min_classes.append(class_)
+#             class_ = np.random.choice(min_classes)
+#         return class_
+#
+#     def __len__(self):
+#         return len(self.indices)
