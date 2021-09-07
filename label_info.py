@@ -157,7 +157,7 @@ def main():
     # with open(args.class_freq, 'wb') as f:
     #     pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
     tail_labels = get_tail_labels(args.train)
-    pickle.dump(tail_labels, open(args.class_freq, 'rb'))
+    pickle.dump(tail_labels, open(args.class_freq, 'wb'))
 
 
 
