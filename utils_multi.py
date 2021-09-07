@@ -647,7 +647,7 @@ class MultilabelBalancedRandomSampler(Sampler):
 
     def __next__(self):
         print('len indices', len(self.indices))
-        if self.count >= len(self.indices):
+        if self.count > len(self.indices):
             raise StopIteration
         self.count += 1
         print('count smapler', self.count)
