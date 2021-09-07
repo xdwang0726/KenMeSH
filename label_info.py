@@ -1,9 +1,10 @@
 import argparse
+import pickle
+
 import ijson
 import numpy as np
+import torch
 from tqdm import tqdm
-import pickle
-from sklearn.preprocessing import MultiLabelBinarizer
 
 
 def label_count(train_data_path, MeSH_id_pair_file):
@@ -143,6 +144,54 @@ def get_tail_labels(train_data_path):
     return tail_label
 
 
+def get_label_negative_positive_ratio(train_data_path, MeSH_id_pair_file):
+
+    # get MeSH in each example
+    f = open(train_data_path, encoding="utf8")
+    objects = ijson.items(f, 'articles.item')
+
+    label_id = []
+
+    print('Start loading training data')
+    for i, obj in enumerate(tqdm(objects)):
+        try:
+            mesh_id = obj['meshId']
+            label_id.append(mesh_id)
+        except AttributeError:
+            print(obj["pmid"].strip())
+
+    mapping_id = {}
+    with open(MeSH_id_pair_file, 'r') as f:
+        for line in f:
+            (key, value) = line.split('=')
+            mapping_id[key] = value.strip()
+
+    meshIDs = list(mapping_id.values())
+    print('There are %d Meshs' % len(meshIDs))
+
+    label_freq = {}
+    for doc in label_id:
+        for label in doc:
+            if label in label_freq:
+                label_freq[label] = label_freq[label] + 1
+            else:
+                label_freq[label] = 1
+    pos = []
+    for ids in meshIDs:
+        if ids in list(label_freq.keys()):
+            pos.append(list(label_freq.values())[list(label_freq.keys()).index(ids)])
+        else:
+            pos.append(0)
+
+    num_examples = len(label_id)
+    pos = np.array(pos)
+    print('There are %d lables in total' % np.count_nonzero(pos))
+    neg = num_examples - pos
+    neg_pos_ratio = neg / pos
+    neg_pos_ratio = torch.from_numpy(neg_pos_ratio).type(torch.float)
+    return neg_pos_ratio
+
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -156,8 +205,10 @@ def main():
     # save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
     # with open(args.class_freq, 'wb') as f:
     #     pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
-    tail_labels = get_tail_labels(args.train)
-    pickle.dump(tail_labels, open(args.class_freq, 'wb'))
+    # tail_labels = get_tail_labels(args.train)
+    # pickle.dump(tail_labels, open(args.class_freq, 'wb'))
+    neg_pos_ratio = get_label_negative_positive_ratio(args.train, args.meSH_pair_path)
+    pickle.dump(neg_pos_ratio, open(args.class_freq, 'wb'))
 
 
 
