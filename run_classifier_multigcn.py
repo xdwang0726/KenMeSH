@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, SubsetRandomSampler
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
@@ -166,8 +166,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     # indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(pmid)))
     print('indices', len(pmid), split)
-    # (train_dataset, valid_dataset), (train_index, _) = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
+    (train_dataset, valid_dataset), (train_index, valid_idx) = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
@@ -182,8 +181,9 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #     else:
     #         samples = []
     #     class_indices.append(samples)
-    train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler)#, #train_index)
-
+    train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
+    print('smaple index', train_sampler.sample())
+    valid_sampler = SubsetRandomSampler(valid_idx)
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
@@ -191,7 +191,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G, train_sampler #, valid_sampler, G_c
+    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -251,15 +251,15 @@ def generate_batch(batch):
         return mesh_mask, abstract, title, abstract_length, title_length
 
 
-def train(train_dataset, train_sampler, valid_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
+def train(train_dataset, train_sampler, valid_dataset, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
           lr_scheduler):
 
     train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=train_sampler, collate_fn=generate_batch,
                             num_workers=num_workers)
 
-    valid_data = DataLoader(valid_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers)
+    valid_data = DataLoader(valid_dataset, batch_size=batch_sz, sampler=valid_sampler, collate_fn=generate_batch, num_workers=num_workers)
 
-    print('train', len(train_data))
+    print('train', len(train_data.dataset))
     num_lines = num_epochs * len(train_data)
 
     train_losses = []
@@ -508,12 +508,8 @@ def main():
     print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G, train_sampler = prepare_dataset(args.train_path,
-                                                                                                                   args.test_path,
-                                                                                                                   args.meSH_pair_path,
-                                                                                                                   args.word2vec_path,
-                                                                                                                   args.graph,
-                                                                                                                   args.num_example) # args. graph_cooccurence,
+    num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = \
+        prepare_dataset(args.train_path, args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
@@ -535,7 +531,7 @@ def main():
 
     # training
     print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_dataset, model, mlb, G, args.batch_sz,
+    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_dataset, valid_sampler, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
 
