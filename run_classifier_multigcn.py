@@ -55,7 +55,7 @@ def get_tail_labels(label_id):
     irpl = max(irpl) / irpl
     mir = np.average(irpl)
     tail_label = []
-    for i, label in enumerate(num_labels):
+    for i, label in enumerate(label_set):
         if irpl[i] > mir:
             tail_label.append(label)
 
