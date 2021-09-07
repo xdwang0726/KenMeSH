@@ -567,14 +567,11 @@ class Subset(Dataset):
         self.indices = indices
 
     def __getitem__(self, idx):
-        if isinstance(idx, list):
-            return self.dataset[[self.indices[i] for i in idx]]
-        print('idx', idx)
-        print('self.indices', self.indices)
-        print('len self.indices', len(self.indices))
-        print('dataset', len(self.dataset))
-        print('self.indices', self.indices[idx])
-        return self.dataset[self.indices[idx]]
+        new_idx = self.indices[idx]
+        # if isinstance(idx, list):
+        #     return self.dataset[[self.indices[i] for i in idx]]
+
+        return self.dataset[new_idx]
 
     def __len__(self):
         print('subset length', len(self.indices))
@@ -647,7 +644,7 @@ class MultilabelBalancedRandomSampler(Sampler):
 
     def __next__(self):
         print('len indices', len(self.indices))
-        if self.count > len(self.indices):
+        if self.count >= len(self.indices):
             raise StopIteration
         self.count += 1
         print('count smapler', self.count)
