@@ -576,6 +576,7 @@ class Subset(Dataset):
         return self.dataset[self.indices[idx]]
 
     def __len__(self):
+        print('subset length', len(self.indices))
         return len(self.indices)
 
     def get_labels(self):

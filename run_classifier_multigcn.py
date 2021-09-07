@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.utils.data import DataLoader, random_split, SubsetRandomSampler
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchtext.vocab import Vectors
 from tqdm import tqdm
