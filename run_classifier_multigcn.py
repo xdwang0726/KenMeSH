@@ -182,7 +182,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     #         samples = []
     #     class_indices.append(samples)
     train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
-    print('smaple index', train_sampler.sample())
     valid_sampler = SubsetRandomSampler(valid_idx)
     # Prepare label features
     print('Load graph')

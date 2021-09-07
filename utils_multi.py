@@ -573,18 +573,12 @@ class Subset(Dataset):
         print('self.indices', self.indices)
         print('len self.indices', len(self.indices))
         print('dataset', len(self.dataset))
-        print('self.indices', len(self.indices[idx]))
+        print('self.indices', self.indices[idx])
         return self.dataset[self.indices[idx]]
 
     def __len__(self):
         print('subset length', len(self.indices))
         return len(self.indices)
-
-    def get_labels(self):
-        return self.dataset.get_labels()
-
-    def get_idfs(self):
-        return self.dataset.get_idfs()
 
 
 def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
@@ -652,9 +646,12 @@ class MultilabelBalancedRandomSampler(Sampler):
         return self
 
     def __next__(self):
+        print('len indices', len(self.indices))
         if self.count >= len(self.indices):
             raise StopIteration
         self.count += 1
+        print('count smapler', self.count)
+        print('smaple', self.sample())
         return self.sample()
 
     def sample(self):
