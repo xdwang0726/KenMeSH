@@ -36,7 +36,7 @@ def flatten(l):
     return flat
 
 
-def label_appears_in_sample(label_id):
+def get_tail_labels(label_id):
 
     """ build a label-sample dictionary, where {label1: [sample2, sample3, ...], label2: [sample5, sample2, ...], ..}"""
 
@@ -48,7 +48,18 @@ def label_appears_in_sample(label_id):
             else:
                 label_sample[label] = []
                 label_sample[label].append(i)
-    return label_sample
+
+    label_set = list(label_sample.keys())
+    num_labels = len(label_set)
+    irpl = np.array([len(docs) for docs in list(label_sample.values())])
+    irpl = max(irpl) / irpl
+    mir = np.average(irpl)
+    tail_label = []
+    for i, label in enumerate(num_labels):
+        if irpl[i] > mir:
+            tail_label.append(label)
+
+    return tail_label
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file

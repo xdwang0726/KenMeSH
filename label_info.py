@@ -104,6 +104,45 @@ def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
     return save_data
 
 
+def get_tail_labels(train_data_path):
+    # get MeSH in each example
+    f = open(train_data_path, encoding="utf8")
+    objects = ijson.items(f, 'articles.item')
+
+    label_id = []
+
+    print('Start loading training data')
+    for i, obj in enumerate(tqdm(objects)):
+        try:
+            mesh_id = obj['meshId']
+            label_id.append(mesh_id)
+        except AttributeError:
+            print(obj["pmid"].strip())
+
+    label_sample = {}
+    for i, doc in enumerate(label_id):
+        for label in doc:
+            if label in label_sample:
+                label_sample[label].append(i)
+            else:
+                label_sample[label] = []
+                label_sample[label].append(i)
+
+    label_set = list(label_sample.keys())
+    num_labels = len(label_set)
+    irpl = np.array([len(docs) for docs in list(label_sample.values())])
+    irpl = max(irpl) / irpl
+    mir = np.average(irpl)
+    tail_label = []
+    for i, label in enumerate(num_labels):
+        if irpl[i] > mir:
+            tail_label.append(label)
+
+    print('There are total %d tail labels' % len(tail_label))
+
+    return tail_label
+
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -114,9 +153,12 @@ def main():
 
     args = parser.parse_args()
 
-    save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
-    with open(args.class_freq, 'wb') as f:
-        pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
+    # save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
+    # with open(args.class_freq, 'wb') as f:
+    #     pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
+    tail_labels = get_tail_labels(args.train)
+    pickle.dump(tail_labels, open(args.class_freq, 'rb'))
+
 
 
 if __name__ == "__main__":
