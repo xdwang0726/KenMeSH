@@ -501,7 +501,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
 
         # add CorNet
         cor_logit = self.cornet(x)
-        cor_logit = torch.sigmoid(cor_logit)
+        # cor_logit = torch.sigmoid(cor_logit)
         return cor_logit
 
 
