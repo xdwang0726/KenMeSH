@@ -527,6 +527,7 @@ def main():
     model.to(device)
     G = G.to(device)
     G = dgl.add_self_loop(G)
+    neg_pos_ratio = neg_pos_ratio.to(device)
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
