@@ -1,12 +1,12 @@
 import argparse
-import logging
 import os
 import sys
 
 import dgl
 import ijson
+
+import pickle
 import random
-import torch
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -57,7 +57,7 @@ def get_tail_labels(label_id):
         if irpl[i] > mir:
             tail_label.append(label)
 
-    return tail_label, irpl
+    return tail_label
 
 
 def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
@@ -122,7 +122,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 430000 < i <= 440000:
+        if 13000 < i <= 14000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -135,7 +135,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 440000:
+        elif i > 14000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -149,9 +149,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     meshIDs = list(mapping_id.values())
     print('Total number of labels %d' % len(meshIDs))
-
     mlb = MultiLabelBinarizer(classes=meshIDs)
     mlb.fit(meshIDs)
+
+    # calculate negaitve and positve ratio for each label
+    # neg_pos_ratio = get_tail_labels(label_id, meshIDs)
 
     # create Vector object map tokens to vectors
     print('load pre-trained BioWord2Vec')
@@ -172,7 +174,6 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     valid_size = 0.2
     # indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(pmid)))
-    print('indices', len(pmid), split)
     train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
@@ -197,7 +198,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G#, train_sampler, valid_sampler #, G_c
+    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -485,6 +486,7 @@ def main():
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
+    parser.add_argument('--neg_pos')
     parser.add_argument('--loss')
 
     parser.add_argument('--num_example', type=int, default=10000)
@@ -515,7 +517,7 @@ def main():
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G = \
         prepare_dataset(args.train_path, args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
-
+    neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
                                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
@@ -530,7 +532,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss(pos_weight=neg_pos_ratio)
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
