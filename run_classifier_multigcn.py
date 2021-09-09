@@ -527,13 +527,14 @@ def main():
     model.to(device)
     G = G.to(device)
     G = dgl.add_self_loop(G)
-    neg_pos_ratio = neg_pos_ratio.to(device)
+    # neg_pos_ratio = neg_pos_ratio.to(device)
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCEWithLogitsLoss(pos_weight=neg_pos_ratio)
+    criterion = nn.BCEWithLogitsLoss()
+    # criterion = FocalLoss_MultiLabel()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
