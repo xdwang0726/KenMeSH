@@ -517,7 +517,7 @@ def main():
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G = \
         prepare_dataset(args.train_path, args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
-    neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
+    # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
                                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
