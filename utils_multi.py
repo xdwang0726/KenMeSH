@@ -43,6 +43,8 @@ def _vocab_iterator(train_text, test_text, train_title=None, test_title=None, ng
             texts = tokenizer(text + train_title[i])
         else:
             texts = tokenizer(text)
+            if len(texts) > 400:
+                texts = texts[:400]
         texts = text_clean(texts)
         yield ngrams_iterator(texts, ngrams)
 
@@ -61,6 +63,8 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
         if is_multichannel:
             texts = tokenizer(text)
             texts = text_clean(texts)
+            if len(texts) > 400:
+                texts = texts[:400]
             heading = tokenizer(title[i])
             heading = text_clean(heading)
             mask = mesh_mask[i]
@@ -70,8 +74,11 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
             else:
                 yield mask, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
         else:
-            texts = tokenizer(text)
-            texts = text_clean(texts)
+            heading = tokenizer(title[i])
+            heading = text_clean(heading)
+            abstract = tokenizer(text)
+            abstract = text_clean(abstract)
+            texts = heading + abstract
             mask = mesh_mask[i]
             if yield_label:
                 label = labels[i]
