@@ -227,9 +227,9 @@ def get_doc_length(train_data_path):
             print(obj["pmid"].strip())
 
     a = np.array(text_len)
-    print('90% precentile %d' % np.percentile(a, 90))
-    print('95% precentile %d' % np.percentile(a, 95))
-    print('98% precentile %d' % np.percentile(a, 98))
+    print('90% precentile:', np.percentile(a, 90))
+    print('95% precentile:',  np.percentile(a, 95))
+    print('98% precentile:', np.percentile(a, 98))
 
 def main():
 
