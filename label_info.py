@@ -202,13 +202,14 @@ def main():
 
     args = parser.parse_args()
 
+    save_data = label_count(args.train, args.meSH_pair_path)
     # save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
-    # with open(args.class_freq, 'wb') as f:
-    #     pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
+    with open(args.class_freq, 'wb') as f:
+        pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
     # tail_labels = get_tail_labels(args.train)
     # pickle.dump(tail_labels, open(args.class_freq, 'wb'))
-    neg_pos_ratio = get_label_negative_positive_ratio(args.train, args.meSH_pair_path)
-    pickle.dump(neg_pos_ratio, open(args.class_freq, 'wb'))
+    # neg_pos_ratio = get_label_negative_positive_ratio(args.train, args.meSH_pair_path)
+    # pickle.dump(neg_pos_ratio, open(args.class_freq, 'wb'))
 
 
 
