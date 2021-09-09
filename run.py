@@ -486,6 +486,7 @@ def main():
     args = parser.parse_args()
 
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
+    print("number of gpus: %d " % n_gpu)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
