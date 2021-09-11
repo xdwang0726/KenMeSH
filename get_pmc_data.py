@@ -3,9 +3,9 @@ import os
 import pickle
 import urllib.request
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 
 def get_pmids_from_pmc(filelist):
@@ -78,7 +78,7 @@ def main():
 
     pmid_list = []
     for root, dirs, files in os.walk(args.path):
-        for file in files:
+        for file in tqdm(files):
             filename, extension = os.path.splitext(file)
             if extension == '.xml':
                 pmids = check_if_document_is_mannually_curated(file)
