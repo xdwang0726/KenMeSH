@@ -106,6 +106,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
     parser.add_argument('--pmids')
+    parser.add_argument('--save')
 
     args = parser.parse_args()
 
