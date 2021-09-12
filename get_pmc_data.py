@@ -85,9 +85,11 @@ def get_mannually_indexed_pmc(pmid, pmc):
     return diff_pmc
 
 
-def check_if_has_meshID(file, pmid_list):
-
-    pmids = pickle.load(open(pmid_list, 'rb'))
+def check_if_has_meshID(file, pmid_path):
+    pmids = []
+    with open(pmid_path, 'r') as f:
+        for ids in f:
+            pmids.append(ids.strip())
 
     tree = ET.parse(file)
     root = tree.getroot()
