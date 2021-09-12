@@ -68,6 +68,39 @@ def check_if_document_is_mannually_curated(file):
     return pmids
 
 
+def get_mannually_indexed_pmc(pmid, pmc):
+    """
+    remove the articles that are automated and curated from the PMC list
+    """
+    pmids = pickle.load(open(pmid, 'rb'))
+
+    pmcs = []
+    with open(pmc, 'r') as f:
+        for ids in f:
+            pmcs.append(ids.strip())
+
+    diff_pmc = list(set(pmcs) - set(pmids))
+    print('number of instance in dataset: %d' % diff_pmc)
+
+    return diff_pmc
+
+
+def check_if_has_meshID(file, pmid_list):
+
+    pmids = pickle.load(open(pmid_list, 'rb'))
+
+    tree = ET.parse(file)
+    root = tree.getroot()
+    new_pmids = []
+    for articles in root.findall('PubmedArticle'):
+        medlines = articles.find('MedlineCitation')
+        pmid = medlines.find('PMID').text
+        if pmid in pmids and medlines.find('MeshHeadingList') is not None:
+            new_pmids.append(pmid)
+
+    return new_pmids
+
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -81,11 +114,16 @@ def main():
         for file in tqdm(files):
             filename, extension = os.path.splitext(file)
             if extension == '.xml':
-                pmids = check_if_document_is_mannually_curated(file)
+                pmids = check_if_has_meshID(file, args.pmids)
                 pmid_list.append(pmids)
     pmid_list = list(set([ids for pmids in pmid_list for ids in pmids]))
+    print('Total number of articles %d' % len(pmid_list))
+    #
+    # pickle.dump(pmid_list, open(args.pmids, 'wb'))
 
-    pickle.dump(pmid_list, open(args.pmids, 'wb'))
+    with open(args.save, 'w') as f:
+        for ids in pmid_list:
+            f.write('%s\n' % ids)
 
 
 if __name__ == "__main__":
