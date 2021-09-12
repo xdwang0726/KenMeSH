@@ -93,13 +93,14 @@ def check_if_has_meshID(file, pmid_path):
 
     tree = ET.parse(file)
     root = tree.getroot()
-    new_pmids = []
+    pmids_no_mesh = []
     for articles in root.findall('PubmedArticle'):
         medlines = articles.find('MedlineCitation')
         pmid = medlines.find('PMID').text
-        if pmid in pmids and medlines.find('MeshHeadingList') is not None:
-            new_pmids.append(pmid)
+        if medlines.find('MeshHeadingList') is None:
+            pmids_no_mesh.append(pmid)
 
+    new_pmids = list(set(pmids) - set(pmids_no_mesh))
     return new_pmids
 
 
