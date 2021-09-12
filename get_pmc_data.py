@@ -85,11 +85,7 @@ def get_mannually_indexed_pmc(pmid, pmc):
     return diff_pmc
 
 
-def check_if_has_meshID(file, pmid_path):
-    pmids = []
-    with open(pmid_path, 'r') as f:
-        for ids in f:
-            pmids.append(ids.strip())
+def check_if_has_meshID(file):
 
     tree = ET.parse(file)
     root = tree.getroot()
@@ -100,8 +96,7 @@ def check_if_has_meshID(file, pmid_path):
         if medlines.find('MeshHeadingList') is None:
             pmids_no_mesh.append(pmid)
 
-    new_pmids = list(set(pmids) - set(pmids_no_mesh))
-    return new_pmids
+    return pmids_no_mesh
 
 
 def main():
@@ -113,20 +108,27 @@ def main():
 
     args = parser.parse_args()
 
-    pmid_list = []
+    pmids = []
+    with open(args.pmids, 'r') as f:
+        for ids in f:
+            pmids.append(ids.strip())
+
+    no_mesh = []
     for root, dirs, files in os.walk(args.path):
         for file in tqdm(files):
             filename, extension = os.path.splitext(file)
             if extension == '.xml':
-                pmids = check_if_has_meshID(file, args.pmids)
-                pmid_list.append(pmids)
-    pmid_list = list(set([ids for pmids in pmid_list for ids in pmids]))
-    print('Total number of articles %d' % len(pmid_list))
+                pmids = check_if_has_meshID(file)
+                no_mesh.append(pmids)
+    no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
+
+    new_pmids = list(set(pmids) - set(no_mesh_pmid_list))
+    print('Total number of articles %d' % len(new_pmids))
     #
     # pickle.dump(pmid_list, open(args.pmids, 'wb'))
 
     with open(args.save, 'w') as f:
-        for ids in pmid_list:
+        for ids in new_pmids:
             f.write('%s\n' % ids)
 
 
