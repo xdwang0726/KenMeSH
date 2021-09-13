@@ -170,34 +170,78 @@ def get_data(pmid_path, mapping_path, allMesh):
     return pubmed, missed_id
 
 
+def get_data_from_xml(file, pmc_list):
+
+    tree = ET.parse(file)
+    root = tree.getroot()
+
+    dataset = []
+    for articles in root.findall('PubmedArticle'):
+        data_point = {}
+        mesh_ids = []
+        mesh_major = []
+        medlines = articles.find('MedlineCitation')
+        pmid = medlines.find('PMID').text
+        if medlines.attrib['IndexingMethod'] is not None and medlines.find('MeshHeadingList') is not None:
+            if pmid in set(pmc_list):
+                article_info = medlines.find('Article')
+                journal_info = article_info.find('Journal')
+                year = journal_info.find('JournalIssue').find('Year').text
+                journal_name = journal_info.find('Title').text
+                title = article_info.find('ArticleTitle').text
+                abstract = article_info.find('Abstract').text
+                mesh_headings = medlines.find('MeshHeadingList')
+                for mesh in mesh_headings.findall('MeshHeading'):
+                    m = mesh.find('DescriptorName').attrib['UI']
+                    m_name = mesh.find('DescriptorName').text
+                    mesh_ids.append(m)
+                    mesh_major.append(m_name)
+                data_point['pmid'] = pmid
+                data_point['title'] = title
+                data_point['abstractText'] = abstract
+                data_point["meshMajor"] = mesh_major
+                data_point["meshID"] = mesh_ids
+                data_point['journal'] = journal_name
+                data_point['year'] = year
+            else:
+                continue
+        else:
+            continue
+        dataset.append(data_point)
+
+    return dataset
+
+
 def main():
 
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--path')
-    # parser.add_argument('--pmids')
+    parser.add_argument('--path')
+    parser.add_argument('--pmids')
     # parser.add_argument('--save')
     # parser.add_argument('--save_no_mesh')
-    parser.add_argument('--pmid_path')
-    parser.add_argument('--mapping_path')
-    parser.add_argument('--allMesh')
+    # parser.add_argument('--pmid_path')
+    # parser.add_argument('--mapping_path')
+    # parser.add_argument('--allMesh')
     parser.add_argument('--save_dataset')
-    parser.add_argument('--save_missed')
+    # parser.add_argument('--save_missed')
 
     args = parser.parse_args()
 
-    # pmids_list = []
-    # with open(args.pmids, 'r') as f:
-    #     for ids in f:
-    #         pmids_list.append(ids.strip())
-    # print('mannually annoted articles: %d' % len(pmids_list))
-    #
-    # no_mesh = []
-    # for root, dirs, files in os.walk(args.path):
-    #     for file in tqdm(files):
-    #         filename, extension = os.path.splitext(file)
-    #         if extension == '.xml':
-    #             pmids = check_if_has_meshID(file)
-    #             no_mesh.append(pmids)
+    pmcs_list = []
+    with open(args.pmids, 'r') as f:
+        for ids in f:
+            pmcs_list.append(ids.strip())
+    print('mannually annoted articles: %d' % len(pmcs_list))
+
+    data = []
+    for root, dirs, files in os.walk(args.path):
+        for file in tqdm(files):
+            filename, extension = os.path.splitext(file)
+            if extension == '.xml':
+                dataset = get_data_from_xml(file, pmcs_list)
+                data.extend(dataset)
+
+    pubmed = {'articles': data}
     # no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
     #
     # new_pmids = list(set(pmids_list) - set(no_mesh_pmid_list))
@@ -209,11 +253,12 @@ def main():
     #     for ids in new_pmids:
     #         f.write('%s\n' % ids)
 
-    pubmed, missed_ids = get_data(args.pmid_path, args.mapping_path, args.allMesh)
-
+    # pubmed, missed_ids = get_data(args.pmid_path, args.mapping_path, args.allMesh)
+    #
     with open(args.save_dataset, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
-    pickle.dump(missed_ids, open(args.save_missed, 'wb'))
+
+    #pickle.dump(missed_ids, open(args.save_missed, 'wb'))
 
 
 if __name__ == "__main__":
