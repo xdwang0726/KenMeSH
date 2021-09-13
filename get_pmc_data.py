@@ -182,17 +182,17 @@ def get_data_from_xml(file, pmc_list):
         mesh_major = []
         medlines = articles.find('MedlineCitation')
         pmid = medlines.find('PMID').text
-        if 'IndexingMethod' not in medlines.attrib and medlines.find('MeshHeadingList') is not None:
-            if pmid in set(pmc_list):
-                article_info = medlines.find('Article')
-                journal_info = article_info.find('Journal')
-                year = journal_info.find('JournalIssue').find('PubDate')
-                if year.find('Year') is None:
-                    year = year.find('MedlineDate').text[:4]
-                else:
-                    year = year.find('Year').text
-                journal_name = journal_info.find('Title').text
-                if article_info.find('ArticleTitle') is not None and article_info.find('Abstract') is not None:
+        article_info = medlines.find('Article')
+        if 'IndexingMethod' not in medlines.attrib or medlines.find('MeshHeadingList') is not None:
+            if article_info.find('ArticleTitle') is not None or article_info.find('Abstract') is not None:
+                if pmid in set(pmc_list):
+                    journal_info = article_info.find('Journal')
+                    year = journal_info.find('JournalIssue').find('PubDate')
+                    if year.find('Year') is None:
+                        year = year.find('MedlineDate').text[:4]
+                    else:
+                        year = year.find('Year').text
+                    journal_name = journal_info.find('Title').text
                     title = article_info.find('ArticleTitle').text
                     abstract = article_info.find('Abstract').find('AbstractText').text
                     mesh_headings = medlines.find('MeshHeadingList')
