@@ -439,11 +439,10 @@ def plot_loss(train_loss, valid_loss, save_path):
     fig.savefig(save_path, bbox_inches='tight')
 
 
-def dist_init(host_addr, rank, local_rank, world_size):
-    torch.distributed.init_process_group("nccl", init_method=host_addr, rank=rank, world_size=world_size)
-    num_gpus = torch.cuda.device_count()
-    torch.cuda.set_device(local_rank)
-    assert torch.distributed.is_initialized()
+# def dist_init(host_addr, rank, local_rank, world_size):
+#     torch.distributed.init_process_group("nccl", init_method=host_addr, rank=rank, world_size=world_size)
+#     torch.cuda.set_device(local_rank)
+#     assert torch.distributed.is_initialized()
 
 
 def main():
@@ -481,23 +480,29 @@ def main():
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
     # parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--local_rank', default=0, type=int)
+    # parser.add_argument('--local_rank', default=0, type=int)
 
     args = parser.parse_args()
 
-    n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
-    print("number of gpus: %d " % n_gpu)
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    print('Device:{}'.format(device))
+    ngpus_per_node = torch.cuda.device_count()
+    print('number of gpus per node: %d' % ngpus_per_node)
+    world_size = int(os.environ['SLURM_NTASKS'])
+    local_rank = int(os.environ['SLURM_LOCALID'])
+    rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
+    device = torch.device('cuda:{:d}'.format(rank))
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
+    available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
+    print('available gpus: ', available_gpus)
+    current_device = int(available_gpus[local_rank])
+
     # initialize the distributed training
     # hostname = socket.gethostname()
     # ip_address = socket.gethostbyname(hostname)
 
-    world_size = int(os.environ['SLURM_NTASKS'])
-    rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(os.environ.get("SLURM_LOCALID"))
-    local_rank = int(os.environ['SLURM_LOCALID'])
+    # world_size = int(os.environ['SLURM_NTASKS'])
+    # local_rank = int(os.environ['SLURM_LOCALID'])
+    # rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(local_rank)
+
 
     # available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',', ""))
     # current_device = int(available_gpus[local_rank])
@@ -505,9 +510,9 @@ def main():
 
     print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
     # init the process group
-    # dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size,
-    #                         rank=rank)
-    dist_init(args.init_method, rank, local_rank, world_size)
+    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size,
+                            rank=rank)
+    # dist_init(args.init_method, rank, local_rank, world_size)
     print("process group ready!")
 
     print('From Rank: {}, ==> Making model..'.format(rank))
@@ -520,15 +525,15 @@ def main():
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
                                     embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
                                     #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
+    model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).cuda()
     # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
     #                        args.atten_dropout, embedding_dim=args.embedding_dim)
     #
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
-    model.to(device)
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
+    model.cuda()
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device])
     print('From Rank: {}, ==> Preparing data..'.format(rank))
     G = G.to(device)
     G = dgl.add_self_loop(G)
@@ -564,8 +569,6 @@ def main():
     #
     # testing
     test(test_dataset, model, mlb, G, args.batch_sz, device)
-
-
 
 
 if __name__ == "__main__":
