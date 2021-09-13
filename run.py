@@ -549,8 +549,8 @@ def main():
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler,
-                                          world_size, rank)
+                                          args.num_epochs, criterion, current_device, args.num_workers, optimizer,
+                                          lr_scheduler, world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
@@ -567,7 +567,7 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    test(test_dataset, model, mlb, G, args.batch_sz, device)
+    test(test_dataset, model, mlb, G, args.batch_sz, current_device)
 
 
 if __name__ == "__main__":
