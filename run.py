@@ -221,13 +221,13 @@ def generate_batch(batch):
 
 
 def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
-          num_workers, optimizer, lr_scheduler, world_size):
-    _train_sampler = DistributedSamplerWrapper(train_sampler, num_replicas=world_size)
+          num_workers, optimizer, lr_scheduler, world_size, rank):
+    _train_sampler = DistributedSamplerWrapper(train_sampler, num_replicas=world_size, rank=rank)
 
     train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_train_sampler, collate_fn=generate_batch,
                             num_workers=num_workers)
 
-    _valid_sampler = DistributedSamplerWrapper(valid_sampler, num_replicas=world_size)
+    _valid_sampler = DistributedSamplerWrapper(valid_sampler, num_replicas=world_size, rank=rank)
     valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_valid_sampler,
                             collate_fn=generate_batch, num_workers=num_workers)
 
@@ -496,29 +496,15 @@ def main():
     available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
     print('available gpus: ', available_gpus)
     current_device = int(available_gpus[local_rank])
-
-    # initialize the distributed training
-    # hostname = socket.gethostname()
-    # ip_address = socket.gethostbyname(hostname)
-
-    # world_size = int(os.environ['SLURM_NTASKS'])
-    # local_rank = int(os.environ['SLURM_LOCALID'])
-    # rank = int(os.environ.get("SLURM_NODEID")) * n_gpu + int(local_rank)
-
-
-    # available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',', ""))
-    # current_device = int(available_gpus[local_rank])
-    # torch.cuda.set_device(current_device)
+    torch.cuda.set_device(current_device)
 
     print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
     # init the process group
     dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size,
                             rank=rank)
-    # dist_init(args.init_method, rank, local_rank, world_size)
     print("process group ready!")
 
     print('From Rank: {}, ==> Making model..'.format(rank))
-
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
         args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
@@ -553,7 +539,7 @@ def main():
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, current_device, args.num_workers, optimizer,
-                                          lr_scheduler, world_size, rank)
+                                          lr_scheduler, world_size, local_rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
