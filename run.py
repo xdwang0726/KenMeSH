@@ -221,13 +221,13 @@ def generate_batch(batch):
 
 
 def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
-          num_workers, optimizer, lr_scheduler, world_size, rank):
-    _train_sampler = DistributedSamplerWrapper(train_sampler, num_replicas=world_size, rank=rank)
+          num_workers, optimizer, lr_scheduler, world_size):
+    _train_sampler = DistributedSamplerWrapper(train_sampler, num_replicas=world_size)
 
     train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_train_sampler, collate_fn=generate_batch,
                             num_workers=num_workers)
 
-    _valid_sampler = DistributedSamplerWrapper(valid_sampler, num_replicas=world_size, rank=rank)
+    _valid_sampler = DistributedSamplerWrapper(valid_sampler, num_replicas=world_size)
     valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_valid_sampler,
                             collate_fn=generate_batch, num_workers=num_workers)
 
@@ -250,7 +250,10 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
             title_length = torch.Tensor(title_length)
             abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
+            print('device', device)
+            print('G device', G.device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
+            print('G device', G.ndata['feat'].device)
             # G_c = G_c.to(device)
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
