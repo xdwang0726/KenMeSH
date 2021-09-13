@@ -489,7 +489,6 @@ def main():
     world_size = int(os.environ['SLURM_NTASKS'])
     local_rank = int(os.environ['SLURM_LOCALID'])
     rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
-    device = torch.device('cuda:{:d}'.format(rank))
 
     available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
     print('available gpus: ', available_gpus)
@@ -522,7 +521,7 @@ def main():
         args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
-    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device,
                                     embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
                                     #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).cuda()
@@ -533,10 +532,10 @@ def main():
     # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.cuda()
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device])
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], output_device=current_device)
     print('From Rank: {}, ==> Preparing data..'.format(rank))
-    G = G.to(device)
-    G = dgl.add_self_loop(G)
+    # G = G.to(device)
+    # G = dgl.add_self_loop(G)
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
