@@ -183,11 +183,11 @@ def main():
 
     args = parser.parse_args()
 
-    pmids = []
+    pmids_list = []
     with open(args.pmids, 'r') as f:
         for ids in f:
-            pmids.append(ids.strip())
-    print('mannually annoted articles: %d' % len(pmids))
+            pmids_list.append(ids.strip())
+    print('mannually annoted articles: %d' % len(pmids_list))
 
     no_mesh = []
     for root, dirs, files in os.walk(args.path):
@@ -198,7 +198,7 @@ def main():
                 no_mesh.append(pmids)
     no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
 
-    new_pmids = list(set(pmids) - set(no_mesh_pmid_list))
+    new_pmids = list(set(pmids_list) - set(no_mesh_pmid_list))
     print('Total number of articles %d' % len(new_pmids))
     # #
     pickle.dump(no_mesh_pmid_list, open(args.save_no_mesh, 'wb'))
