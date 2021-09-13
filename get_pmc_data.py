@@ -186,23 +186,30 @@ def get_data_from_xml(file, pmc_list):
             if pmid in set(pmc_list):
                 article_info = medlines.find('Article')
                 journal_info = article_info.find('Journal')
-                year = journal_info.find('JournalIssue').find('Year').text
+                year = journal_info.find('JournalIssue').find('PubDate')
+                if year.find('Year') is None:
+                    year = year.find('MedlineDate').text[:4]
+                else:
+                    year = year.find('Year').text
                 journal_name = journal_info.find('Title').text
-                title = article_info.find('ArticleTitle').text
-                abstract = article_info.find('Abstract').text
-                mesh_headings = medlines.find('MeshHeadingList')
-                for mesh in mesh_headings.findall('MeshHeading'):
-                    m = mesh.find('DescriptorName').attrib['UI']
-                    m_name = mesh.find('DescriptorName').text
-                    mesh_ids.append(m)
-                    mesh_major.append(m_name)
-                data_point['pmid'] = pmid
-                data_point['title'] = title
-                data_point['abstractText'] = abstract
-                data_point["meshMajor"] = mesh_major
-                data_point["meshID"] = mesh_ids
-                data_point['journal'] = journal_name
-                data_point['year'] = year
+                if article_info.find('ArticleTitle') is not None and article_info.find('Abstract') is not None:
+                    title = article_info.find('ArticleTitle').text
+                    abstract = article_info.find('Abstract').find('AbstractText').text
+                    mesh_headings = medlines.find('MeshHeadingList')
+                    for mesh in mesh_headings.findall('MeshHeading'):
+                        m = mesh.find('DescriptorName').attrib['UI']
+                        m_name = mesh.find('DescriptorName').text
+                        mesh_ids.append(m)
+                        mesh_major.append(m_name)
+                    data_point['pmid'] = pmid
+                    data_point['title'] = title
+                    data_point['abstractText'] = abstract
+                    data_point["meshMajor"] = mesh_major
+                    data_point["meshID"] = mesh_ids
+                    data_point['journal'] = journal_name
+                    data_point['year'] = year
+                else:
+                    continue
             else:
                 continue
         else:
@@ -240,7 +247,7 @@ def main():
             if extension == '.xml':
                 dataset = get_data_from_xml(file, pmcs_list)
                 data.extend(dataset)
-
+    print('Total number of articles %d' % len(data))
     pubmed = {'articles': data}
     # no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
     #
