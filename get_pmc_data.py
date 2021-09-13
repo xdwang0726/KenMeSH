@@ -174,6 +174,7 @@ def main():
     parser.add_argument('--path')
     parser.add_argument('--pmids')
     parser.add_argument('--save')
+    parser.add_argument('--save_no_mesh')
     parser.add_argument('--pmid_path')
     parser.add_argument('--mapping_path')
     parser.add_argument('--allMesh')
@@ -200,7 +201,7 @@ def main():
     new_pmids = list(set(pmids) - set(no_mesh_pmid_list))
     print('Total number of articles %d' % len(new_pmids))
     # #
-    # # pickle.dump(pmid_list, open(args.pmids, 'wb'))
+    pickle.dump(no_mesh_pmid_list, open(args.save_no_mesh, 'wb'))
     #
     with open(args.save, 'w') as f:
         for ids in new_pmids:
