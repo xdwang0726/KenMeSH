@@ -250,17 +250,13 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
             title_length = torch.Tensor(title_length)
             abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
-            print('device', device)
-            print('G device', G.device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
-            print('G device', G.ndata['feat'].device)
             # G_c = G_c.to(device)
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
             loss = criterion(output, label)
-            # print('loss', loss)
             loss.backward()
             optimizer.step()
             train_losses.append(loss.item())  # record training loss
@@ -481,9 +477,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
-    # parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    # parser.add_argument('--local_rank', default=0, type=int)
 
     args = parser.parse_args()
 
