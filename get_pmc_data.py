@@ -182,7 +182,7 @@ def get_data_from_xml(file, pmc_list):
         mesh_major = []
         medlines = articles.find('MedlineCitation')
         pmid = medlines.find('PMID').text
-        if medlines.attrib['IndexingMethod'] is not None and medlines.find('MeshHeadingList') is not None:
+        if 'IndexingMethod' not in medlines.attrib and medlines.find('MeshHeadingList') is not None:
             if pmid in set(pmc_list):
                 article_info = medlines.find('Article')
                 journal_info = article_info.find('Journal')
