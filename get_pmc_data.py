@@ -110,7 +110,7 @@ def check_if_has_meshID(file):
         if medlines.find('MeshHeadingList') is None:
             pmids_no_mesh.append(pmid)
 
-    print('number of ids without mesh %d' % pmid)
+    print('number of ids without mesh %d' % len(pmids_no_mesh))
 
     return pmids_no_mesh
 
@@ -186,6 +186,7 @@ def main():
     with open(args.pmids, 'r') as f:
         for ids in f:
             pmids.append(ids.strip())
+    print('mannually annoted articles: %d' % len(pmids))
 
     no_mesh = []
     for root, dirs, files in os.walk(args.path):
