@@ -531,7 +531,7 @@ def main():
 
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss().cuda()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
@@ -539,7 +539,7 @@ def main():
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, current_device, args.num_workers, optimizer,
-                                          lr_scheduler, world_size, local_rank)
+                                          lr_scheduler, world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
