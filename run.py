@@ -99,7 +99,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 13000 < i <= 14000:
+        if 130000 < i <= 140000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -112,7 +112,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 14000:
+        elif i > 140000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -436,12 +436,6 @@ def plot_loss(train_loss, valid_loss, save_path):
     plt.tight_layout()
     plt.show()
     fig.savefig(save_path, bbox_inches='tight')
-
-
-# def dist_init(host_addr, rank, local_rank, world_size):
-#     torch.distributed.init_process_group("nccl", init_method=host_addr, rank=rank, world_size=world_size)
-#     torch.cuda.set_device(local_rank)
-#     assert torch.distributed.is_initialized()
 
 
 def main():
