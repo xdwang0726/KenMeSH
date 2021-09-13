@@ -152,12 +152,14 @@ def get_data(pmid_path, mapping_path, allMesh):
                 else:
                     label = obj["meshMajor"]
                     journal = obj['journal']
+                    year = obj['year']
                     data_point['pmid'] = ids
                     data_point['title'] = heading
                     data_point['abstractText'] = abstract
                     data_point['meshMajor'] = label
                     data_point['meshId'] = from_mesh2id(label, mapping_id)
                     data_point['journal'] = journal
+                    data_point['year'] = year
                     dataset.append(data_point)
             except AttributeError:
                 print(obj["pmid"])
@@ -171,10 +173,10 @@ def get_data(pmid_path, mapping_path, allMesh):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path')
-    parser.add_argument('--pmids')
-    parser.add_argument('--save')
-    parser.add_argument('--save_no_mesh')
+    # parser.add_argument('--path')
+    # parser.add_argument('--pmids')
+    # parser.add_argument('--save')
+    # parser.add_argument('--save_no_mesh')
     parser.add_argument('--pmid_path')
     parser.add_argument('--mapping_path')
     parser.add_argument('--allMesh')
@@ -183,35 +185,35 @@ def main():
 
     args = parser.parse_args()
 
-    pmids_list = []
-    with open(args.pmids, 'r') as f:
-        for ids in f:
-            pmids_list.append(ids.strip())
-    print('mannually annoted articles: %d' % len(pmids_list))
-
-    no_mesh = []
-    for root, dirs, files in os.walk(args.path):
-        for file in tqdm(files):
-            filename, extension = os.path.splitext(file)
-            if extension == '.xml':
-                pmids = check_if_has_meshID(file)
-                no_mesh.append(pmids)
-    no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
-
-    new_pmids = list(set(pmids_list) - set(no_mesh_pmid_list))
-    print('Total number of articles %d' % len(new_pmids))
+    # pmids_list = []
+    # with open(args.pmids, 'r') as f:
+    #     for ids in f:
+    #         pmids_list.append(ids.strip())
+    # print('mannually annoted articles: %d' % len(pmids_list))
+    #
+    # no_mesh = []
+    # for root, dirs, files in os.walk(args.path):
+    #     for file in tqdm(files):
+    #         filename, extension = os.path.splitext(file)
+    #         if extension == '.xml':
+    #             pmids = check_if_has_meshID(file)
+    #             no_mesh.append(pmids)
+    # no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
+    #
+    # new_pmids = list(set(pmids_list) - set(no_mesh_pmid_list))
+    # print('Total number of articles %d' % len(new_pmids))
+    #
+    # pickle.dump(no_mesh_pmid_list, open(args.save_no_mesh, 'wb'))
     # #
-    pickle.dump(no_mesh_pmid_list, open(args.save_no_mesh, 'wb'))
-    #
-    with open(args.save, 'w') as f:
-        for ids in new_pmids:
-            f.write('%s\n' % ids)
+    # with open(args.save, 'w') as f:
+    #     for ids in new_pmids:
+    #         f.write('%s\n' % ids)
 
-    # pubmed, missed_ids = get_data(args.pmid_path, args.mapping_path, args.allMesh)
-    #
-    # with open(args.save_dataset, "w") as outfile:
-    #     json.dump(pubmed, outfile, indent=4)
-    # pickle.dump(missed_ids, open(args.save_missed, 'wb'))
+    pubmed, missed_ids = get_data(args.pmid_path, args.mapping_path, args.allMesh)
+
+    with open(args.save_dataset, "w") as outfile:
+        json.dump(pubmed, outfile, indent=4)
+    pickle.dump(missed_ids, open(args.save_missed, 'wb'))
 
 
 if __name__ == "__main__":
