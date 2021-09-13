@@ -183,37 +183,38 @@ def get_data_from_xml(file, pmc_list):
         medlines = articles.find('MedlineCitation')
         pmid = medlines.find('PMID').text
         article_info = medlines.find('Article')
-        if 'IndexingMethod' not in medlines.attrib or medlines.find('MeshHeadingList') is not None:
-            if article_info.find('ArticleTitle') is not None or article_info.find('Abstract') is not None:
-                if pmid in set(pmc_list):
-                    journal_info = article_info.find('Journal')
-                    year = journal_info.find('JournalIssue').find('PubDate')
-                    if year.find('Year') is None:
-                        year = year.find('MedlineDate').text[:4]
-                    else:
-                        year = year.find('Year').text
-                    journal_name = journal_info.find('Title').text
-                    title = article_info.find('ArticleTitle').text
-                    abstract = article_info.find('Abstract').find('AbstractText').text
-                    mesh_headings = medlines.find('MeshHeadingList')
-                    for mesh in mesh_headings.findall('MeshHeading'):
-                        m = mesh.find('DescriptorName').attrib['UI']
-                        m_name = mesh.find('DescriptorName').text
-                        mesh_ids.append(m)
-                        mesh_major.append(m_name)
-                    data_point['pmid'] = pmid
-                    data_point['title'] = title
-                    data_point['abstractText'] = abstract
-                    data_point["meshMajor"] = mesh_major
-                    data_point["meshID"] = mesh_ids
-                    data_point['journal'] = journal_name
-                    data_point['year'] = year
-                else:
-                    continue
-            else:
-                continue
-        else:
+        if 'IndexingMethod' in medlines.attrib or  medlines.find('MeshHeadingList') is None:
             continue
+        elif article_info.find('ArticleTitle') is None or article_info.find('Abstract') is None:
+            continue
+        elif article_info.find('ArticleTitle').text == 'Not Available' or article_info.find('ArticleTitle').text == 'In process':
+            continue
+        elif article_info.find('Abstract').find('AbstractText') is None:
+            continue
+        elif pmid in set(pmc_list):
+            journal_info = article_info.find('Journal')
+            year = journal_info.find('JournalIssue').find('PubDate')
+            if year.find('Year') is None:
+                year = year.find('MedlineDate').text[:4]
+            else:
+                year = year.find('Year').text
+            journal_name = journal_info.find('Title').text
+            title = article_info.find('ArticleTitle').text
+            abstract = article_info.find('Abstract').find('AbstractText').text
+            mesh_headings = medlines.find('MeshHeadingList')
+            for mesh in mesh_headings.findall('MeshHeading'):
+                m = mesh.find('DescriptorName').attrib['UI']
+                m_name = mesh.find('DescriptorName').text
+                mesh_ids.append(m)
+                mesh_major.append(m_name)
+            data_point['pmid'] = pmid
+            data_point['title'] = title
+            data_point['abstractText'] = abstract
+            data_point["meshMajor"] = mesh_major
+            data_point["meshID"] = mesh_ids
+            data_point['journal'] = journal_name
+            data_point['year'] = year
+
         dataset.append(data_point)
 
     return dataset
