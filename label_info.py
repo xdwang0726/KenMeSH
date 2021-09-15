@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 
-def label_count(train_data_path, MeSH_id_pair_file):
+def label_count(train_data_path):
     # get MeSH in each example
     f = open(train_data_path, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
@@ -22,17 +22,17 @@ def label_count(train_data_path, MeSH_id_pair_file):
         except AttributeError:
             print(obj["pmid"].strip())
 
-    # get descriptor and MeSH mapped
-    mapping_id = {}
-    with open(MeSH_id_pair_file, 'r') as f:
-        for line in f:
-            (key, value) = line.split('=')
-            mapping_id[key] = value.strip()
-
-    # count number of nodes and get parent and children edges
-    print('count number of nodes and get edges of the graph')
-    node_count = len(mapping_id)
-    values = list(mapping_id.values())
+    # # get descriptor and MeSH mapped
+    # mapping_id = {}
+    # with open(MeSH_id_pair_file, 'r') as f:
+    #     for line in f:
+    #         (key, value) = line.split('=')
+    #         mapping_id[key] = value.strip()
+    #
+    # # count number of nodes and get parent and children edges
+    # print('count number of nodes and get edges of the graph')
+    # node_count = len(mapping_id)
+    # values = list(mapping_id.values())
 
     class_freq = {}
     for doc in label_id:
@@ -44,39 +44,39 @@ def label_count(train_data_path, MeSH_id_pair_file):
                 class_freq[label] = 1
 
     train_labels = list(class_freq.keys())
-    all_meshIDs = list(mapping_id.values())
+    # all_meshIDs = list(set([ids for docs in label_id for ids in docs]))
 
-    missing_mesh = list(set(all_meshIDs) - set(train_labels))
+    # missing_mesh = list(set(all_meshIDs) - set(train_labels))
 
     neg_class_freq = {k: len(label_id) - v for k, v in class_freq.items()}
     save_data = dict(class_freq=class_freq, neg_class_freq=neg_class_freq)
 
-    return save_data
+    return save_data, train_labels
 
 
-def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
+def new_label_mapping(train_label, MeSH_id_pair_file, new_mesh_id_path):
     # get MeSH in each example
-    f = open(train_data_path, encoding="utf8")
-    objects = ijson.items(f, 'articles.item')
-
-    label_id = []
-
-    print('Start loading training data')
-    for i, obj in enumerate(tqdm(objects)):
-        try:
-            mesh_id = obj['meshId']
-            label_id.append(mesh_id)
-        except AttributeError:
-            print(obj["pmid"].strip())
-
-    flat_label = list(set([m for meshs in label_id for m in meshs]))
-    print('len of mesh', len(flat_label))
+    # f = open(train_data_path, encoding="utf8")
+    # objects = ijson.items(f, 'articles.item')
+    #
+    # label_id = []
+    #
+    # print('Start loading training data')
+    # for i, obj in enumerate(tqdm(objects)):
+    #     try:
+    #         mesh_id = obj['meshId']
+    #         label_id.append(mesh_id)
+    #     except AttributeError:
+    #         print(obj["pmid"].strip())
+    #
+    # flat_label = list(set([m for meshs in label_id for m in meshs]))
+    # print('len of mesh', len(flat_label))
     # get descriptor and MeSH mapped
     new_mapping = []
     with open(MeSH_id_pair_file, 'r') as f:
         for line in f:
             (key, value) = line.split('=')
-            if value.strip() in flat_label:
+            if value.strip() in train_label:
                 new_mapping.append(line)
 
     # count number of nodes and get parent and children edges
@@ -85,13 +85,13 @@ def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
         for item in new_mapping:
             f.write("%s" % item)
 
-    class_freq = {}
-    for doc in label_id:
-        for label in doc:
-            if label in class_freq:
-                class_freq[label] = class_freq[label] + 1
-            else:
-                class_freq[label] = 1
+    # class_freq = {}
+    # for doc in label_id:
+    #     for label in doc:
+    #         if label in class_freq:
+    #             class_freq[label] = class_freq[label] + 1
+    #         else:
+    #             class_freq[label] = 1
 
     # train_labels = list(class_freq.keys())
     # all_meshIDs = list(new_mapping)
@@ -99,10 +99,10 @@ def new_label_mapping(train_data_path, MeSH_id_pair_file, new_mesh_id_path):
     # missing_mesh = list(set(all_meshIDs) - set(train_labels))
     # print('missing_mesh', missing_mesh)
 
-    neg_class_freq = {k: len(label_id) - v for k, v in class_freq.items()}
-    save_data = dict(class_freq=class_freq, neg_class_freq=neg_class_freq)
-
-    return save_data
+    # neg_class_freq = {k: len(label_id) - v for k, v in class_freq.items()}
+    # save_data = dict(class_freq=class_freq, neg_class_freq=neg_class_freq)
+    #
+    # return save_data
 
 
 def get_tail_labels(train_data_path):
@@ -198,6 +198,7 @@ from torchtext.data.utils import get_tokenizer
 stop_words = set(stopwords.words('english'))
 table = str.maketrans('', '', string.punctuation)
 
+
 def text_clean(tokens):
 
     stripped = [w.translate(table) for w in tokens]  # remove punctuation
@@ -241,15 +242,16 @@ def main():
 
     args = parser.parse_args()
 
-    # save_data = label_count(args.train, args.meSH_pair_path)
+    save_data, train_label = label_count(args.train)
+    new_label_mapping(train_label, args.meSH_pair_path, args.new_meSH_pair)
     # save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
-    # with open(args.class_freq, 'wb') as f:
-    #     pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
+    with open(args.class_freq, 'wb') as f:
+        pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
     # tail_labels = get_tail_labels(args.train)
     # pickle.dump(tail_labels, open(args.class_freq, 'wb'))
     # neg_pos_ratio = get_label_negative_positive_ratio(args.train, args.meSH_pair_path)
     # pickle.dump(neg_pos_ratio, open(args.class_freq, 'wb'))
-    percentiles = get_doc_length(args.train)
+    # percentiles = get_doc_length(args.train)
 
 
 if __name__ == "__main__":
