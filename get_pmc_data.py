@@ -229,7 +229,7 @@ def merge_json(file_path):
                 with open(file, 'rb') as infile:
                     articles = json.load(infile)['articles']
                     articles = list(filter(None, articles))
-                    results.append(articles)
+                    results.extend(articles)
 
     pubmed = {'articles': results}
     print('number of PMC articles: %d' % len(results))
