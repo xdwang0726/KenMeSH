@@ -214,10 +214,26 @@ def get_data_from_xml(file, pmc_list):
             data_point["meshID"] = mesh_ids
             data_point['journal'] = journal_name
             data_point['year'] = year
-
-        dataset.append(data_point)
+            dataset.append(data_point)
 
     return dataset
+
+
+def merge_json(file_path):
+
+    results = []
+    for root, dirs, files in os.walk(file_path):
+        for file in tqdm(files):
+            filename, extension = os.path.splitext(file)
+            if extension == '.json':
+                with open(filename, 'rb') as infile:
+                    articles = json.load(infile)['articles']
+                    articles = list(filter(None, articles))
+                    results.append(articles)
+
+    pubmed = {'articles': results}
+    print('number of PMC articles: %d' % len(results))
+    return pubmed
 
 
 def main():
@@ -235,21 +251,22 @@ def main():
 
     args = parser.parse_args()
 
-    pmcs_list = []
-    with open(args.pmids, 'r') as f:
-        for ids in f:
-            pmcs_list.append(ids.strip())
-    print('mannually annoted articles: %d' % len(pmcs_list))
 
-    data = []
-    for root, dirs, files in os.walk(args.path):
-        for file in tqdm(files):
-            filename, extension = os.path.splitext(file)
-            if extension == '.xml':
-                dataset = get_data_from_xml(file, pmcs_list)
-                data.extend(dataset)
-    print('Total number of articles %d' % len(data))
-    pubmed = {'articles': data}
+    # pmcs_list = []
+    # with open(args.pmids, 'r') as f:
+    #     for ids in f:
+    #         pmcs_list.append(ids.strip())
+    # print('mannually annoted articles: %d' % len(pmcs_list))
+    #
+    # data = []
+    # for root, dirs, files in os.walk(args.path):
+    #     for file in tqdm(files):
+    #         filename, extension = os.path.splitext(file)
+    #         if extension == '.xml':
+    #             dataset = get_data_from_xml(file, pmcs_list)
+    #             data.extend(dataset)
+    # print('Total number of articles %d' % len(data))
+    # pubmed = {'articles': data}
     # no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
     #
     # new_pmids = list(set(pmids_list) - set(no_mesh_pmid_list))
@@ -263,6 +280,7 @@ def main():
 
     # pubmed, missed_ids = get_data(args.pmid_path, args.mapping_path, args.allMesh)
     #
+    pubmed = merge_json(args.path)
     with open(args.save_dataset, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
