@@ -226,7 +226,7 @@ def merge_json(file_path):
         for file in tqdm(files):
             filename, extension = os.path.splitext(file)
             if extension == '.json':
-                with open(filename, 'rb') as infile:
+                with open(file, 'rb') as infile:
                     articles = json.load(infile)['articles']
                     articles = list(filter(None, articles))
                     results.append(articles)
