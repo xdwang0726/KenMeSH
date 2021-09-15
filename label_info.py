@@ -17,7 +17,7 @@ def label_count(train_data_path):
     print('Start loading training data')
     for i, obj in enumerate(tqdm(objects)):
         try:
-            mesh_id = obj['meshId']
+            mesh_id = obj['meshID']
             label_id.append(mesh_id)
         except AttributeError:
             print(obj["pmid"].strip())

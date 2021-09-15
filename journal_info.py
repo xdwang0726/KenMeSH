@@ -15,7 +15,7 @@ def journal_stats(data_path):
     for i, obj in enumerate(tqdm(objects)):
         try:
             journal = obj['journal']
-            mesh_id = obj['meshId']
+            mesh_id = obj['meshID']
             label_id.append(mesh_id)
             journals.append(journal)
         except AttributeError:
@@ -50,11 +50,12 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data')
+    parser.add_argument('--save')
 
     args = parser.parse_args()
 
     journal_info = journal_stats(args.data)
-    with open('journal_info.pkl', 'wb') as f:
+    with open(args.save, 'wb') as f:
         pickle.dump(journal_info, f, pickle.HIGHEST_PROTOCOL)
 
 
