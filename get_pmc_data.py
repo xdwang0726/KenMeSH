@@ -187,6 +187,8 @@ def get_data_from_xml(file, pmc_list):
             continue
         elif article_info.find('ArticleTitle') is None or article_info.find('Abstract') is None:
             continue
+        elif medlines.find('MeshHeadingList') is None:
+            continue
         else:
             title = "".join(article_info.find('ArticleTitle').itertext())
             if title ==  'Not Available' or title == 'In process':
@@ -206,8 +208,7 @@ def get_data_from_xml(file, pmc_list):
                     abstract.append("".join(ab.itertext()))
                 abstract = list(filter(None, abstract))
                 abstract = ' '.join(abstract)
-                mesh_headings = medlines.find('MeshHeadingList')
-                for mesh in mesh_headings.findall('MeshHeading'):
+                for mesh in medlines.find('MeshHeadingList').findall('MeshHeading'):
                     m = mesh.find('DescriptorName').attrib['UI']
                     m_name = mesh.find('DescriptorName').text
                     mesh_ids.append(m)
