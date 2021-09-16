@@ -187,38 +187,39 @@ def get_data_from_xml(file, pmc_list):
             continue
         elif article_info.find('ArticleTitle') is None or article_info.find('Abstract') is None:
             continue
-        elif article_info.find('ArticleTitle').text == 'Not Available' or article_info.find('ArticleTitle').text == 'In process':
-            continue
-        elif article_info.find('Abstract').find('AbstractText') is None:
-            continue
-        elif pmid in set(pmc_list):
-            journal_info = article_info.find('Journal')
-            year = journal_info.find('JournalIssue').find('PubDate')
-            if year.find('Year') is None:
-                year = year.find('MedlineDate').text[:4]
-            else:
-                year = year.find('Year').text
-            journal_name = journal_info.find('Title').text
-            title = article_info.find('ArticleTitle').text
-            abstract = []
-            for ab in article_info.find('Abstract').findall('AbstractText'):
-                abstract.append(ab.text)
-            abstract = list(filter(None, abstract))
-            abstract = ' '.join(abstract)
-            mesh_headings = medlines.find('MeshHeadingList')
-            for mesh in mesh_headings.findall('MeshHeading'):
-                m = mesh.find('DescriptorName').attrib['UI']
-                m_name = mesh.find('DescriptorName').text
-                mesh_ids.append(m)
-                mesh_major.append(m_name)
-            data_point['pmid'] = pmid
-            data_point['title'] = title
-            data_point['abstractText'] = abstract
-            data_point["meshMajor"] = mesh_major
-            data_point["meshID"] = mesh_ids
-            data_point['journal'] = journal_name
-            data_point['year'] = year
-            dataset.append(data_point)
+        else:
+            title = "".join(article_info.find('ArticleTitle').itertext())
+            if title ==  'Not Available' or title == 'In process':
+                continue
+            elif article_info.find('Abstract').find('AbstractText') is None:
+                continue
+            elif pmid in set(pmc_list):
+                journal_info = article_info.find('Journal')
+                year = journal_info.find('JournalIssue').find('PubDate')
+                if year.find('Year') is None:
+                    year = year.find('MedlineDate').text[:4]
+                else:
+                    year = year.find('Year').text
+                journal_name = journal_info.find('Title').text
+                abstract = []
+                for ab in article_info.find('Abstract').findall('AbstractText'):
+                    abstract.append("".join(ab.itertext()))
+                abstract = list(filter(None, abstract))
+                abstract = ' '.join(abstract)
+                mesh_headings = medlines.find('MeshHeadingList')
+                for mesh in mesh_headings.findall('MeshHeading'):
+                    m = mesh.find('DescriptorName').attrib['UI']
+                    m_name = mesh.find('DescriptorName').text
+                    mesh_ids.append(m)
+                    mesh_major.append(m_name)
+                data_point['pmid'] = pmid
+                data_point['title'] = title
+                data_point['abstractText'] = abstract
+                data_point["meshMajor"] = mesh_major
+                data_point["meshID"] = mesh_ids
+                data_point['journal'] = journal_name
+                data_point['year'] = year
+                dataset.append(data_point)
 
     return dataset
 
@@ -257,21 +258,21 @@ def main():
 
     args = parser.parse_args()
 
-    # pmcs_list = []
-    # with open(args.pmids, 'r') as f:
-    #     for ids in f:
-    #         pmcs_list.append(ids.strip())
-    # print('mannually annoted articles: %d' % len(pmcs_list))
-    #
-    # data = []
-    # for root, dirs, files in os.walk(args.path):
-    #     for file in tqdm(files):
-    #         filename, extension = os.path.splitext(file)
-    #         if extension == '.xml':
-    #             dataset = get_data_from_xml(file, pmcs_list)
-    #             data.extend(dataset)
-    # print('Total number of articles %d' % len(data))
-    # pubmed = {'articles': data}
+    pmcs_list = []
+    with open(args.pmids, 'r') as f:
+        for ids in f:
+            pmcs_list.append(ids.strip())
+    print('mannually annoted articles: %d' % len(pmcs_list))
+
+    data = []
+    for root, dirs, files in os.walk(args.path):
+        for file in tqdm(files):
+            filename, extension = os.path.splitext(file)
+            if extension == '.xml':
+                dataset = get_data_from_xml(file, pmcs_list)
+                data.extend(dataset)
+    print('Total number of articles %d' % len(data))
+    pubmed = {'articles': data}
     # no_mesh_pmid_list = list(set([ids for pmids in no_mesh for ids in pmids]))
     #
     # new_pmids = list(set(pmids_list) - set(no_mesh_pmid_list))
@@ -285,7 +286,7 @@ def main():
 
     # pubmed, missed_ids = get_data(args.pmid_path, args.mapping_path, args.allMesh)
     #
-    pubmed = merge_json(args.path)
+    # pubmed = merge_json(args.path)
     with open(args.save_dataset, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
