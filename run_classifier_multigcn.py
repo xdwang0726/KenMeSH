@@ -350,9 +350,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device, num_nodes):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
     # pred = torch.zeros(0).to(device)
     top_k_precisions = []
-    sum_ebp = np.empty(num_nodes)
-    sum_ebr = np.empty(num_nodes)
-    sum_ebf = np.empty(num_nodes)
+    sum_ebp = 0.
+    sum_ebr = 0.
+    sum_ebf = 0.
     tp = 0.
     tn = 0.
     fp = 0.

@@ -216,14 +216,13 @@ def find_common_label(y_actual, y_hat):
 
 
 def example_based_evaluation(pred, target, threshold):
-    print('pred', pred.shape)
-    print('target', target.shape)
+
     pred = (pred > threshold).astype(np.int)
 
     product = pred * target
-    ebp = product / pred
-    ebr = product / target
-    ebf = 2 * product / (pred + target)
+    ebp = np.sum(np.sum(product, axis=1) / np.sum(pred, axis=1))
+    ebr = np.sum(np.sum(product, axis=1) / np.sum(target, axis=1))
+    ebf = np.sum(2 * product / (pred + target))
 
     return (ebp, ebr, ebf)
 
