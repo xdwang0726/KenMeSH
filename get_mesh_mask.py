@@ -157,7 +157,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
             else:
                 try:
                     # doc_vec, length = idf_weighted_wordvec(clean_abstract)
-                    label = obj['meshId']
+                    label = obj['meshID']
                     pmid.append(ids)
                     title.append(heading)
                     all_text.append(clean_abstract)
@@ -168,8 +168,6 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
             print(obj["pmid"].strip())
 
     print('Loading document done. ')
-
-    # doc_idfs = idf_weighted_wordvec(all_text)
 
     dataset = Preprocess(all_text, idfs, labels)
     vocab = dataset.get_vocab()
@@ -232,7 +230,8 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
     for i, id in enumerate(pmid):
         data_point = {}
         data_point['pmid'] = id
-        data_point['neighbors'] = neighbors_meshs[i]
+        mesh = ','.join(neighbors_meshs[i])
+        data_point['neighbors'] = mesh
         dataset.append(data_point)
 
     pubmed = {'articles': dataset}
@@ -332,15 +331,14 @@ def main():
     parser.add_argument('--save_path')
     args = parser.parse_args()
 
-    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # cache, name = os.path.split(args.word2vec_path)
-    # vectors = Vectors(name=name, cache=cache)
-    # pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    cache, name = os.path.split(args.word2vec_path)
+    vectors = Vectors(name=name, cache=cache)
+    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
     # pubmed = get_knn_neighbors_mesh(args.allMesh, args.idfs_path, args.k, device)
 
-    journal_mesh = get_journal_mesh(args.journal_info, args.threshold)
-    pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh)
-    print('pubmed type', type(pubmed))
+    # journal_mesh = get_journal_mesh(args.journal_info, args.threshold)
+    # pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh)
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
