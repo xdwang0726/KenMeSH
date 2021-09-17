@@ -216,15 +216,15 @@ def find_common_label(y_actual, y_hat):
 
 
 def example_based_evaluation(pred, target, threshold):
-
+    print('pred', pred.shape)
     pred = (pred > threshold).astype(np.int)
 
     product = pred * target
-    sum_product = np.sum(product)
-    sum_pred = np.sum(pred)
-    sum_target = np.sum(target)
+    ebp = product / pred
+    ebr = product / target
+    ebf = 2 * product / (pred + target)
 
-    return (sum_pred, sum_target, sum_product)
+    return (ebp, ebr, ebf)
 
 
 def micro_macro_eval(pred, target, threshold):

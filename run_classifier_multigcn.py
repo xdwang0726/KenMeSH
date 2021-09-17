@@ -122,7 +122,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     test_mesh_mask = []
 
     for i, obj in enumerate(tqdm(test_objects)):
-        if 130000 < i <= 140000:
+        if 13000 < i <= 14000:
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
@@ -135,7 +135,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             test_text.append(text)
             test_label_id.append(mesh_id)
             test_mesh_mask.append(mesh)
-        elif i > 140000:
+        elif i > 14000:
             break
     print('number of test data %d' % len(test_title))
 
@@ -346,13 +346,13 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     return model, avg_train_losses, avg_valid_losses
 
 
-def test(test_dataset, model, mlb, G, batch_sz, device):
+def test(test_dataset, model, mlb, G, batch_sz, device, num_nodes):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
     # pred = torch.zeros(0).to(device)
     top_k_precisions = []
-    sum_pred = 0.
-    sum_target = 0.
-    sum_product = 0.
+    sum_ebp = np.empty(num_nodes)
+    sum_ebr = np.empty(num_nodes)
+    sum_ebf = np.empty(num_nodes)
     tp = 0.
     tn = 0.
     fp = 0.
@@ -380,9 +380,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         top_k_precisions.append(precisions)
         # calculate example-based evaluation
         sums = example_based_evaluation(results, label, threshold=0.5)
-        sum_pred += sums[0]
-        sum_target += sums[1]
-        sum_product += sums[2]
+        sum_ebp += sums[0]
+        sum_ebr += sums[1]
+        sum_ebf += sums[2]
         # calculate label-based evaluation
         confusion = micro_macro_eval(results, label, threshold=0.5)
         tp += confusion[0]
@@ -399,9 +399,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         print('p@{}: {:.5f}'.format(k, p))
 
     print('Calculate Example-based Evaluation')
-    ebp = sum_product / sum_pred
-    ebr = sum_product / sum_target
-    ebf = (2 * sum_product) / (sum_pred + sum_target)
+    ebp = sum_ebp / len(test_dataset)
+    ebr = sum_ebp / len(test_dataset)
+    ebf = sum_ebp / len(test_dataset)
     for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
         print('{}: {:.5f}'.format(n, m))
 
@@ -498,7 +498,7 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=20)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -557,7 +557,7 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    test(test_dataset, model, mlb, G, args.batch_sz, device)
+    test(test_dataset, model, mlb, G, args.batch_sz, device, num_nodes)
 
 
 if __name__ == "__main__":
