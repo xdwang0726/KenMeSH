@@ -217,6 +217,7 @@ def find_common_label(y_actual, y_hat):
 
 def example_based_evaluation(pred, target, threshold):
     print('pred', pred.shape)
+    print('target', target.shape)
     pred = (pred > threshold).astype(np.int)
 
     product = pred * target
