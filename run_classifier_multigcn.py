@@ -346,7 +346,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     return model, avg_train_losses, avg_valid_losses
 
 
-def test(test_dataset, model, mlb, G, batch_sz, device, num_nodes):
+def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
     # pred = torch.zeros(0).to(device)
     top_k_precisions = []
@@ -557,7 +557,7 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    test(test_dataset, model, mlb, G, args.batch_sz, device, num_nodes)
+    test(test_dataset, model, mlb, G, args.batch_sz, device)
 
 
 if __name__ == "__main__":

@@ -244,6 +244,7 @@ def main():
 
     save_data, train_label = label_count(args.train)
     new_label_mapping(train_label, args.meSH_pair_path, args.new_meSH_pair)
+    get_doc_length(args.train)
     # save_data = new_label_mapping(args.train, args.meSH_pair_path, args.new_meSH_pair)
     with open(args.class_freq, 'wb') as f:
         pickle.dump(save_data, f, pickle.HIGHEST_PROTOCOL)
