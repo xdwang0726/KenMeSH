@@ -121,11 +121,14 @@ def load_idf_file(idf_path):
     weighted_doc_vec = []
 
     for i, obj in enumerate(tqdm(object)):
-        ids = obj["pmid"]
-        idf = obj['weighted_doc_vec']
-        idf = [float(item) for item in idf]
-        pmid.append(ids)
-        weighted_doc_vec.append(idf)
+        if i < 100:
+            ids = obj["pmid"]
+            idf = obj['weighted_doc_vec']
+            idf = [float(item) for item in idf]
+            pmid.append(ids)
+            weighted_doc_vec.append(idf)
+        else:
+            break
     return pmid, weighted_doc_vec
 
 
