@@ -223,7 +223,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
     index.add(doc_vecs)
     index.nprobe = nprobe
     neighbors_meshs = []
-    for i in range(tqdm(doc_vecs.shape[0])):
+    for i in tqdm(range(doc_vecs.shape[0])):
         _, I = index.search(doc_vecs[i].reshape(1, 200), k)
         idxes = I[0]
         neighbors_mesh = []
