@@ -268,7 +268,7 @@ def read_neighbors(neighbors):
     for i, obj in enumerate(tqdm(objects)):
         ids = obj['pmid']
         mesh = obj['neighbors']
-        mesh = ','.join(mesh)
+        # mesh = ','.join(mesh)
         pmid.append(ids)
         neighbors_mesh.append(mesh)
     return pmid, neighbors_mesh
@@ -299,8 +299,9 @@ def build_dataset(train_path, neighbors, journal_mesh):
             else:
                 try:
                     original_label = obj["meshMajor"]
-                    mesh_id = obj['meshId']
+                    mesh_id = obj['meshID']
                     journal = obj['journal']
+                    year = obj['year']
                     mesh_from_journal = journal_mesh[journal]
                     if ids == pmid_neighbors[i]:
                         mesh_from_neighbors = neighbors_mesh[i]
@@ -308,9 +309,10 @@ def build_dataset(train_path, neighbors, journal_mesh):
                     data_point['title'] = heading
                     data_point['abstractText'] = clean_abstract
                     data_point['meshMajor'] = original_label
-                    data_point['meshId'] = mesh_id
+                    data_point['meshID'] = mesh_id
                     data_point['journal'] = mesh_from_journal
                     data_point['neighbors'] = mesh_from_neighbors
+                    data_point['year'] = year
                     dataset.append(data_point)
                 except KeyError:
                     print('tfidf error', ids)
@@ -334,14 +336,14 @@ def main():
     parser.add_argument('--save_path')
     args = parser.parse_args()
 
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    cache, name = os.path.split(args.word2vec_path)
-    vectors = Vectors(name=name, cache=cache)
-    pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # cache, name = os.path.split(args.word2vec_path)
+    # vectors = Vectors(name=name, cache=cache)
+    # pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
     # pubmed = get_knn_neighbors_mesh(args.allMesh, args.idfs_path, args.k, device)
 
-    # journal_mesh = get_journal_mesh(args.journal_info, args.threshold)
-    # pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh)
+    journal_mesh = get_journal_mesh(args.journal_info, args.threshold)
+    pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh)
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
