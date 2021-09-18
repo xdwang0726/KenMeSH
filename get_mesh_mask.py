@@ -121,14 +121,11 @@ def load_idf_file(idf_path):
     weighted_doc_vec = []
 
     for i, obj in enumerate(tqdm(object)):
-        if i < 100:
-            ids = obj["pmid"]
-            idf = obj['weighted_doc_vec']
-            idf = [float(item) for item in idf]
-            pmid.append(ids)
-            weighted_doc_vec.append(idf)
-        else:
-            break
+        ids = obj["pmid"]
+        idf = obj['weighted_doc_vec']
+        idf = [float(item) for item in idf]
+        pmid.append(ids)
+        weighted_doc_vec.append(idf)
     return pmid, weighted_doc_vec
 
 
@@ -145,33 +142,31 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
     labels = []
 
     for i, obj in enumerate(tqdm(objects)):
-        if i <100:
-            try:
-                ids = obj["pmid"]
-                heading = obj['title'].strip()
-                heading = heading.translate(str.maketrans('', '', '[]'))
-                abstract = obj["abstractText"].strip()
-                clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
-                if len(heading) == 0 or heading == 'In process':
-                    print('paper ', ids, ' does not have title!')
-                    continue
-                elif len(clean_abstract) == 0:
-                    print('paper ', ids, ' does not have abstract!')
-                    continue
-                else:
-                    try:
+        try:
+            ids = obj["pmid"]
+            heading = obj['title'].strip()
+            heading = heading.translate(str.maketrans('', '', '[]'))
+            abstract = obj["abstractText"].strip()
+            clean_abstract = abstract.translate(str.maketrans('', '', '[]'))
+            if len(heading) == 0 or heading == 'In process':
+                print('paper ', ids, ' does not have title!')
+                continue
+            elif len(clean_abstract) == 0:
+                print('paper ', ids, ' does not have abstract!')
+                continue
+            else:
+                try:
                     # doc_vec, length = idf_weighted_wordvec(clean_abstract)
-                        label = obj['meshID']
-                        pmid.append(ids)
-                        title.append(heading)
-                        all_text.append(clean_abstract)
-                        labels.append(label)
-                    except KeyError:
-                        print('tfidf error', ids)
-            except AttributeError:
-                print(obj["pmid"].strip())
-        else:
-            break
+                    label = obj['meshID']
+                    pmid.append(ids)
+                    title.append(heading)
+                    all_text.append(clean_abstract)
+                    labels.append(label)
+                except KeyError:
+                    print('tfidf error', ids)
+        except AttributeError:
+            print(obj["pmid"].strip())
+
 
     print('Loading document done. ')
 
@@ -192,7 +187,6 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
             pred = torch.cat((pred, output), dim=0)
 
     doc_vecs = pred.data.cpu().numpy()
-    print('doc_vec', doc_vecs.dtype)
     doc_vecs = doc_vecs.astype('float32')
     print('number of embedding articles', len(doc_vecs))
 
