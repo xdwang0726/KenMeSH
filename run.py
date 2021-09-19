@@ -142,7 +142,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                                                 is_test=False, is_multichannel=True)
 
     # get validation set
-    valid_size = 0.2
+    valid_size = 0.1
     indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(pmid)))
     train_idx, valid_idx = indices[split:], indices[:split]
