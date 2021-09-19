@@ -68,7 +68,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                     text = obj['abstractText'].strip()
                     text = text.translate(str.maketrans('', '', '[]'))
                     original_label = obj['meshMajor']
-                    mesh_id = obj['meshId']
+                    mesh_id = obj['meshID']
                     journal = obj['journal'].split(',')
                     neigh = obj['neighbors'].split(',')
                     mesh = set(journal + neigh)
@@ -103,7 +103,7 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             ids = obj['pmid']
             heading = obj['title'].strip()
             text = obj['abstractText'].strip()
-            mesh_id = obj['meshId']
+            mesh_id = obj['meshID']
             journal = obj['journal'].split(',')
             neigh = obj['neighbors'].split(',')
             mesh = set(journal + neigh)
@@ -474,7 +474,7 @@ def main():
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
-
+    set_seed(726)
     ngpus_per_node = torch.cuda.device_count()
     print('number of gpus per node: %d' % ngpus_per_node)
     world_size = int(os.environ['SLURM_NTASKS'])
