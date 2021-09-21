@@ -250,7 +250,10 @@ def get_journal_mesh(journal_info, threshold, meshIDs):
             if list(v['mesh_counts'].values())[i] / num >= threshold:
                 mesh.append(ids)
         for m in mesh:
-            m_id = meshIDs.index(m)
+            try:
+                m_id = meshIDs.index(m)
+            except ValueError:
+                continue
             new_mesh_index.append(m_id)
         journal_mesh[k] = new_mesh_index
 
