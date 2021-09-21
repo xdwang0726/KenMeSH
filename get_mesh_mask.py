@@ -1,27 +1,23 @@
 import argparse
 import json
-import os
+import pickle
 import string
 
 import faiss
 import ijson
 import nltk
-import numpy as np
-import pickle
 import torch
 import torch.nn as nn
-from itertools import islice
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import MultiLabelBinarizer
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.data.utils import get_tokenizer
-from torchtext.vocab import Vectors
 from tqdm import tqdm
 
 from run_classifier_multigcn import weight_matrix
 from utils import Preprocess
-from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
 
 nltk.download('stopwords')
 tokenizer = get_tokenizer('basic_english')
@@ -274,7 +270,18 @@ def read_neighbors(neighbors):
     return pmid, neighbors_mesh
 
 
-def build_dataset(train_path, neighbors, journal_mesh):
+def build_dataset(train_path, neighbors, journal_mesh, MeSH_id_pair_file):
+
+    mapping_id = {}
+    with open(MeSH_id_pair_file, 'r') as f:
+        for line in f:
+            (key, value) = line.split('=')
+            mapping_id[key] = value.strip()
+
+    meshIDs = list(mapping_id.values())
+    print('Total number of labels %d' % len(meshIDs))
+    mlb = MultiLabelBinarizer(classes=meshIDs)
+    mlb.fit(meshIDs)
 
     pmid_neighbors, neighbors_mesh = read_neighbors(neighbors)
 
@@ -298,20 +305,19 @@ def build_dataset(train_path, neighbors, journal_mesh):
                 continue
             else:
                 try:
-                    original_label = obj["meshMajor"]
                     mesh_id = obj['meshID']
                     journal = obj['journal']
                     year = obj['year']
-                    mesh_from_journal = journal_mesh[journal]
+                    mesh_from_journal = journal_mesh[journal].split(',')
                     if ids == pmid_neighbors[i]:
-                        mesh_from_neighbors = neighbors_mesh[i]
+                        mesh_from_neighbors = neighbors_mesh[i].split(',')
+                    mesh = list(set(mesh_from_journal + mesh_from_neighbors))
+                    mask = mlb.fit_transform(mesh)
                     data_point['pmid'] = ids
                     data_point['title'] = heading
                     data_point['abstractText'] = clean_abstract
-                    data_point['meshMajor'] = original_label
                     data_point['meshID'] = mesh_id
-                    data_point['journal'] = mesh_from_journal
-                    data_point['neighbors'] = mesh_from_neighbors
+                    data_point['meshMask'] = mask
                     data_point['year'] = year
                     dataset.append(data_point)
                 except KeyError:
@@ -333,6 +339,7 @@ def main():
     parser.add_argument('--journal_info')
     parser.add_argument('--idfs_path')
     parser.add_argument('--neigh_path')
+    parser.add_argument('--meSH_pair_path')
     parser.add_argument('--save_path')
     args = parser.parse_args()
 
@@ -343,7 +350,7 @@ def main():
     # pubmed = get_knn_neighbors_mesh(args.allMesh, args.idfs_path, args.k, device)
 
     journal_mesh = get_journal_mesh(args.journal_info, args.threshold)
-    pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh)
+    pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
