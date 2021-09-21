@@ -237,7 +237,7 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
     return pubmed
 
 
-def get_journal_mesh(journal_info, threshold):
+def get_journal_mesh(journal_info, threshold, meshIDs):
 
     journal = pickle.load(open(journal_info, 'rb'))
 
@@ -245,29 +245,40 @@ def get_journal_mesh(journal_info, threshold):
     for k, v in journal.items():
         num = v['counts']
         mesh = []
+        new_mesh_index = []
         for i, (ids, counts) in enumerate(v['mesh_counts'].items()):
             if list(v['mesh_counts'].values())[i] / num >= threshold:
                 mesh.append(ids)
-        mesh = ','.join(mesh)
-        journal_mesh[k] = mesh
+        for m in mesh:
+            m_id = meshIDs.index(m)
+            new_mesh_index.append(m_id)
+        journal_mesh[k] = new_mesh_index
 
     return journal_mesh
 
 
-def read_neighbors(neighbors):
+def read_neighbors(neighbors, meshIDs):
     f = open(neighbors, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
 
-    pmid = []
-    neighbors_mesh = []
+    # pmid = []
+    # neighbors_mesh = []
+    dataset = []
 
     for i, obj in enumerate(tqdm(objects)):
+        data_point = {}
+        new_mesh_index = []
         ids = obj['pmid']
-        mesh = obj['neighbors']
-        # mesh = ','.join(mesh)
-        pmid.append(ids)
-        neighbors_mesh.append(mesh)
-    return pmid, neighbors_mesh
+        mesh = obj['neighbors'].split(',')
+        for m in mesh:
+            m_id = meshIDs.index(m)
+            new_mesh_index.append(m_id)
+        # pmid.append(ids)
+        data_point['pmid'] = ids
+        data_point['neighbors'] = new_mesh_index
+        dataset.append(data_point)
+        # neighbors_mesh.append(new_mesh_index)
+    return dataset #pmid, neighbors_mesh
 
 
 def build_dataset(train_path, neighbors, journal_mesh, MeSH_id_pair_file):
@@ -304,24 +315,21 @@ def build_dataset(train_path, neighbors, journal_mesh, MeSH_id_pair_file):
                 print('paper ', ids, ' does not have abstract!')
                 continue
             else:
-                try:
-                    mesh_id = obj['meshID']
-                    journal = obj['journal']
-                    year = obj['year']
-                    mesh_from_journal = journal_mesh[journal].split(',')
-                    if ids == pmid_neighbors[i]:
-                        mesh_from_neighbors = neighbors_mesh[i].split(',')
-                    mesh = list(set(mesh_from_journal + mesh_from_neighbors))
-                    mask = mlb.fit_transform(mesh)
-                    data_point['pmid'] = ids
-                    data_point['title'] = heading
-                    data_point['abstractText'] = clean_abstract
-                    data_point['meshID'] = mesh_id
-                    data_point['meshMask'] = mask
-                    data_point['year'] = year
-                    dataset.append(data_point)
-                except KeyError:
-                    print('tfidf error', ids)
+                mesh_id = obj['meshID']
+                journal = obj['journal']
+                year = obj['year']
+                mesh_from_journal = journal_mesh[journal].split(',')
+                if ids == pmid_neighbors[i]:
+                    mesh_from_neighbors = neighbors_mesh[i].split(',')
+                mesh = list(set(mesh_from_journal + mesh_from_neighbors))
+                mask = mlb.fit_transform(mesh)
+                data_point['pmid'] = ids
+                data_point['title'] = heading
+                data_point['abstractText'] = clean_abstract
+                data_point['meshID'] = mesh_id
+                data_point['meshMask'] = mask
+                data_point['year'] = year
+                dataset.append(data_point)
         except AttributeError:
             print(obj["pmid"].strip())
 
@@ -341,6 +349,7 @@ def main():
     parser.add_argument('--neigh_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--save_path')
+    parser.add_argument('--journal')
     args = parser.parse_args()
 
     # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -349,8 +358,20 @@ def main():
     # pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
     # pubmed = get_knn_neighbors_mesh(args.allMesh, args.idfs_path, args.k, device)
 
-    journal_mesh = get_journal_mesh(args.journal_info, args.threshold)
-    pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
+    mapping_id = {}
+    with open(args.meSH_pair_path, 'r') as f:
+        for line in f:
+            (key, value) = line.split('=')
+            mapping_id[key] = value.strip()
+
+    meshIDs = list(mapping_id.values())
+
+    journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
+    pickle.dump(journal_mesh, open(args.journal, 'wb'))
+
+    # pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
+    dataset = read_neighbors(args.neigh_path, meshIDs)
+    pubmed = {'articles': dataset}
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
 
