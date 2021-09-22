@@ -3,6 +3,7 @@ import os
 import random
 import socket
 import sys
+import pickle
 
 import dgl
 import ijson
@@ -37,18 +38,20 @@ def flatten(l):
     return flat
 
 
-def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
+def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
 
+    mesh_mask = pickle.load(open(mask_path, 'rb'))
+
     pmid = []
     train_title = []
     all_text = []
-    label = []
+    # label = []
     label_id = []
-    mesh_mask = []
+    # mesh_mask = []
 
     print('Start loading training data')
     for i, obj in enumerate(tqdm(objects)):
@@ -75,9 +78,9 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
                     pmid.append(ids)
                     train_title.append(heading)
                     all_text.append(text)
-                    label.append(original_label)
+                    # label.append(original_label)
                     label_id.append(mesh_id)
-                    mesh_mask.append(mesh)
+                    # mesh_mask.append(mesh)
             except AttributeError:
                 print(obj['pmid'].strip())
         else:
@@ -89,32 +92,32 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     # load test data
     print('Start loading test data')
-    f_t = open(test_data_path, encoding="utf8")
-    test_objects = ijson.items(f_t, 'articles.item')
+    # f_t = open(test_data_path, encoding="utf8")
+    # test_objects = ijson.items(f_t, 'articles.item')
 
-    test_pmid = []
-    test_title = []
-    test_text = []
-    test_label_id = []
-    test_mesh_mask = []
+    test_pmid = pmid[-20000:]
+    test_title = train_title[-20000:]
+    test_text = all_text[-20000:]
+    test_label_id = label_id[-20000:]
+    test_mesh_mask = pmid[-20000:]
 
-    for i, obj in enumerate(tqdm(test_objects)):
-        if 610000 < i <= 620000:
-            ids = obj['pmid']
-            heading = obj['title'].strip()
-            text = obj['abstractText'].strip()
-            mesh_id = obj['meshID']
-            journal = obj['journal'].split(',')
-            neigh = obj['neighbors'].split(',')
-            mesh = set(journal + neigh)
-            test_pmid.append(ids)
-            test_title.append(heading)
-            test_text.append(text)
-            test_label_id.append(mesh_id)
-            test_mesh_mask.append(mesh)
-        elif i > 620000:
-            break
-    print('number of test data %d' % len(test_title))
+    # for i, obj in enumerate(tqdm(test_objects)):
+    #     if 610000 < i <= 620000:
+    #         ids = obj['pmid']
+    #         heading = obj['title'].strip()
+    #         text = obj['abstractText'].strip()
+    #         mesh_id = obj['meshID']
+    #         journal = obj['journal'].split(',')
+    #         neigh = obj['neighbors'].split(',')
+    #         mesh = set(journal + neigh)
+    #         test_pmid.append(ids)
+    #         test_title.append(heading)
+    #         test_text.append(text)
+    #         test_label_id.append(mesh_id)
+    #         test_mesh_mask.append(mesh)
+    #     elif i > 620000:
+    #         break
+    print('number of test data %d' % len(test_pmid))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -125,9 +128,11 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
             mapping_id[key] = value.strip()
 
     meshIDs = list(mapping_id.values())
+    index_dic = {k: v for v, k in enumerate(meshIDs)}
+    mesh_index = list(index_dic.values())
     print('Total number of labels %d' % len(meshIDs))
 
-    mlb = MultiLabelBinarizer(classes=meshIDs)
+    mlb = MultiLabelBinarizer(classes=mesh_index)
     mlb.fit(meshIDs)
 
     # create Vector object map tokens to vectors

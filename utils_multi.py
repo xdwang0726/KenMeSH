@@ -43,8 +43,6 @@ def _vocab_iterator(train_text, test_text, train_title=None, test_title=None, ng
             texts = tokenizer(text + train_title[i])
         else:
             texts = tokenizer(text)
-            if len(texts) > 400:
-                texts = texts[:400]
         texts = text_clean(texts)
         yield ngrams_iterator(texts, ngrams)
 
