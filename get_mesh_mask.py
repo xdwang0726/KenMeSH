@@ -279,13 +279,12 @@ def read_neighbors(neighbors, index_dic):
 
     for i, obj in enumerate(tqdm(objects)):
         data_point = {}
-        new_mesh_index = []
         ids = obj['pmid']
         mesh = obj['neighbors'].split(',')
         mesh_idx = label2index(mesh, index_dic)
         # pmid.append(ids)
         data_point['pmid'] = ids
-        data_point['neighbors'] = new_mesh_index
+        data_point['neighbors'] = mesh_idx
         dataset.append(data_point)
         # neighbors_mesh.append(new_mesh_index)
     return dataset #pmid, neighbors_mesh
