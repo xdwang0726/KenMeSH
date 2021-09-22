@@ -260,7 +260,16 @@ def get_journal_mesh(journal_info, threshold, meshIDs):
     return journal_mesh
 
 
-def read_neighbors(neighbors, meshIDs):
+def label2index(mesh_list, index_dic):
+
+    idx_list = []
+    for mesh in mesh_list:
+        idx = index_dic[mesh]
+        idx_list.append(idx)
+    return idx_list
+
+
+def read_neighbors(neighbors, index_dic):
     f = open(neighbors, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
 
@@ -273,9 +282,7 @@ def read_neighbors(neighbors, meshIDs):
         new_mesh_index = []
         ids = obj['pmid']
         mesh = obj['neighbors'].split(',')
-        for m in mesh:
-            m_id = meshIDs.index(m)
-            new_mesh_index.append(m_id)
+        mesh_idx = label2index(mesh, index_dic)
         # pmid.append(ids)
         data_point['pmid'] = ids
         data_point['neighbors'] = new_mesh_index
@@ -368,12 +375,13 @@ def main():
             mapping_id[key] = value.strip()
 
     meshIDs = list(mapping_id.values())
+    index_dic = {k: v for v, k in enumerate(meshIDs)}
 
-    journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
-    pickle.dump(journal_mesh, open(args.journal, 'wb'))
+    # journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
+    # pickle.dump(journal_mesh, open(args.journal, 'wb'))
 
     # pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
-    dataset = read_neighbors(args.neigh_path, meshIDs)
+    dataset = read_neighbors(args.neigh_path, index_dic)
     pubmed = {'articles': dataset}
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile, indent=4)
