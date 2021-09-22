@@ -69,7 +69,7 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
                     continue
                 else:
                     # original_label = obj['meshMajor']
-                    mesh_id = obj['meshID']
+                    mesh_id = obj['meshId']
                     # journal = obj['journal'].split(',')
                     # neigh = obj['neighbors'].split(',')
                     # mesh = set(journal + neigh)
