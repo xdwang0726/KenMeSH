@@ -275,19 +275,34 @@ def read_neighbors(neighbors, index_dic):
 
     # pmid = []
     # neighbors_mesh = []
-    dataset = []
+    neigh_mask = []
 
     for i, obj in enumerate(tqdm(objects)):
-        data_point = {}
-        ids = obj['pmid']
+        # data_point = {}
+        # ids = obj['pmid']
         mesh = obj['neighbors'].split(',')
         mesh_idx = label2index(mesh, index_dic)
-        # pmid.append(ids)
-        data_point['pmid'] = ids
-        data_point['neighbors'] = mesh_idx
-        dataset.append(data_point)
+        neigh_mask.append(mesh_idx)
         # neighbors_mesh.append(new_mesh_index)
-    return dataset #pmid, neighbors_mesh
+    return neigh_mask #pmid, neighbors_mesh
+
+
+def mesh_mask(file, neigh_mask, journal_path):
+
+    journal_mesh = pickle.load(open(journal_path, 'rb'))
+
+    f = open(file, encoding="utf8")
+    objects = ijson.items(f, 'articles.item')
+
+    mesh_index = []
+    for i, obj in enumerate(tqdm(objects)):
+        journal = obj['journal']
+        mesh_from_journal = journal_mesh[journal]
+        mesh = list(set(mesh_from_journal + neigh_mask[i]))
+        mesh_index.append(mesh)
+
+    return mesh_index
+
 
 
 def build_dataset(train_path, neighbors, journal_mesh, MeSH_id_pair_file):
@@ -380,10 +395,13 @@ def main():
     # pickle.dump(journal_mesh, open(args.journal, 'wb'))
 
     # pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
-    dataset = read_neighbors(args.neigh_path, index_dic)
-    pubmed = {'articles': dataset}
-    with open(args.save_path, "w") as outfile:
-        json.dump(pubmed, outfile)
+    # dataset = read_neighbors(args.neigh_path, index_dic)
+    # pubmed = {'articles': dataset}
+    # with open(args.save_path, "w") as outfile:
+    #     json.dump(pubmed, outfile)
+    neigh_mask = read_neighbors(args.neigh_path, index_dic)
+    mesh_masks = mesh_mask(args.allMesh, neigh_mask, args.journal)
+    pickle.dump(mesh_masks, open(args.save_path, 'wb'))
 
 
 if __name__ == "__main__":
