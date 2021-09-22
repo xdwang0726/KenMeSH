@@ -68,13 +68,11 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
                     print('paper %s does not have abstract!' % ids)
                     continue
                 else:
-                    text = obj['abstractText'].strip()
-                    text = text.translate(str.maketrans('', '', '[]'))
-                    original_label = obj['meshMajor']
+                    # original_label = obj['meshMajor']
                     mesh_id = obj['meshID']
-                    journal = obj['journal'].split(',')
-                    neigh = obj['neighbors'].split(',')
-                    mesh = set(journal + neigh)
+                    # journal = obj['journal'].split(',')
+                    # neigh = obj['neighbors'].split(',')
+                    # mesh = set(journal + neigh)
                     pmid.append(ids)
                     train_title.append(heading)
                     all_text.append(text)
