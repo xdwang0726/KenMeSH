@@ -383,7 +383,7 @@ def main():
     dataset = read_neighbors(args.neigh_path, index_dic)
     pubmed = {'articles': dataset}
     with open(args.save_path, "w") as outfile:
-        json.dump(pubmed, outfile, indent=4)
+        json.dump(pubmed, outfile)
 
 
 if __name__ == "__main__":
