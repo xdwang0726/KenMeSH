@@ -46,7 +46,7 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
 
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
-    pmid = []
+    # pmid = []
     train_title = []
     all_text = []
     # label = []
@@ -57,28 +57,15 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
     for i, obj in enumerate(tqdm(objects)):
         if i <= num_example:
             try:
-                ids = obj['pmid']
+                # ids = obj['pmid']
                 heading = obj['title'].strip()
                 heading = heading.translate(str.maketrans('', '', '[]'))
                 text = obj['abstractText'].strip()
                 text = text.translate(str.maketrans('', '', '[]'))
-                if len(heading) == 0 or heading == 'In process':
-                    print('paper %s does not have title!' % ids)
-                elif len(text) == 0:
-                    print('paper %s does not have abstract!' % ids)
-                    continue
-                else:
-                    # original_label = obj['meshMajor']
-                    mesh_id = obj['meshId']
-                    # journal = obj['journal'].split(',')
-                    # neigh = obj['neighbors'].split(',')
-                    # mesh = set(journal + neigh)
-                    pmid.append(ids)
-                    train_title.append(heading)
-                    all_text.append(text)
-                    # label.append(original_label)
-                    label_id.append(mesh_id)
-                    # mesh_mask.append(mesh)
+                mesh_id = obj['meshId']
+                train_title.append(heading)
+                all_text.append(text)
+                label_id.append(mesh_id)
             except AttributeError:
                 print(obj['pmid'].strip())
         else:
@@ -86,18 +73,17 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
 
     assert len(all_text) == len(train_title), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
-    print('number of training data %d' % len(pmid))
+    print('number of training data %d' % len(all_text))
 
     # load test data
     print('Start loading test data')
     # f_t = open(test_data_path, encoding="utf8")
     # test_objects = ijson.items(f_t, 'articles.item')
 
-    test_pmid = pmid[-20000:]
     test_title = train_title[-20000:]
     test_text = all_text[-20000:]
     test_label_id = label_id[-20000:]
-    test_mesh_mask = pmid[-20000:]
+    test_mesh_mask = mesh_mask[-20000:]
 
     # for i, obj in enumerate(tqdm(test_objects)):
     #     if 610000 < i <= 620000:
@@ -115,7 +101,7 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
     #         test_mesh_mask.append(mesh)
     #     elif i > 620000:
     #         break
-    print('number of test data %d' % len(test_pmid))
+    print('number of test data %d' % len(test_title))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -131,7 +117,7 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
     print('Total number of labels %d' % len(meshIDs))
 
     mlb = MultiLabelBinarizer(classes=mesh_index)
-    mlb.fit(meshIDs)
+    mlb.fit(mesh_index)
 
     # create Vector object map tokens to vectors
     print('load pre-trained BioWord2Vec')
@@ -146,8 +132,8 @@ def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path
 
     # get validation set
     valid_size = 0.1
-    indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(pmid)))
+    indices = list(range(len(train_title)))
+    split = int(np.floor(valid_size * len(train_title)))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
@@ -498,7 +484,7 @@ def main():
     print('From Rank: {}, ==> Making model..'.format(rank))
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
-        args.train_path,args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
+        args.train_path, args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device,

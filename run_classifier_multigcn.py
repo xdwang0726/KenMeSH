@@ -60,47 +60,30 @@ def get_tail_labels(label_id):
     return tail_label
 
 
-def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
+def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
     """ Load Dataset and Preprocessing """
     # load training data
     f = open(train_data_path, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
 
-    pmid = []
+    mesh_mask = pickle.load(open(mask_path, 'rb'))
+
     train_title = []
     all_text = []
-    label = []
     label_id = []
-    mesh_mask = []
 
     print('Start loading training data')
     for i, obj in enumerate(tqdm(objects)):
         if i <= num_example:
             try:
-                ids = obj['pmid']
                 heading = obj['title'].strip()
                 heading = heading.translate(str.maketrans('', '', '[]'))
                 text = obj['abstractText'].strip()
                 text = text.translate(str.maketrans('', '', '[]'))
-                if len(heading) == 0 or heading == 'In process':
-                    print('paper %s does not have title!' % ids)
-                elif len(text) == 0:
-                    print('paper %s does not have abstract!' % ids)
-                    continue
-                else:
-                    text = obj['abstractText'].strip()
-                    text = text.translate(str.maketrans('', '', '[]'))
-                    original_label = obj['meshMajor']
-                    mesh_id = obj['meshID']
-                    journal = obj['journal'].split(',')
-                    neigh = obj['neighbors'].split(',')
-                    mesh = set(journal + neigh)
-                    pmid.append(ids)
-                    train_title.append(heading)
-                    all_text.append(text)
-                    label.append(original_label)
-                    label_id.append(mesh_id)
-                    mesh_mask.append(mesh)
+                mesh_id = obj['meshId']
+                train_title.append(heading)
+                all_text.append(text)
+                label_id.append(mesh_id)
             except AttributeError:
                 print(obj['pmid'].strip())
         else:
@@ -108,35 +91,35 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     assert len(all_text) == len(train_title), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
-    print('number of training data %d' % len(pmid))
+    print('number of training data %d' % len(train_title))
 
     # load test data
     print('Start loading test data')
-    f_t = open(test_data_path, encoding="utf8")
-    test_objects = ijson.items(f_t, 'articles.item')
+    # f_t = open(test_data_path, encoding="utf8")
+    # test_objects = ijson.items(f_t, 'articles.item')
 
-    test_pmid = []
-    test_title = []
-    test_text = []
-    test_label_id = []
-    test_mesh_mask = []
+    #test_pmid = []
+    test_title = train_title[-20000:]
+    test_text = all_text[-20000:]
+    test_label_id = label_id[-20000:]
+    test_mesh_mask = mesh_mask[-20000:]
 
-    for i, obj in enumerate(tqdm(test_objects)):
-        if 13000 < i <= 14000:
-            ids = obj['pmid']
-            heading = obj['title'].strip()
-            text = obj['abstractText'].strip()
-            mesh_id = obj['meshID']
-            journal = obj['journal'].split(',')
-            neigh = obj['neighbors'].split(',')
-            mesh = set(journal + neigh)
-            test_pmid.append(ids)
-            test_title.append(heading)
-            test_text.append(text)
-            test_label_id.append(mesh_id)
-            test_mesh_mask.append(mesh)
-        elif i > 14000:
-            break
+    # for i, obj in enumerate(tqdm(test_objects)):
+    #     if 13000 < i <= 14000:
+    #         ids = obj['pmid']
+    #         heading = obj['title'].strip()
+    #         text = obj['abstractText'].strip()
+    #         mesh_id = obj['meshID']
+    #         journal = obj['journal'].split(',')
+    #         neigh = obj['neighbors'].split(',')
+    #         mesh = set(journal + neigh)
+    #         test_pmid.append(ids)
+    #         test_title.append(heading)
+    #         test_text.append(text)
+    #         test_label_id.append(mesh_id)
+    #         test_mesh_mask.append(mesh)
+    #     elif i > 14000:
+    #         break
     print('number of test data %d' % len(test_title))
 
     print('load and prepare Mesh')
@@ -149,8 +132,10 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
 
     meshIDs = list(mapping_id.values())
     print('Total number of labels %d' % len(meshIDs))
-    mlb = MultiLabelBinarizer(classes=meshIDs)
-    mlb.fit(meshIDs)
+    index_dic = {k: v for v, k in enumerate(meshIDs)}
+    mesh_index = list(index_dic.values())
+    mlb = MultiLabelBinarizer(classes=mesh_index)
+    mlb.fit(mesh_index)
 
     # calculate negaitve and positve ratio for each label
     # neg_pos_ratio = get_tail_labels(label_id, meshIDs)
@@ -171,10 +156,10 @@ def prepare_dataset(train_data_path, test_data_path, MeSH_id_pair_file, word2vec
     vocab = dataset.get_vocab()
 
     # get validation set
-    valid_size = 0.2
+    valid_size = 0.1
     # indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(pmid)))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(pmid) - split, split])
+    split = int(np.floor(valid_size * len(train_title)))
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(train_title) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
