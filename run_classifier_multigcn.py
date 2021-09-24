@@ -6,6 +6,7 @@ import dgl
 import ijson
 
 import pickle
+import psutil
 import random
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
@@ -60,34 +61,34 @@ def get_tail_labels(label_id):
     return tail_label
 
 
-def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
+def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
     """ Load Dataset and Preprocessing """
     # load training data
-    f = open(train_data_path, encoding="utf8")
-    objects = ijson.items(f, 'articles.item')
+    # f = open(train_data_path, encoding="utf8")
+    # objects = ijson.items(f, 'articles.item')
 
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
-    train_title = []
-    all_text = []
-    label_id = []
-
-    print('Start loading training data')
-    for i, obj in enumerate(tqdm(objects)):
-        if i <= num_example:
-            try:
-                heading = obj['title'].strip()
-                heading = heading.translate(str.maketrans('', '', '[]'))
-                text = obj['abstractText'].strip()
-                text = text.translate(str.maketrans('', '', '[]'))
-                mesh_id = obj['meshId']
-                train_title.append(heading)
-                all_text.append(text)
-                label_id.append(mesh_id)
-            except AttributeError:
-                print(obj['pmid'].strip())
-        else:
-            break
+    train_title = pickle.load(open(title_path, 'rb'))
+    all_text = pickle.load(open(abstract_path, 'rb'))
+    label_id = pickle.load(open(label_path, 'rb'))
+    #
+    # print('Start loading training data')
+    # for i, obj in enumerate(tqdm(objects)):
+    #     if i <= num_example:
+    #         try:
+    #             heading = obj['title'].strip()
+    #             heading = heading.translate(str.maketrans('', '', '[]'))
+    #             text = obj['abstractText'].strip()
+    #             text = text.translate(str.maketrans('', '', '[]'))
+    #             mesh_id = obj['meshId']
+    #             train_title.append(heading)
+    #             all_text.append(text)
+    #             label_id.append(mesh_id)
+    #         except AttributeError:
+    #             print(obj['pmid'].strip())
+    #     else:
+    #         break
 
     assert len(all_text) == len(train_title), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
@@ -461,8 +462,12 @@ def plot_loss(train_loss, valid_loss, save_path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path')
-    parser.add_argument('--test_path')
+    # parser.add_argument('--train_path')
+    # parser.add_argument('--test_path')
+    parser.add_argument('--title_path')
+    parser.add_argument('--abstract_path')
+    parser.add_argument('--label_path')
+    parser.add_argument('--mask_path')
     parser.add_argument('----meSH_pair_path')
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
@@ -501,7 +506,8 @@ def main():
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G = \
-        prepare_dataset(args.train_path, args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
+        prepare_dataset(args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path,
+                        args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
