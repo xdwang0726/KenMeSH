@@ -38,38 +38,35 @@ def flatten(l):
     return flat
 
 
-def prepare_dataset(train_data_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
+def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
     """ Load Dataset and Preprocessing """
     # load training data
-    f = open(train_data_path, encoding="utf8")
-    objects = ijson.items(f, 'articles.item')
+    # f = open(train_data_path, encoding="utf8")
+    # objects = ijson.items(f, 'articles.item')
 
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
-    # pmid = []
-    train_title = []
-    all_text = []
-    # label = []
-    label_id = []
-    # mesh_mask = []
+    train_title = pickle.load(open(title_path, 'rb'))
+    all_text = pickle.load(open(abstract_path, 'rb'))
+    label_id = pickle.load(open(label_path, 'rb'))
 
     print('Start loading training data')
-    for i, obj in enumerate(tqdm(objects)):
-        if i <= num_example:
-            try:
-                # ids = obj['pmid']
-                heading = obj['title'].strip()
-                heading = heading.translate(str.maketrans('', '', '[]'))
-                text = obj['abstractText'].strip()
-                text = text.translate(str.maketrans('', '', '[]'))
-                mesh_id = obj['meshId']
-                train_title.append(heading)
-                all_text.append(text)
-                label_id.append(mesh_id)
-            except AttributeError:
-                print(obj['pmid'].strip())
-        else:
-            break
+    # for i, obj in enumerate(tqdm(objects)):
+    #     if i <= num_example:
+    #         try:
+    #             # ids = obj['pmid']
+    #             heading = obj['title'].strip()
+    #             heading = heading.translate(str.maketrans('', '', '[]'))
+    #             text = obj['abstractText'].strip()
+    #             text = text.translate(str.maketrans('', '', '[]'))
+    #             mesh_id = obj['meshId']
+    #             train_title.append(heading)
+    #             all_text.append(text)
+    #             label_id.append(mesh_id)
+    #         except AttributeError:
+    #             print(obj['pmid'].strip())
+    #     else:
+    #         break
 
     assert len(all_text) == len(train_title), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
@@ -429,12 +426,15 @@ def plot_loss(train_loss, valid_loss, save_path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path')
-    parser.add_argument('--test_path')
+    # parser.add_argument('--train_path')
+    # parser.add_argument('--test_path')
+    parser.add_argument('--title_path')
+    parser.add_argument('--abstract_path')
+    parser.add_argument('--label_path')
+    parser.add_argument('--mask_path')
     parser.add_argument('----meSH_pair_path')
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
-    parser.add_argument('--mesh_parent_children_path')
     parser.add_argument('--graph')
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
@@ -484,7 +484,8 @@ def main():
     print('From Rank: {}, ==> Making model..'.format(rank))
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
-        args.train_path, args.test_path, args.meSH_pair_path, args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
+        args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path, args.word2vec_path,
+        args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device,
