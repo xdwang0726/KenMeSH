@@ -43,14 +43,16 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # load training data
     # f = open(train_data_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
-
+    print('Start loading training data')
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
     train_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))
     label_id = pickle.load(open(label_path, 'rb'))
 
-    print('Start loading training data')
+    train_title = train_title[:400000]
+    all_text = all_text[:400000]
+    label_id = label_id[:400000]
     # for i, obj in enumerate(tqdm(objects)):
     #     if i <= num_example:
     #         try:
