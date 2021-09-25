@@ -460,13 +460,14 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
+    parser.add_argument('--world_size', default=1, type=int, help='')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
     set_seed(726)
     ngpus_per_node = torch.cuda.device_count()
     print('number of gpus per node: %d' % ngpus_per_node)
-    world_size = int(os.environ['SLURM_NTASKS'])
+    # world_size = int(os.environ['SLURM_NTASKS'])
     local_rank = int(os.environ['SLURM_LOCALID'])
     rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
 
@@ -477,7 +478,7 @@ def main():
 
     print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
     # init the process group
-    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size,
+    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size,
                             rank=rank)
     print("process group ready!")
 
@@ -517,7 +518,7 @@ def main():
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, current_device, args.num_workers, optimizer,
-                                          lr_scheduler, world_size, rank)
+                                          lr_scheduler, args.world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
