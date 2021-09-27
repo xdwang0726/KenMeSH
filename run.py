@@ -462,7 +462,7 @@ def main():
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
-    # parser.add_argument('--world_size', default=1, type=int, help='')
+    parser.add_argument('--world_size', default=1, type=int, help='')
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
