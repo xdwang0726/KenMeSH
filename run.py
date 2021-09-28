@@ -466,7 +466,7 @@ def main():
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
-    set_seed(726)
+    set_seed(0)
     ngpus_per_node = torch.cuda.device_count()
     print('number of gpus per node: %d' % ngpus_per_node)
     world_size = int(os.environ['SLURM_NTASKS'])
@@ -480,8 +480,7 @@ def main():
 
     print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
     # init the process group
-    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size,
-                            rank=rank)
+    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size, rank=rank)
     print("process group ready!")
 
     print('From Rank: {}, ==> Making model..'.format(rank))
