@@ -72,7 +72,10 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     train_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))
     label_id = pickle.load(open(label_path, 'rb'))
-    #
+
+    train_title = train_title[:num_example]
+    all_text = all_text[:num_example]
+    label_id = label_id[:num_example]
     # print('Start loading training data')
     # for i, obj in enumerate(tqdm(objects)):
     #     if i <= num_example:
