@@ -428,12 +428,12 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
                                    nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=0, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
-        # self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
+        self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         # self.gat = GAT(embedding_dim, embedding_dim, embedding_dim)
         # heads = ([gat_num_heads] * gat_num_layers) + [gat_num_out_heads]
-        heads = ([4] * 2) + [1]
-        self.gat = GAT(device, G, num_layers=2, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim,
-                       num_classes=embedding_dim, heads=heads)
+        # heads = ([4] * 2) + [1]
+        # self.gat = GAT(device, G, num_layers=2, in_node_feats=embedding_dim, hidden_gat_size=embedding_dim,
+        #                num_classes=embedding_dim, heads=heads)
         # linear
         # self.linear = nn.Linear(self.embedding_dim * 2, 1)
 
@@ -442,9 +442,8 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
 
     def forward(self, input_abstract, input_title, mask, ab_length, title_length, g, g_node_feature): #g_c, g_node_feature_c):
         # get label features
-        # label_feature = self.gcn(g, g_node_feature)
-        label_feature = self.gat(g_node_feature)
-        # print('label', label_feature.shape)
+        label_feature = self.gcn(g, g_node_feature)
+        # label_feature = self.gat(g_node_feature)
         # label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
         # print('label_feature', label_feature.shape)
