@@ -508,7 +508,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
 class multichannel_dilatedCNN_without_graph(nn.Module):
     def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000,
                  n_cornet_blocks=2):
-        super(multichannel_dilatedCNN_with_MeSH_mask, self).__init__()
+        super(multichannel_dilatedCNN_without_graph, self).__init__()
 
         self.vocab_size = vocab_size
         self.dropout = dropout
