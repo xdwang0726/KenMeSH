@@ -73,10 +73,10 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     all_text = pickle.load(open(abstract_path, 'rb'))
     label_id = pickle.load(open(label_path, 'rb'))
 
-    train_title = all_title[:num_example]
-    train_text = all_text[:num_example]
-    train_label= label_id[:num_example]
-    train_mesh_mask = mesh_mask[:num_example]
+    # train_title = all_title[:num_example]
+    # train_text = all_text[:num_example]
+    # train_label = label_id[:num_example]
+    # train_mesh_mask = mesh_mask[:num_example]
     # print('Start loading training data')
     # for i, obj in enumerate(tqdm(objects)):
     #     if i <= num_example:
@@ -94,9 +94,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #     else:
     #         break
 
-    assert len(train_text) == len(train_title), 'title and abstract in the training set are not matching'
+    assert len(all_text[:num_example]) == len(all_title[:num_example]), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
-    print('number of training data %d' % len(train_title))
+    print('number of training data %d' % len(all_title[:num_example]))
 
     # load test data
     print('Start loading test data')
@@ -104,10 +104,10 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # test_objects = ijson.items(f_t, 'articles.item')
 
     #test_pmid = []
-    test_title = all_title[-20000:]
-    test_text = all_text[-20000:]
-    test_label_id = label_id[-20000:]
-    test_mesh_mask = mesh_mask[-20000:]
+    # test_title = all_title[-20000:]
+    # test_text = all_text[-20000:]
+    # test_label_id = label_id[-20000:]
+    # test_mesh_mask = mesh_mask[-20000:]
 
     # for i, obj in enumerate(tqdm(test_objects)):
     #     if 13000 < i <= 14000:
@@ -125,7 +125,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #         test_mesh_mask.append(mesh)
     #     elif i > 14000:
     #         break
-    print('number of test data %d' % len(test_title))
+    print('number of test data %d' % len(all_title[-20000:]))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -152,9 +152,10 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(train_text, train_label, test_text, train_mesh_mask, test_mesh_mask,  test_label_id,
-                                                train_title, test_title, ngrams=1, vocab=None, include_unk=False,
-                                                is_test=False, is_multichannel=True)
+    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], label_id[-20000:],
+                                          mesh_mask[:num_example], mesh_mask[-20000:],  label_id[-20000:],
+                                          all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
+                                          include_unk=False, is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
