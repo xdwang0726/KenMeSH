@@ -69,13 +69,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
-    train_title = pickle.load(open(title_path, 'rb'))
+    all_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))
     label_id = pickle.load(open(label_path, 'rb'))
 
-    train_title = train_title[:num_example]
-    all_text = all_text[:num_example]
-    label_id = label_id[:num_example]
+    train_title = all_title[:num_example]
+    train_text = all_text[:num_example]
+    train_label= label_id[:num_example]
+    train_mesh_mask = mesh_mask[:num_example]
     # print('Start loading training data')
     # for i, obj in enumerate(tqdm(objects)):
     #     if i <= num_example:
@@ -103,7 +104,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # test_objects = ijson.items(f_t, 'articles.item')
 
     #test_pmid = []
-    test_title = train_title[-20000:]
+    test_title = all_title[-20000:]
     test_text = all_text[-20000:]
     test_label_id = label_id[-20000:]
     test_mesh_mask = mesh_mask[-20000:]
@@ -151,7 +152,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, mesh_mask, test_mesh_mask,  test_label_id,
+    dataset, test_dataset = MeSH_indexing(train_text, train_label, test_text, train_mesh_mask, test_mesh_mask,  test_label_id,
                                                 train_title, test_title, ngrams=1, vocab=None, include_unk=False,
                                                 is_test=False, is_multichannel=True)
 
@@ -287,12 +288,12 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             optimizer.step()
             train_losses.append(loss.item())  # record training loss
 
-            processed_lines = i + len(train_data) * epoch
-            progress = processed_lines / float(num_lines)
-            if processed_lines % 3000 == 0:
-                sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
-                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
+            # processed_lines = i + len(train_data) * epoch
+            # progress = processed_lines / float(num_lines)
+            # if processed_lines % 3000 == 0:
+            #     sys.stderr.write(
+            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
+            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
 
