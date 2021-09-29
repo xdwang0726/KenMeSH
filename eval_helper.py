@@ -221,9 +221,11 @@ def example_based_evaluation(pred, target, threshold):
 
     product = pred * target
     ebp = np.sum(np.sum(product, axis=1) / np.sum(pred, axis=1))
+    print('ebp', ebp)
     ebr = np.sum(np.sum(product, axis=1) / np.sum(target, axis=1))
+    print('ebr', ebr)
     ebf = np.sum(2 * np.sum(product, axis=1) / (np.sum(pred, axis=1) + np.sum(target, axis=1)))
-
+    print('ebf', ebf)
     return (ebp, ebr, ebf)
 
 
