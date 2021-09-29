@@ -152,7 +152,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], label_id[-20000:],
+    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:],
                                           mesh_mask[:num_example], mesh_mask[-20000:],  label_id[-20000:],
                                           all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
                                           include_unk=False, is_test=False, is_multichannel=True)
