@@ -46,13 +46,13 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('Start loading training data')
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
-    train_title = pickle.load(open(title_path, 'rb'))
+    all_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))
     label_id = pickle.load(open(label_path, 'rb'))
 
-    train_title = train_title[:num_example]
-    all_text = all_text[:num_example]
-    label_id = label_id[:num_example]
+    # train_title = train_title[:num_example]
+    # all_text = all_text[:num_example]
+    # label_id = label_id[:num_example]
     # for i, obj in enumerate(tqdm(objects)):
     #     if i <= num_example:
     #         try:
@@ -70,7 +70,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #     else:
     #         break
 
-    assert len(all_text) == len(train_title), 'title and abstract in the training set are not matching'
+    assert len(all_text[:num_example]) == len(all_title[:num_example]) #'title and abstract in the training set are not matching'
     print('Finish loading training data')
     print('number of training data %d' % len(all_text))
 
@@ -79,10 +79,10 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # f_t = open(test_data_path, encoding="utf8")
     # test_objects = ijson.items(f_t, 'articles.item')
 
-    test_title = train_title[-20000:]
-    test_text = all_text[-20000:]
-    test_label_id = label_id[-20000:]
-    test_mesh_mask = mesh_mask[-20000:]
+    # test_title = train_title[-20000:]
+    # test_text = all_text[-20000:]
+    # test_label_id = label_id[-20000:]
+    # test_mesh_mask = mesh_mask[-20000:]
 
     # for i, obj in enumerate(tqdm(test_objects)):
     #     if 610000 < i <= 620000:
@@ -100,7 +100,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #         test_mesh_mask.append(mesh)
     #     elif i > 620000:
     #         break
-    print('number of test data %d' % len(test_title))
+    print('number of test data %d' % len(all_title[-20000:]))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -125,21 +125,22 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    train_dataset, test_dataset = MeSH_indexing(all_text, label_id, test_text, mesh_mask, test_mesh_mask,  test_label_id,
-                                                train_title, test_title, ngrams=1, vocab=None, include_unk=False,
-                                                is_test=False, is_multichannel=True)
+    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], label_id[-20000:],
+                                          mesh_mask[:num_example], mesh_mask[-20000:], label_id[-20000:],
+                                          all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
+                                          include_unk=False, is_test=False, is_multichannel=True)
 
     # get validation set
     valid_size = 0.1
-    indices = list(range(len(train_title)))
-    split = int(np.floor(valid_size * len(train_title)))
+    indices = list(range(len(all_title[:num_example])))
+    split = int(np.floor(valid_size * len(all_title[:num_example])))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
 
     # build vocab
     print('building vocab')
-    vocab = train_dataset.get_vocab()
+    vocab = dataset.get_vocab()
 
     # Prepare label features
     print('Load graph')
@@ -148,7 +149,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler # G_c
+    return len(meshIDs), mlb, vocab, dataset, test_dataset, vectors, G, train_sampler, valid_sampler # G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
