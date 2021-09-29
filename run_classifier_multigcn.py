@@ -66,7 +66,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # load training data
     # f = open(train_data_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
-
+    print('Start loading training data')
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
     all_title = pickle.load(open(title_path, 'rb'))
@@ -278,7 +278,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             G.ndata['feat'] = G.ndata['feat'].to(device)
             # G_c = G_c.to(device)
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
-            with torch.cuda.amp.autocast():
+            with torch.cuda.amp.autocast(enabled=True):
                 output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
                 # output = model(abstract, title, G.ndata['feat'])
                 loss = criterion(output, label)
@@ -514,6 +514,7 @@ def main():
     args = parser.parse_args()
 
     torch.backends.cudnn.benchmark = True
+    use_fp16 = True
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
     print('{} gpu is avaliable'.format(n_gpu))
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -539,7 +540,7 @@ def main():
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    scaler = torch.cuda.amp.GradScaler(enabled=True)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_fp16)
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCEWithLogitsLoss()
