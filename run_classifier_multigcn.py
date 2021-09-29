@@ -249,14 +249,14 @@ def generate_batch(batch):
 
 
 def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
-          lr_scheduler, scaler):
+          lr_scheduler):
 
     train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers, pin_memory=True)
 
     valid_data = DataLoader(valid_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers, pin_memory=True)
 
     print('train', len(train_data.dataset))
-    num_lines = num_epochs * len(train_data)
+    # num_lines = num_epochs * len(train_data)
 
     train_losses = []
     valid_losses = []
@@ -278,19 +278,14 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             G.ndata['feat'] = G.ndata['feat'].to(device)
             # G_c = G_c.to(device)
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
-            with torch.cuda.amp.autocast(enabled=True):
-                output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
-                # output = model(abstract, title, G.ndata['feat'])
-                loss = criterion(output, label)
-                # print('loss', loss)
-            #loss.backward()
-            scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)
+            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            # output = model(abstract, title, G.ndata['feat'])
+            loss = criterion(output, label)
+
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.1)
-            scaler.step(optimizer)
-            scaler.update()
-            # optimizer.step()
-            # optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
             for param in model.parameters():
                 param.grad = None
             train_losses.append(loss.item())  # record training loss
@@ -514,7 +509,6 @@ def main():
     args = parser.parse_args()
 
     torch.backends.cudnn.benchmark = True
-    use_fp16 = True
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
     print('{} gpu is avaliable'.format(n_gpu))
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -540,7 +534,6 @@ def main():
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    scaler = torch.cuda.amp.GradScaler(enabled=use_fp16)
     # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCEWithLogitsLoss()
@@ -551,8 +544,7 @@ def main():
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler,
-                                          scaler)
+                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
 
     plot_loss(train_loss, valid_loss, args.loss)
