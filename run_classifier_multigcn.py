@@ -471,6 +471,19 @@ def plot_loss(train_loss, valid_loss, save_path):
     fig.savefig(save_path, bbox_inches='tight')
 
 
+def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
+    sudo_abstract = torch.randint(169948, size=(batch_sz, 400), device=device)
+    sudo_title = torch.randint(169948, size=(batch_sz, 100), device=device)
+    sudo_label = torch.randint(2, size=(batch_sz, num_label), device=device)
+    sudo_mask = torch.randint(2, size=(batch_sz, num_label), device=device)
+    sudo_abstract_length = torch.full((8,), 400, dtype=int, device=device)
+    sudo_title_length = torch.full((8,), 100, dtype=int, device=device)
+
+    output = model(sudo_abstract, sudo_title, sudo_mask, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
+    loss = criterion(output, sudo_label)
+    loss.backward()
+    model.zero_grad()
+
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--train_path')
@@ -542,6 +555,8 @@ def main():
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
+    # pre-allocate GPU memory
+    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
