@@ -542,7 +542,7 @@ def main():
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
-    # G = G.to(device)
+    G = G.to(device)
     # G = dgl.add_self_loop(G)
     # neg_pos_ratio = neg_pos_ratio.to(device)
     # G_c.to(device)
