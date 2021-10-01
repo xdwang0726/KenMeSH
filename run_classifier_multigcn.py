@@ -300,21 +300,22 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
         # Adjust the learning rate
         lr_scheduler.step()
 
-        model.eval()
-        for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
-            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-            abstract_length = torch.Tensor(abstract_length)
-            title_length = torch.Tensor(title_length)
-            abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
-            G = G.to(device)
-            G.ndata['feat'] = G.ndata['feat'].to(device)
-            # G_c = G_c.to(device)
-            with torch.no_grad():
+        with torch.no_grad():
+            model.eval()
+            for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+                label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+                mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+                abstract_length = torch.Tensor(abstract_length)
+                title_length = torch.Tensor(title_length)
+                abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+                G = G.to(device)
+                G.ndata['feat'] = G.ndata['feat'].to(device)
+                # G_c = G_c.to(device)
+
                 output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
 
-            loss = criterion(output, label)
-            valid_losses.append(loss.item())
+                loss = criterion(output, label)
+                valid_losses.append(loss.item())
 
         train_loss = np.average(train_losses)
         valid_loss = np.average(valid_losses)
@@ -343,7 +344,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
-    # pred = torch.zeros(0).to(device)
+    # pred = torch.zeros(0)
     top_k_precisions = []
     sum_ebp = 0.
     sum_ebr = 0.
@@ -353,39 +354,38 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     fp = 0.
     fn = 0.
     print('Testing....')
-    model.eval()
-    for label, mask, abstract, title, abstract_length, title_length in test_data:
-        mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-        abstract_length = torch.Tensor(abstract_length)
-        title_length = torch.Tensor(title_length)
-        mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
-        G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
+    with torch.no_grad():
+        model.eval()
+        for label, mask, abstract, title, abstract_length, title_length in test_data:
+            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+            abstract_length = torch.Tensor(abstract_length)
+            title_length = torch.Tensor(title_length)
+            mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+            G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G.ndata['feat'] = G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
-        label = mlb.fit_transform(label)
-
-        with torch.no_grad():
+            label = mlb.fit_transform(label)
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
 
-        # calculate precision at k
-        results = output.data.cpu().numpy()
-        test_labelsIndex = getLabelIndex(label)
-        precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
-        top_k_precisions.append(precisions)
-        # calculate example-based evaluation
-        sums = example_based_evaluation(results, label, threshold=0.5)
-        sum_ebp += sums[0]
-        sum_ebr += sums[1]
-        sum_ebf += sums[2]
-        # calculate label-based evaluation
-        confusion = micro_macro_eval(results, label, threshold=0.5)
-        tp += confusion[0]
-        tn += confusion[1]
-        fp += confusion[2]
-        fn += confusion[3]
+            # calculate precision at k
+            results = output.data.cpu().numpy()
+            test_labelsIndex = getLabelIndex(label)
+            precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
+            top_k_precisions.append(precisions)
+            # calculate example-based evaluation
+            sums = example_based_evaluation(results, label, threshold=0.5)
+            sum_ebp += sums[0]
+            sum_ebr += sums[1]
+            sum_ebf += sums[2]
+            # calculate label-based evaluation
+            confusion = micro_macro_eval(results, label, threshold=0.5)
+            tp += confusion[0]
+            tn += confusion[1]
+            fp += confusion[2]
+            fn += confusion[3]
 
     # Evaluations
     print('Calculate Precision at K...')

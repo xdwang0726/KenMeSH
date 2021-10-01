@@ -61,10 +61,12 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
         if is_multichannel:
             texts = tokenizer(text)
             texts = text_clean(texts)
-            if len(texts) > 380:
-                texts = texts[:380]
+            if len(texts) > 390:
+                texts = texts[:390]
             heading = tokenizer(title[i])
             heading = text_clean(heading)
+            if len(heading) > 50:
+                heading = heading[:50]
             mask = mesh_mask[i]
             if yield_label:
                 label = labels[i]
