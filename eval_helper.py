@@ -221,14 +221,14 @@ def example_based_evaluation(pred, target, threshold):
 
     tp = np.logical_and(pred == 1, target == 1).astype(np.int)
     tn = np.logical_and(pred == 0, target == 0).astype(np.int)
-    common_label = [sum(x) for x in zip(tp, tn)]
+    common_label = np.sum(tp) + np.sum(tn)
 
-    ebp = np.sum(np.sum(common_label, axis=1) / np.sum(pred, axis=1))
+    ebp = common_label / np.sum(pred, axis=1)
     print('ebp', ebp)
-    ebr = np.sum(np.sum(common_label, axis=1) / np.sum(target, axis=1))
-    print('ebr', ebr)
-    ebf = np.sum(2 * np.sum(common_label, axis=1) / (np.sum(pred, axis=1) + np.sum(target, axis=1)))
-    print('ebf', ebf)
+    ebr = common_label / np.sum(target, axis=1)
+    # print('ebr', ebr)
+    ebf = 2 * common_label / (np.sum(pred, axis=1) + np.sum(target, axis=1))
+    # print('ebf', ebf)
     return (ebp, ebr, ebf)
 
 
