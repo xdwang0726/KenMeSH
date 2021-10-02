@@ -440,7 +440,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
-    def forward(self, input_abstract, input_title, mask, ab_length, title_length, g, g_node_feature): #g_c, g_node_feature_c):
+    def forward(self, abstract, title, mask, ab_length, title_length, g, g_node_feature): #g_c, g_node_feature_c):
         # get label features
         label_feature = self.gcn(g, g_node_feature)
         # label_feature = self.gat(g_node_feature)
@@ -452,37 +452,37 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # get title content features
         atten_mask = label_feature.transpose(0, 1) * mask.unsqueeze(1)
         # print('atten_mask', atten_mask.shape)
-        embedded_title = self.embedding_layer(input_title.long())
+        title = self.embedding_layer(title.long())
         # print('title_length', title_length)
-        packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
+        title = pack_padded_sequence(title, title_length, batch_first=True, enforce_sorted=False) # packed input title
 
-        packed_output_title, (_,_) = self.rnn(packed_title)
-        output_unpacked_title, _ = pad_packed_sequence(packed_output_title, batch_first=True)  # (bs, seq_len, emb_dim*2)
+        title, (_,_) = self.rnn(title) # packed rnn output title
+        title, _ = pad_packed_sequence(title, batch_first=True)  # unpacked rnn output title with size: (bs, seq_len, emb_dim*2)
 
         # title_atten = torch.softmax(torch.matmul(output_unpacked_title, label_feature.transpose(0, 1)), dim=1)
         # title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
-        title_atten = torch.softmax(torch.matmul(output_unpacked_title, atten_mask), dim=1)
-        title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        alpha_title = torch.softmax(torch.matmul(title, atten_mask), dim=1)
+        title = torch.matmul(title.transpose(1, 2), alpha_title).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # title_atten = torch.softmax(torch.matmul(outputs_title, g_node_feature.transpose(0, 1)), dim=1)
         # title_feature = torch.matmul(outputs_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
         # print('title_feature', title_feature.shape)
 
         # get abstract content features
-        embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
-        packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
-        packed_output_abstract, (_,_) = self.rnn(packed_abstract)
-        output_unpacked_abstract, _ = pad_packed_sequence(packed_output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
+        abstract = self.embedding_layer(abstract)  # size: (bs, seq_len, embed_dim)
+        abstract = pack_padded_sequence(abstract, ab_length, batch_first=True, enforce_sorted=False)
+        abstract, (_,_) = self.rnn(abstract)
+        abstract, _ = pad_packed_sequence(abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
         # outputs_abstract = output_unpacked_abstract[:, :, :self.embedding_dim] + output_unpacked_abstract[:, :, self.embedding_dim:]  # (bs, seq_len, emb_dim)
 
-        outputs_abstract = output_unpacked_abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
-        abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
+        # outputs_abstract = output_unpacked_abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
+        abstract = self.dconv(abstract.permute(0, 2, 1))  # (bs, embed_dim*2, seq_len-ksz+1)
         # abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), label_feature.transpose(0, 1)), dim=1)  # size: (bs, seq_len-ksz+1, 29368)
         # abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
         # print('abstract_feature', abstract_feature.shape)
-        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), atten_mask), dim=1)  # size: (bs, seq_len-ksz+1, 29368)
-        abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        alpha_abstract = torch.softmax(torch.matmul(abstract.transpose(1, 2), atten_mask), dim=1)  # size: (bs, seq_len-ksz+1, 29368)
+        abstract = torch.matmul(abstract, alpha_abstract).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # outputs_abstract = outputs_abstract.permute(0, 2, 1)  # (bs, emb_dim, seq_length)
         # abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim, seq_len-ksz+1)
@@ -490,18 +490,18 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # abstract_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim)
 
         # get document feature
-        x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
+        x_feature = title + abstract  # size: (bs, 29368, embed_dim*2)
         # x_feature = torch.cat((title_feature, abstract_feature), dim=2)  # size: (bs, 29368, embed_dim*2)
-        x = torch.sum(x_feature * label_feature, dim=2)
+        x_feature = torch.sum(x_feature * label_feature, dim=2)
         # x = torch.sum(x_feature * (atten_mask.transpose(1, 2)), dim=2)
         # print('x', x.shape)
 
         # x = torch.squeeze(self.linear(x_feature), -1)  # last layer: linear
 
         # add CorNet
-        cor_logit = self.cornet(x)
+        x_feature = self.cornet(x_feature)
         # cor_logit = torch.sigmoid(cor_logit)
-        return cor_logit
+        return x_feature
 
 
 class multichannel_dilatedCNN_without_graph(nn.Module):
