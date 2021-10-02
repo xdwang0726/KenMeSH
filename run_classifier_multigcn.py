@@ -397,6 +397,8 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
 
     print('Calculate Example-based Evaluation')
     ebp = sum_ebp / len(test_dataset)
+    print('sum_ebp', sum_ebp)
+    print('dataset length', len(test_dataset))
     ebr = sum_ebp / len(test_dataset)
     ebf = sum_ebp / len(test_dataset)
     for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
