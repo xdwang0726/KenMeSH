@@ -232,7 +232,7 @@ def _setup_datasets(train_text, train_labels, test_text, test_labels, train_titl
                 MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
 
 
-def MeSH_indexing(train_text, train_labels, test_text, train_mask, test_mask, test_labels=None, train_title=None, test_title=None, ngrams=1, vocab=None,
+def MeSH_indexing(train_text, train_labels, test_text, test_labels=None, train_title=None, test_title=None, ngrams=1, vocab=None,
                   include_unk=False, is_test=False, is_multichannel=True):
     """
 
