@@ -1,3 +1,7 @@
+import argparse
+import pickle
+
+
 def create_score_per_class(P_score, _N, _n):
     scores_per_class = {}  # it will hold predicted score for each class in incresing order
     for i in range(_N):
@@ -125,7 +129,7 @@ def find_arg_max(P_score, T_score, _n, scores_per_class, k, t, beta, curF, pd, p
     return [res, curF, pd, pn, rd, rn]
 
 
-def maximization_Algo1(P_score, T_score, scores_per_class, _N, _n):  # will return the threshhold
+def maximization_Algo1(P_score, T_score, scores_per_class, _N, _n, maximum_iteration):  # will return the threshhold
     '''
         According to the paper : the iterative improvment process will coverge
         However, Total run-time for Iteration : O(N * N * n)
@@ -162,8 +166,8 @@ def maximization_Algo1(P_score, T_score, scores_per_class, _N, _n):  # will retu
         if is_updated == False:
             break
         iter += 1
-        # if iter == maximum_iteration:
-        #    break
+        if iter == maximum_iteration:
+           break
     return t, curF
 
 
@@ -174,3 +178,21 @@ def eval(y_true, y_pred, num_labels, num_test):
     micro_precision = A / B
     micro_recall = C / D
     return micro_precision, micro_recall, micro_f_score
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--predicted')
+    parser.add_argument('--true')
+    parser.add_argument('--train_json')
+    parser.add_argument('--years', type=list, default=['2012', '2013', '2014', '2015', '2016'])
+    args = parser.parse_args()
+
+    P_score = pickle.load(open(args.predicted, 'rb'))
+    T_score = pickle.load(open(args.true, 'rb'))
+    _N = len(P_score[0])
+    _n = len(P_score)
+    maximum_iteration = 3
+    scores_per_class = create_score_per_class(P_score, _N, _n)
+    t, imp_F = maximization_Algo1(P_score, T_score, scores_per_class, _N, _n, maximum_iteration)
