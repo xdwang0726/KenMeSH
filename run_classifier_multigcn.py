@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 from losses import *
-from model import multichannel_dilatedCNN_with_MeSH_mask, multichannel_dilatedCNN_without_graph
+from model import *
 from pytorchtools import EarlyStopping
 from utils_multi import MeSH_indexing, pad_sequence
 
@@ -344,8 +344,9 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
-    # pred = torch.zeros(0)
+    pred = []
     top_k_precisions = []
+    true_label = []
     sum_ebp = 0.
     sum_ebr = 0.
     sum_ebf = 0.
@@ -372,6 +373,8 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
 
             # calculate precision at k
             results = output.data.cpu().numpy()
+            pred.append(results)
+            true_label.append(label)
             test_labelsIndex = getLabelIndex(label)
             precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
             top_k_precisions.append(precisions)
@@ -411,6 +414,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
         print('{}: {:.5f}'.format(n, m))
 
+    return pred, true_label
     print('###################DONE#########################')
 
 
@@ -482,9 +486,11 @@ def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
     sudo_title_length = torch.full((batch_sz,), 50, dtype=int, device=device)
 
     output = model(sudo_abstract, sudo_title, sudo_mask, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
+    # output = model(sudo_abstract, sudo_title, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])
     loss = criterion(output, sudo_label)
     loss.backward()
     model.zero_grad()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -501,7 +507,7 @@ def main():
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
-    parser.add_argument('--neg_pos')
+    parser.add_argument('--true')
     parser.add_argument('--loss')
 
     parser.add_argument('--num_example', type=int, default=10000)
@@ -541,6 +547,8 @@ def main():
                                     #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
     # model = multichannel_dilatedCNN_without_graph(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200,
     #                                               rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+    # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device, embedding_dim=200,
+    #                                 rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
@@ -567,18 +575,22 @@ def main():
 
     plot_loss(train_loss, valid_loss, args.loss)
 
-    # torch.save({
-    #     'model_state_dict': model.state_dict(),
-    #     'optimizer_state_dict': optimizer.state_dict(),
-    # }, args.save_parameter_path)
-    # print('save model')
-    # torch.save(model, args.save_model_path)
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, args.save_parameter_path)
+    print('save model')
+    torch.save(model, args.save_model_path)
 
     # load model
     # model = torch.load(args.model_path)
     #
     # testing
-    test(test_dataset, model, mlb, G, args.batch_sz, device)
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
+
+    # save
+    pickle.dump(pred, open(args.results, 'rb'))
+    pickle.dump(true_label, open(args.true, 'rb'))
 
 
 if __name__ == "__main__":

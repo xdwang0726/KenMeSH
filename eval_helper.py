@@ -248,6 +248,6 @@ def micro_macro_eval(pred, target, threshold):
     sum_fp = np.sum(fp)
     sum_fn = np.sum(fn)
 
-
     return (sum_tp, sum_tn, sum_fp, sum_fn)
+
 

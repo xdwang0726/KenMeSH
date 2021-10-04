@@ -204,56 +204,6 @@ class multichannel_attenCNN(nn.Module):
         return x_feature
 
 
-# class dilatedCNN(nn.Module):
-#     def __init__(self, config, ksz, hidden_gcn_size):
-#         super(dilatedCNN, self).__init__()
-#
-#         self.config = config
-#         self.ksz = ksz
-#         self.hidden_gcn_size = hidden_gcn_size
-#         # self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-#         self.bert = BertModel(config)
-#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-#         self.dconv = nn.Sequential(nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=1),
-#                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-#                                    nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=2),
-#                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-#                                    nn.Conv1d(self.config.hidden_size, self.config.hidden_size, kernel_size=self.ksz, padding=1, dilation=3),
-#                                    nn.SELU(), nn.AlphaDropout(p=0.05))
-#
-#         self.content_final = nn.Linear(self.config.hidden_size, self.config.hidden_size*2)
-#
-#         self.gcn = LabelNet(config.hidden_size, config.hidden_size, config.hidden_size)
-#
-#
-#     def forward(self, input_seq, attention_seq, g, g_node_feature):
-#         output, _ = self.bert(input_seq, attention_seq)
-#         output = self.dropout(output).permute(0, 2, 1)  # [bz, hidden_sz, seq_length]
-#         # embedded_seq = self.embedding_layer(input_seq).permute(0, 2, 1)  # size: (bs, seq_len, embed_dim)
-#         # print('embed', output.shape)
-#
-#         abstract_conv = self.dconv(output)  # (bs, embed_dim, seq_len-ksz+1)
-#         # print('dconv', abstract_conv.shape)
-#
-#         # get label features
-#         label_feature = self.gcn(g, g_node_feature)
-#         label_feature = torch.cat((label_feature, g_node_feature), dim=1)  # torch.Size([29368, 768*2])
-#         # print('label_feature', label_feature.shape)
-#
-#         # label-wise attention (mapping different parts of the document representation to different labels)
-#         abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), g_node_feature.transpose(0, 1)),
-#                                        dim=1)
-#         abstract_content = torch.matmul(abstract_conv, abstract_atten)  # size: (bs, embed_dim, 29368)
-#         # print('abstract_cont', abstract_content.shape)
-#
-#         x_feature = nn.functional.tanh(self.content_final(abstract_content.transpose(1, 2))) # (bs, 29368, embed_dim*2)
-#         # print('x_feature', x_feature.shape)
-#
-#         x = torch.sum(x_feature * label_feature, dim=2)
-#         x = torch.sigmoid(x)
-#         return x
-
-
 class dilatedCNN(nn.Module):
     def __init__(self, vocab_size, dropout, ksz, output_size, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2):
         super(dilatedCNN, self).__init__()
