@@ -314,7 +314,7 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
-    # pred = torch.zeros(0).to(device)
+    pred = []
     top_k_precisions = []
     sum_ebp = 0.
     sum_ebr = 0.
@@ -340,17 +340,18 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
             # pred = torch.cat((pred, output), dim=0)
 
         # calculate precision at k
-        pred = output.data.cpu().numpy()
+        output = output.data.cpu().numpy()
+        pred.append(output)
         test_labelsIndex = getLabelIndex(label)
-        precisions = precision_at_ks(pred, test_labelsIndex, ks=[1, 3, 5])
+        precisions = precision_at_ks(output, test_labelsIndex, ks=[1, 3, 5])
         top_k_precisions.append(precisions)
         # calculate example-based evaluation
-        sums = example_based_evaluation(pred, label, threshold=0.5)
+        sums = example_based_evaluation(output, label, threshold=0.5)
         sum_ebp += sums[0]
         sum_ebr += sums[1]
         sum_ebf += sums[2]
         # calculate label-based evaluation
-        confusion = micro_macro_eval(pred, label, threshold=0.5)
+        confusion = micro_macro_eval(output, label, threshold=0.5)
         tp += confusion[0]
         tn += confusion[1]
         fp += confusion[2]
@@ -381,6 +382,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         print('{}: {:.5f}'.format(n, m))
 
     print('###################DONE#########################')
+    return pred
 
 
 def top_k_predicted(goldenTruth, predictions, k):
@@ -558,18 +560,19 @@ def main():
     # visualize the loss as the network trained
     plot_loss(train_loss, valid_loss, args.loss)
 
-    # torch.save({
-    #     'model_state_dict': model.state_dict(),
-    #     'optimizer_state_dict': optimizer.state_dict(),
-    # }, args.save_parameter_path)
-    # print('save model')
-    # torch.save(model, args.save_model_path)
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, args.save_parameter_path)
+    print('save model')
+    torch.save(model, args.save_model_path)
 
     # load model
     # model = torch.load(args.model_path)
     #
     # testing
-    test(test_dataset, model, mlb, G, args.batch_sz, current_device)
+    pred = test(test_dataset, model, mlb, G, args.batch_sz, current_device)
+    pickle.dump(pred, open(args.results, 'rb'))
 
 
 if __name__ == "__main__":
