@@ -315,6 +315,7 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 def test(test_dataset, model, mlb, G, batch_sz, device):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
     pred = []
+    true_label = []
     top_k_precisions = []
     sum_ebp = 0.
     sum_ebr = 0.
@@ -342,6 +343,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         # calculate precision at k
         output = output.data.cpu().numpy()
         pred.append(output)
+        true_label.append(label)
         test_labelsIndex = getLabelIndex(label)
         precisions = precision_at_ks(output, test_labelsIndex, ks=[1, 3, 5])
         top_k_precisions.append(precisions)
@@ -382,7 +384,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         print('{}: {:.5f}'.format(n, m))
 
     print('###################DONE#########################')
-    return pred
+    return pred, true_label
 
 
 def top_k_predicted(goldenTruth, predictions, k):
@@ -473,6 +475,7 @@ def main():
     parser.add_argument('--graph')
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
+    parser.add_argument('--true')
     parser.add_argument('--save-model-path')
     parser.add_argument('--loss')
 
@@ -571,9 +574,9 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    pred = test(test_dataset, model, mlb, G, args.batch_sz, current_device)
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, current_device)
     pickle.dump(pred, open(args.results, 'rb'))
-
+    pickle.dump(true_label, open(args.true, 'rb'))
 
 if __name__ == "__main__":
     main()
