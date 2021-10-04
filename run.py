@@ -130,14 +130,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #                                       all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
     #                                       include_unk=False, is_test=False, is_multichannel=True)
 
-    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:],
-                                          label_id[-20000:], all_title[:num_example], all_title[-20000:],
-                                          ngrams=1, vocab=None, include_unk=False, is_test=False, is_multichannel=True)
+    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], label_id[-20000:], all_title,
+                                          all_title[-20000:], ngrams=1, vocab=None, include_unk=False, is_test=False,
+                                          is_multichannel=True)
 
     # get validation set
     valid_size = 0.1
-    indices = list(range(len(all_title[:num_example])))
-    split = int(np.floor(valid_size * len(all_title[:num_example])))
+    indices = list(range(len(all_title)))
+    split = int(np.floor(valid_size * len(all_title)))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
@@ -485,7 +485,7 @@ def main():
 
     parser.add_argument('--num_epochs', type=int, default=20)
     parser.add_argument('--batch_sz', type=int, default=16)
-    parser.add_argument('--num_workers', type=int, default=1)
+    parser.add_argument('--num_workers', type=int, default=3)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
