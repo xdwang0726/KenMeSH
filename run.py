@@ -70,7 +70,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #     else:
     #         break
 
-    assert len(all_text[:num_example]) == len(all_title[:num_example]) #'title and abstract in the training set are not matching'
+    assert len(all_text) == len(all_title) #'title and abstract in the training set are not matching'
     print('Finish loading training data')
     print('number of training data %d' % len(all_text))
 
