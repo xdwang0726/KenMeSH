@@ -19,9 +19,9 @@ from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 from losses import *
-from model import multichannel_dilatedCNN_with_MeSH_mask
+from model import *
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence, DistributedSamplerWrapper
+from sort_dataset import MeSH_indexing, pad_sequence, DistributedSamplerWrapper
 
 
 def set_seed(seed):
@@ -44,7 +44,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # f = open(train_data_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
     print('Start loading training data')
-    mesh_mask = pickle.load(open(mask_path, 'rb'))
+    # mesh_mask = pickle.load(open(mask_path, 'rb'))
 
     all_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))
@@ -125,10 +125,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
+    # dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:],
+    #                                       mesh_mask[:num_example], mesh_mask[-20000:], label_id[-20000:],
+    #                                       all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
+    #                                       include_unk=False, is_test=False, is_multichannel=True)
+
     dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:],
-                                          mesh_mask[:num_example], mesh_mask[-20000:], label_id[-20000:],
-                                          all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
-                                          include_unk=False, is_test=False, is_multichannel=True)
+                                          label_id[-20000:], all_title[:num_example], all_title[-20000:],
+                                          ngrams=1, vocab=None, include_unk=False, is_test=False, is_multichannel=True)
 
     # get validation set
     valid_size = 0.1
@@ -172,7 +176,7 @@ def generate_batch(batch):
     # check if the dataset if train or test
     if len(batch[0]) == 4:
         label = [entry[0] for entry in batch]
-        mesh_mask = [entry[1] for entry in batch]
+        # mesh_mask = [entry[1] for entry in batch]
 
         # padding according to the maximum sequence length in batch
         abstract = [entry[2] for entry in batch]
@@ -188,7 +192,8 @@ def generate_batch(batch):
                 length = len(seq)
             title_length.append(length)
         title = pad_sequence(title, ksz=3, batch_first=True)
-        return label, mesh_mask, abstract, title, abstract_length, title_length
+        # return label, mesh_mask, abstract, title, abstract_length, title_length
+        return label, abstract, title, abstract_length, title_length
 
     else:
         mesh_mask = [entry[0] for entry in batch]
@@ -214,13 +219,13 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
     _train_sampler = DistributedSamplerWrapper(train_sampler, num_replicas=world_size, rank=rank)
 
     train_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_train_sampler, collate_fn=generate_batch,
-                            num_workers=num_workers)
+                            num_workers=num_workers, pin_memory=True)
 
     _valid_sampler = DistributedSamplerWrapper(valid_sampler, num_replicas=world_size, rank=rank)
     valid_data = DataLoader(train_dataset, batch_size=batch_sz, sampler=_valid_sampler,
-                            collate_fn=generate_batch, num_workers=num_workers)
+                            collate_fn=generate_batch, num_workers=num_workers, pin_memory=True)
 
-    num_lines = num_epochs * len(train_data)
+    # num_lines = num_epochs * len(train_data)
 
     train_losses = []
     valid_losses = []
@@ -232,16 +237,20 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
     print("Training....")
     for epoch in range(num_epochs):
         model.train()  # prep model for training
-        for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
+        # for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
+        for i, (label, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+            # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             abstract_length = torch.Tensor(abstract_length)
             title_length = torch.Tensor(title_length)
-            abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+            # abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+            abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
+
             G = G.to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
             # G_c = G_c.to(device)
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
 
             optimizer.zero_grad()
@@ -250,29 +259,33 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
             optimizer.step()
             train_losses.append(loss.item())  # record training loss
 
-            processed_lines = i + len(train_data) * epoch
-            progress = processed_lines / float(num_lines)
-            if processed_lines % 3000 == 0:
-                sys.stderr.write(
-                    "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
-                        progress * 100, lr_scheduler.get_last_lr()[0], loss))
+            # processed_lines = i + len(train_data) * epoch
+            # progress = processed_lines / float(num_lines)
+            # if processed_lines % 3000 == 0:
+            #     sys.stderr.write(
+            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
+            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
 
-        model.eval()
-        for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
-            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-            abstract_length = torch.Tensor(abstract_length)
-            title_length = torch.Tensor(title_length)
-            abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
-            G = G.to(device)
-            G.ndata['feat'] = G.ndata['feat'].to(device)
-            # G_c = G_c.to(device)
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+        with torch.no_grad():
+            model.eval()
+            for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+                label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+                # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+                abstract_length = torch.Tensor(abstract_length)
+                title_length = torch.Tensor(title_length)
+                # abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+                abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
 
-            loss = criterion(output, label)
-            valid_losses.append(loss.item())
+                G = G.to(device)
+                G.ndata['feat'] = G.ndata['feat'].to(device)
+                # G_c = G_c.to(device)
+                # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+                output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+
+                loss = criterion(output, label)
+                valid_losses.append(loss.item())
 
         train_loss = np.average(train_losses)
         valid_loss = np.average(valid_losses)
@@ -300,7 +313,7 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 
 
 def test(test_dataset, model, mlb, G, batch_sz, device):
-    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False)
+    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
     # pred = torch.zeros(0).to(device)
     top_k_precisions = []
     sum_ebp = 0.
@@ -353,6 +366,8 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
 
     print('Calculate Example-based Evaluation')
     ebp = sum_ebp / len(test_dataset)
+    print('sum_ebp', sum_ebp)
+    print('dataset length', len(test_dataset))
     ebr = sum_ebp / len(test_dataset)
     ebf = sum_ebp / len(test_dataset)
     for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
@@ -427,6 +442,21 @@ def plot_loss(train_loss, valid_loss, save_path):
     fig.savefig(save_path, bbox_inches='tight')
 
 
+def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
+    sudo_abstract = torch.randint(169948, size=(batch_sz, 390), device=device)
+    sudo_title = torch.randint(169948, size=(batch_sz, 50), device=device)
+    sudo_label = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
+    # sudo_mask = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
+    sudo_abstract_length = torch.full((batch_sz,), 390, dtype=int, device=device)
+    sudo_title_length = torch.full((batch_sz,), 50, dtype=int, device=device)
+
+    # output = model(sudo_abstract, sudo_title, sudo_mask, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
+    output = model(sudo_abstract, sudo_title, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])
+    loss = criterion(output, sudo_label)
+    loss.backward()
+    model.zero_grad()
+
+
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--train_path')
@@ -491,9 +521,11 @@ def main():
         args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
-    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device,
-                                    embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+    # model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device,
+    #                                 embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
                                     #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
+    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device, embedding_dim=200,
+                                    rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).cuda()
     # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
     # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
