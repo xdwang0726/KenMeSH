@@ -276,7 +276,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
-            output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
+            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             loss = criterion(output, label)

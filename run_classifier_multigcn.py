@@ -491,7 +491,7 @@ def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
     sudo_abstract_length = torch.full((batch_sz,), 400, dtype=int, device=device)
     sudo_title_length = torch.full((batch_sz,), 100, dtype=int, device=device)
 
-    output = model(sudo_abstract, sudo_title, sudo_mask, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
+    output = model(sudo_abstract, sudo_title, sudo_mask, sudo_abstract_length, sudo_title_length, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
     # output = model(sudo_abstract, sudo_title, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])
     loss = criterion(output, sudo_label)
     loss.backward()
