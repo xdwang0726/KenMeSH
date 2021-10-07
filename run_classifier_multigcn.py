@@ -578,15 +578,15 @@ def main():
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
     print('Finish training!')
-
-    plot_loss(train_loss, valid_loss, args.loss)
-
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-    }, args.save_parameter_path)
-    print('save model')
-    torch.save(model, args.save_model_path)
+    #
+    # plot_loss(train_loss, valid_loss, args.loss)
+    #
+    # torch.save({
+    #     'model_state_dict': model.state_dict(),
+    #     'optimizer_state_dict': optimizer.state_dict(),
+    # }, args.save_parameter_path)
+    # print('save model')
+    # torch.save(model, args.save_model_path)
 
     # load model
     # model = torch.load(args.model_path)
@@ -595,8 +595,8 @@ def main():
     pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
 
     # save
-    pickle.dump(pred, open(args.results, 'rb'))
-    pickle.dump(true_label, open(args.true, 'rb'))
+    # pickle.dump(pred, open(args.results, 'rb'))
+    # pickle.dump(true_label, open(args.true, 'rb'))
 
 
 if __name__ == "__main__":
