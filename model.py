@@ -475,7 +475,7 @@ class multichannel_with_MeSH_mask(nn.Module):
         output_abstract, (_,_) = self.rnn(abstract)
         output_abstract, _ = pad_packed_sequence(output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
 
-        alpha_abstract = torch.softmax(torch.matmul(output_abstract.transpose(1, 2), atten_mask), dim=1)  # size: (bs, seq_len-ksz+1, 29368)
+        alpha_abstract = torch.softmax(torch.matmul(output_abstract, atten_mask), dim=1)  # size: (bs, seq_len-ksz+1, 29368)
         abstract_features = torch.matmul(output_abstract.transpose(1, 2), alpha_abstract).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # get document feature
