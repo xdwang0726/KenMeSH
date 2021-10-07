@@ -34,23 +34,17 @@ def text_clean(tokens):
     return filtered_text
 
 
-def _vocab_iterator(train_text, test_text, train_title=None, test_title=None, ngrams=1, is_multichannel=True):
+def _vocab_iterator(train_text, test_text, train_title=None, test_title=None, ngrams=1):
 
     tokenizer = get_tokenizer('basic_english')
 
     for i, text in enumerate(train_text):
-        if is_multichannel:
-            texts = tokenizer(text + train_title[i])
-        else:
-            texts = tokenizer(text)
+        texts = tokenizer(text + train_title[i])
         texts = text_clean(texts)
         yield ngrams_iterator(texts, ngrams)
 
     for i, text in enumerate(test_text):
-        if is_multichannel:
-            texts = tokenizer(text + test_title[i])
-        else:
-            texts = tokenizer(text)
+        texts = tokenizer(text + test_title[i])
         texts = text_clean(texts)
         yield ngrams_iterator(texts, ngrams)
 
@@ -194,10 +188,7 @@ def _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask
                     include_unk=False, is_test=False, is_multichannel=True):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        if is_multichannel:
-            vocab = build_vocab_from_iterator(_vocab_iterator(train_text, test_text, train_title, test_title, ngrams))
-        else:
-            vocab = build_vocab_from_iterator(_vocab_iterator(train_text, test_text, ngrams, is_multichannel=is_multichannel))
+        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, test_text, train_title, test_title, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
@@ -252,7 +243,7 @@ def MeSH_indexing(train_text, train_labels, test_text, train_mask, test_mask, te
             return _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask, test_mask, train_title, test_title, ngrams, vocab,
                                    include_unk, is_multichannel=True)
     else:
-        return _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask, test_mask, ngrams=ngrams, vocab=vocab,
+        return _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask, test_mask, train_title, test_title, ngrams=ngrams, vocab=vocab,
                                include_unk=include_unk, is_multichannel=False)
 
 
