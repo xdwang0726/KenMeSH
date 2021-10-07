@@ -135,7 +135,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
                                           is_multichannel=True)
 
     # get validation set
-    valid_size = 0.1
+    valid_size = 0.02
     indices = list(range(len(all_title)))
     split = int(np.floor(valid_size * len(all_title)))
     train_idx, valid_idx = indices[split:], indices[:split]
