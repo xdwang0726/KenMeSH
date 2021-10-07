@@ -534,7 +534,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]
 
         title_atten = torch.softmax(torch.matmul(outputs_title, atten_mask), dim=1)
-        title_feature = torch.matmul(outputs_title(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        title_feature = torch.matmul(outputs_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
