@@ -503,11 +503,11 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
 
-        self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=0, dilation=1),
+        self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim, self.embedding_dim, kernel_size=self.ksz, padding=0, dilation=1),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=0, dilation=2),
+                                   nn.Conv1d(self.embedding_dim, self.embedding_dim, kernel_size=self.ksz, padding=0, dilation=2),
                                    nn.SELU(), nn.AlphaDropout(p=0.05),
-                                   nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=0, dilation=3),
+                                   nn.Conv1d(self.embedding_dim, self.embedding_dim, kernel_size=self.ksz, padding=0, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         self.fc1 = nn.Linear(self.embedding_dim, 1)
