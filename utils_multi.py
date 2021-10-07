@@ -75,10 +75,9 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
                 yield mask, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
         else:
             heading = tokenizer(title[i])
-            heading = text_clean(heading)
             abstract = tokenizer(text)
-            abstract = text_clean(abstract)
             texts = heading + abstract
+            texts = text_clean(texts)
             if len(texts) > 500:
                 texts = texts[:500]
             mask = mesh_mask[i]
