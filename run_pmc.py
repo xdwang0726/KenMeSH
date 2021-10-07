@@ -108,6 +108,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # test_text = all_text[-20000:]
     # test_label_id = label_id[-20000:]
     # test_mesh_mask = mesh_mask[-20000:]
+    # train_label = label_id[:num_example]
 
     # for i, obj in enumerate(tqdm(test_objects)):
     #     if 13000 < i <= 14000:
@@ -276,9 +277,8 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
-            # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
-            # output = model(abstract, title, G.ndata['feat'])
+            # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
+            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             loss = criterion(output, label)
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
@@ -363,8 +363,8 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
             G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
             # G.ndata['feat'] = G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
-
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
+            output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
@@ -547,16 +547,14 @@ def main():
                         args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
-    # model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-    #                                                embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+    model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
+                                                   embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
                                     #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    # model = multichannel_dilatedCNN_without_graph(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200,
-    #                                               rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device, embedding_dim=200,
     #                                 rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
 
-    model = multichannel_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device, embedding_dim=200,
-                                                  rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+    # model = multichannel_dilatedCNN_without_graph(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200,
+    #                                               rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
@@ -583,11 +581,8 @@ def main():
     #
     # plot_loss(train_loss, valid_loss, args.loss)
     #
-    # torch.save({
-    #     'model_state_dict': model.state_dict(),
-    #     'optimizer_state_dict': optimizer.state_dict(),
-    # }, args.save_parameter_path)
-    print('save model')
+
+    print('save model for inference')
     torch.save(model.state_dict(), args.save_model_path)
 
     # load model
