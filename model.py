@@ -510,7 +510,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
                                    nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=0, dilation=3),
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
-        self.fc1 = nn.Linear(self.nKernel, 200)
+        self.fc1 = nn.Linear(self.embedding_dim*2, 200)
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
 
