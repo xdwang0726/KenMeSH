@@ -466,7 +466,7 @@ class multichannel_with_MeSH_mask(nn.Module):
         output_title, _ = pad_packed_sequence(output_title, batch_first=True)  # unpacked rnn output title with size: (bs, seq_len, emb_dim*2)
 
         alpha_title = torch.softmax(torch.matmul(output_title, atten_mask), dim=1)
-        title_features = torch.matmul(output_title, alpha_title).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        title_features = torch.matmul(output_title.transpose(1, 2), alpha_title).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # get abstract content features
         abstract = self.embedding_layer(abstract)  # size: (bs, seq_len, embed_dim)
