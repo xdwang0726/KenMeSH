@@ -250,7 +250,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     print("Training....")
     for epoch in range(num_epochs):
         model.train()  # prep model for training
-        for i, (label, mesh_mask, text, text_length) in enumerate(train_data):
+        for i, (label, mask, text, text_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             text_length = torch.Tensor(text_length)
@@ -280,7 +280,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
 
         with torch.no_grad():
             model.eval()
-            for i, (label, mesh_mask, text, text_length) in enumerate(valid_data):
+            for i, (label, mask, text, text_length) in enumerate(valid_data):
                 label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
                 mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
                 text_length = torch.Tensor(text_length)
@@ -333,7 +333,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     print('Testing....')
     with torch.no_grad():
         model.eval()
-        for label, mesh_mask, text, text_length in test_data:
+        for label, mask, text, text_length in test_data:
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             text_length = torch.Tensor(text_length)
             text, label, mask, text_length = text.to(device), label.to(device), mask.to(device), text_length.to(device)
