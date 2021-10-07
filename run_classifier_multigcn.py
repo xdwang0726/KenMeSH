@@ -164,7 +164,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     valid_size = 0.1
     # indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(all_title[:num_example])))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title) - split, split])
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
@@ -410,6 +410,13 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
     mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
     mif = zero_division(2 * mir * mip, (mir + mip))
+    for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
+        print('{}: {:.5f}'.format(n, m))
+
+    print('Calculate Label-based Evaluation')
+    map = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    mar = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    maf = zero_division(2 * mir * mip, (mir + mip))
     for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
         print('{}: {:.5f}'.format(n, m))
 
