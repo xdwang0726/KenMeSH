@@ -327,17 +327,21 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     fn = 0.
     print('Testing....')
     model.eval()
-    for label, mask, abstract, title, abstract_length, title_length in test_data:
-        mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+    #for label, mask, abstract, title, abstract_length, title_length in test_data:
+    for label, abstract, title, abstract_length, title_length in test_data:
+        # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
         abstract_length = torch.Tensor(abstract_length)
         title_length = torch.Tensor(title_length)
-        mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+        # mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+        abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), \
+                                                         abstract_length.to(device), title_length.to(device)
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
         label = mlb.fit_transform(label)
 
         with torch.no_grad():
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
 
@@ -564,12 +568,8 @@ def main():
     # visualize the loss as the network trained
     # plot_loss(train_loss, valid_loss, args.loss)
 
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-    }, args.save_parameter_path)
     print('save model')
-    torch.save(model, args.save_model_path)
+    torch.save(model.state_dict(), args.save_model_path)
 
     # load model
     # model = torch.load(args.model_path)
