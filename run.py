@@ -561,7 +561,7 @@ def main():
     print('Finish training!')
 
     # visualize the loss as the network trained
-    plot_loss(train_loss, valid_loss, args.loss)
+    # plot_loss(train_loss, valid_loss, args.loss)
 
     torch.save({
         'model_state_dict': model.state_dict(),
@@ -574,9 +574,9 @@ def main():
     # model = torch.load(args.model_path)
     #
     # testing
-    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, current_device)
-    pickle.dump(pred, open(args.results, 'rb'))
-    pickle.dump(true_label, open(args.true, 'rb'))
+    # pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, current_device)
+    # pickle.dump(pred, open(args.results, 'rb'))
+    # pickle.dump(true_label, open(args.true, 'rb'))
 
 if __name__ == "__main__":
     main()
