@@ -531,9 +531,10 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
 
         packed_output_title, (_,_) = self.rnn(packed_title)
         output_unpacked_title, _ = pad_packed_sequence(packed_output_title, batch_first=True)  # (bs, seq_len, emb_dim*2)
+        outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]
 
-        title_atten = torch.softmax(torch.matmul(output_unpacked_title, atten_mask), dim=1)
-        title_feature = torch.matmul(output_unpacked_title.transpose(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        title_atten = torch.softmax(torch.matmul(outputs_title, atten_mask), dim=1)
+        title_feature = torch.matmul(outputs_title(1, 2), title_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
@@ -541,6 +542,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
         packed_output_abstract, (_,_) = self.rnn(packed_abstract)
         output_unpacked_abstract, _ = pad_packed_sequence(packed_output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
+        outputs_abstract = output_unpacked_abstract[:, :, :self.embedding_dim] + output_unpacked_abstract[:, :, self.embedding_dim:]
 
         outputs_abstract = output_unpacked_abstract.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
         abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim*2, seq_len-ksz+1)
