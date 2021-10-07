@@ -552,7 +552,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         x_feature = nn.functional.tanh(self.fc1(x_feature))
 
         # add CorNet
-        cor_logit = self.cornet(x_feature)
+        cor_logit = self.cornet(x_feature.squeeze(2))
         return cor_logit
 
 
