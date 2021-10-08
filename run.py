@@ -268,18 +268,23 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
         lr_scheduler.step()
 
         model.eval()
-        for i, (label, abstract, title, abstract_length, title_length) in enumerate(valid_data):
-            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            abstract_length = torch.Tensor(abstract_length)
-            title_length = torch.Tensor(title_length)
-            abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
+        with torch.no_grad():
+            for i, (label, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+                label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+                # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+                abstract_length = torch.Tensor(abstract_length)
+                title_length = torch.Tensor(title_length)
+                # abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
+                abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
 
-            G = G.to(device)
-            G.ndata['feat'] = G.ndata['feat'].to(device)
-            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+                G = G.to(device)
+                G.ndata['feat'] = G.ndata['feat'].to(device)
+                # G_c = G_c.to(device)
+                # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+                output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
 
-            loss = criterion(output, label)
-            valid_losses.append(loss.item())
+                loss = criterion(output, label)
+                valid_losses.append(loss.item())
 
         train_loss = np.average(train_losses)
         valid_loss = np.average(valid_losses)
