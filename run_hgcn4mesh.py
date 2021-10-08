@@ -494,10 +494,10 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=20)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=3)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
-    parser.add_argument('--scheduler_step_sz', type=int, default=2)
+    parser.add_argument('--scheduler_step_sz', type=int, default=5)
     parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     parser.add_argument('--init_method', type=str, default='tcp://127.0.0.1:3456')
@@ -529,28 +529,16 @@ def main():
         args.graph, args.num_example) # args. graph_cooccurence,
 
     vocab_size = len(vocab)
-    # model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device,
-    #                                 embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
-                                    #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, current_device, embedding_dim=200,
-                                    rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+
+    model = HGCN4MeSH(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).cuda()
-    # model.embedding_layer.weight.data.copy_(vectors.vectors).to(device)
-    # model = multichannle_attenCNN(vocab_size, args.nKernel, args.ksz, args.add_original_embedding,
-    #                        args.atten_dropout, embedding_dim=args.embedding_dim)
-    #
-    # model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors))
 
     model.cuda()
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], output_device=current_device)
     print('From Rank: {}, ==> Preparing data..'.format(rank))
-    # G = G.to(device)
-    # G = dgl.add_self_loop(G)
-    # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCEWithLogitsLoss().cuda()
     # criterion = FocalLoss()
@@ -569,13 +557,6 @@ def main():
     print('save model')
     torch.save(model.state_dict(), args.save_model_path)
 
-    # load model
-    # model = torch.load(args.model_path)
-    #
-    # testing
-    # pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, current_device)
-    # pickle.dump(pred, open(args.results, 'rb'))
-    # pickle.dump(true_label, open(args.true, 'rb'))
 
 if __name__ == "__main__":
     main()
