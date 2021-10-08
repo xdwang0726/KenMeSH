@@ -130,14 +130,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #                                       all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
     #                                       include_unk=False, is_test=False, is_multichannel=True)
 
-    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], label_id[-20000:], all_title,
+    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:], label_id[-20000:], all_title[:num_example],
                                           all_title[-20000:], ngrams=1, vocab=None, include_unk=False, is_test=False,
                                           is_multichannel=True)
 
     # get validation set
     valid_size = 0.02
-    indices = list(range(len(all_title)))
-    split = int(np.floor(valid_size * len(all_title)))
+    indices = list(range(len(all_title[:num_example])))
+    split = int(np.floor(valid_size * len(all_title[:num_example])))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
@@ -267,24 +267,20 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
         # Adjust the learning rate
         lr_scheduler.step()
 
-        with torch.no_grad():
-            model.eval()
-            for i, (label, abstract, title, abstract_length, title_length) in enumerate(valid_data):
-                label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-                # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-                abstract_length = torch.Tensor(abstract_length)
-                title_length = torch.Tensor(title_length)
-                # abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
-                abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
+        model.eval()
+        for i, (label, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+            label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            abstract_length = torch.Tensor(abstract_length)
+            title_length = torch.Tensor(title_length)
+            abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
 
-                G = G.to(device)
-                G.ndata['feat'] = G.ndata['feat'].to(device)
-                # G_c = G_c.to(device)
-                # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
-                output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+            G = G.to(device)
+            G.ndata['feat'] = G.ndata['feat'].to(device)
 
-                loss = criterion(output, label)
-                valid_losses.append(loss.item())
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+
+            loss = criterion(output, label)
+            valid_losses.append(loss.item())
 
         train_loss = np.average(train_losses)
         valid_loss = np.average(valid_losses)
