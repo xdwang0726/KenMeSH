@@ -65,8 +65,8 @@ def _text_iterator(text, title=None, labels=None, ngrams=1, yield_label=False, i
                 texts = texts[:400]
             heading = tokenizer(title[i])
             heading = text_clean(heading)
-            if len(heading) > 100:
-                heading = heading[:100]
+            if len(heading) > 60:
+                heading = heading[:60]
             if yield_label:
                 label = labels[i]
                 yield label, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
