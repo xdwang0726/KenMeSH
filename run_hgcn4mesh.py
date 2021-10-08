@@ -544,6 +544,7 @@ def main():
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
+    preallocate_gpu_memory(G, model, args.batch_sz, current_device, num_nodes, criterion)
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
