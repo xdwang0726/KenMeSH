@@ -152,8 +152,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], mesh_mask, mesh_mask[-20000:],
-                                          label_id[-20000:], all_title, all_title[-20000:], ngrams=1, vocab=None,
+    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:], mesh_mask[:num_example], mesh_mask[-20000:],
+                                          label_id[-20000:], all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
                                           include_unk=False, is_test=False, is_multichannel=True)
 
     # build vocab
@@ -163,8 +163,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # get validation set
     valid_size = 0.02
     # indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(all_title)))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title) - split, split])
+    split = int(np.floor(valid_size * len(all_title[:num_example])))
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
@@ -484,11 +484,11 @@ def plot_loss(train_loss, valid_loss, save_path):
 
 def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
     sudo_abstract = torch.randint(123827, size=(batch_sz, 400), device=device)
-    sudo_title = torch.randint(123827, size=(batch_sz, 100), device=device)
+    sudo_title = torch.randint(123827, size=(batch_sz, 60), device=device)
     sudo_label = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
     sudo_mask = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
     sudo_abstract_length = torch.full((batch_sz,), 400, dtype=int, device=device)
-    sudo_title_length = torch.full((batch_sz,), 100, dtype=int, device=device)
+    sudo_title_length = torch.full((batch_sz,), 60, dtype=int, device=device)
 
     output = model(sudo_abstract, sudo_title, sudo_mask, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
     # output = model(sudo_abstract, sudo_title, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])
