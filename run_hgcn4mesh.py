@@ -269,7 +269,7 @@ def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, 
 
         with torch.no_grad():
             model.eval()
-            for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+            for i, (label, abstract, title, abstract_length, title_length) in enumerate(valid_data):
                 label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
                 # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
                 abstract_length = torch.Tensor(abstract_length)
