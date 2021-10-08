@@ -525,7 +525,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         embedded_title = self.emb_drop(embedded_title)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
 
-        packed_output_title, (_,_) = self.rnn(packed_title)
+        packed_output_title, _ = self.rnn(packed_title)
         output_unpacked_title, _ = pad_packed_sequence(packed_output_title, batch_first=True)  # (bs, seq_len, emb_dim*2)
         outputs_title = output_unpacked_title[:, :, :self.embedding_dim] + output_unpacked_title[:, :, self.embedding_dim:]
 
@@ -536,7 +536,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
         embedded_abstract = self.emb_drop(embedded_abstract)
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
-        packed_output_abstract, (_,_) = self.rnn(packed_abstract)
+        packed_output_abstract, _ = self.rnn(packed_abstract)
         output_unpacked_abstract, _ = pad_packed_sequence(packed_output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
         outputs_abstract = output_unpacked_abstract[:, :, :self.embedding_dim] + output_unpacked_abstract[:, :, self.embedding_dim:]
 
