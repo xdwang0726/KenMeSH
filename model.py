@@ -538,7 +538,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
         output_abstract, (_,_) = self.rnn(packed_abstract)
         output_abstract, _ = pad_packed_sequence(output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
-        outputs_abstract = output_abstract[:, :, :self.embedding_dim] + output_abstract[:, :, self.embedding_dim:]
+        output_abstract = output_abstract[:, :, :self.embedding_dim] + output_abstract[:, :, self.embedding_dim:]
 
         outputs_abstract = output_abstract.permute(0, 2, 1) # (bs, emb_dim, seq_length)
         abstract_conv = self.dconv(outputs_abstract)  # (bs, embed_dim, seq_len-ksz+1)
