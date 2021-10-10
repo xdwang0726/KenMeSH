@@ -72,8 +72,8 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
             abstract = tokenizer(text)
             texts = heading + abstract
             texts = text_clean(texts)
-            if len(texts) > 500:
-                texts = texts[:500]
+            if len(texts) > 460:
+                texts = texts[:460]
             mask = mesh_mask[i]
             if yield_label:
                 label = labels[i]

@@ -456,10 +456,10 @@ def plot_loss(train_loss, valid_loss, save_path):
 
 
 def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
-    sudo_text = torch.randint(123827, size=(batch_sz, 500), device=device)
+    sudo_text = torch.randint(123827, size=(batch_sz, 460), device=device)
     sudo_label = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
     sudo_mask = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
-    sudo_text_length = torch.full((batch_sz,), 500, dtype=int, device=device)
+    sudo_text_length = torch.full((batch_sz,), 460, dtype=int, device=device)
 
     output = model(sudo_text, sudo_text_length, sudo_mask, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
     # output = model(sudo_abstract, sudo_title, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])
@@ -494,7 +494,7 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=20)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--lr', type=float, default=1e-4)

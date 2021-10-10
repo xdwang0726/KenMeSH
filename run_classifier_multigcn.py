@@ -525,8 +525,8 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=20)
-    parser.add_argument('--batch_sz', type=int, default=16)
+    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)

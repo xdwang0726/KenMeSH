@@ -218,8 +218,7 @@ class single_channel_dilatedCNN(nn.Module):
 
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
-        # self.rnn = nn.GRU(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
-        #                   dropout=self.dropout, bidirectional=True, batch_first=True)
+
         self.emb_drop = nn.Dropout(0.2)
 
         self.dconv = nn.Sequential(nn.Conv1d(self.embedding_dim*2, self.embedding_dim*2, kernel_size=self.ksz, padding=1, dilation=1),
@@ -230,7 +229,6 @@ class single_channel_dilatedCNN(nn.Module):
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
-
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
@@ -244,7 +242,7 @@ class single_channel_dilatedCNN(nn.Module):
 
         # outputs = outputs[:, :, :self.embedding_dim] + outputs[:, :, self.embedding_dim:]
         outputs = outputs.permute(0, 2, 1) # (bs, emb_dim*2, seq_length)
-        abstract_conv = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
+        outputs = self.dconv(outputs)  # (bs, embed_dim*2, seq_len-ksz+1)
 
         # get label features
         label_feature = self.gcn(g, g_node_feature)
@@ -252,8 +250,8 @@ class single_channel_dilatedCNN(nn.Module):
         atten_mask = label_feature.transpose(0, 1) * mask.unsqueeze(1)
 
         # label-wise attention (mapping different parts of the document representation to different labels)
-        abstract_atten = torch.softmax(torch.matmul(abstract_conv.transpose(1, 2), atten_mask), dim=1)
-        x_feature = torch.matmul(abstract_conv, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
+        abstract_atten = torch.softmax(torch.matmul(outputs.transpose(1, 2), atten_mask), dim=1)
+        x_feature = torch.matmul(outputs, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         x = torch.sum(x_feature * label_feature, dim=2)
 
@@ -514,6 +512,8 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
 
+        self.fc_drop = nn.Dropout(0.5)
+
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
@@ -550,6 +550,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim)
 
         x_feature = torch.tanh(self.fc1(x_feature))
+        x_feature = self.fc_drop(x_feature)
 
         # add CorNet
         cor_logit = self.cornet(x_feature.squeeze(2))
@@ -581,6 +582,8 @@ class HGCN4MeSH(nn.Module):
         nn.init.xavier_normal_(self.fc2.weight)
         nn.init.zeros_(self.fc2.bias)
 
+        self.fc_drop = nn.Dropout(0.2)
+
     def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature):
         # get label features
         label_feature = self.gcn(g, g_node_feature)
@@ -611,6 +614,7 @@ class HGCN4MeSH(nn.Module):
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
         x_feature = nn.functional.tanh(self.fc1(x_feature))
         x_feature = nn.functional.tanh(self.fc2(x_feature))
+        x_feature = self.fc_drop(x_feature)
 
         return x_feature.squeeze(2)
 
