@@ -10,8 +10,9 @@ _n = 20000  # number of test data
 maximum_iteration = 3
 P_score = pickle.load(open('../pmc_result.pkl', 'rb'))
 P_score = np.concatenate(P_score, axis=0)
-T_score = pickle.load(open('../threshold.pkl', 'rb'))
+T_score = pickle.load(open('../pmc_true.pkl', 'rb'))
 T_score = np.concatenate(T_score, axis=0)
+print('finish loading')
 
 
 def create_fake_testcase():
