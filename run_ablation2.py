@@ -152,9 +152,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:], mesh_mask[:num_example], mesh_mask[-20000:],
-                                          label_id[-20000:], all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
-                                          include_unk=False, is_test=False, is_multichannel=True)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
+                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
@@ -165,22 +165,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(all_title[:num_example])))
     train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
-    # train_idx, valid_idx = indices[split:], indices[:split]
-    # train_sampler = SubsetRandomSampler(train_idx)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
-    # class_indices = list(label_sample.values())
-    # sampler_ids = list(label_sample.keys())
-    # mlb_sampler = MultiLabelBinarizer(classes=sampler_ids)
-    # mlb_sampler.fit(sampler_ids)
-    # for ids in meshIDs:
-    #     if ids in list(label_sample.keys()):
-    #         idx = list(label_sample.keys()).index(ids)
-    #         samples = list(label_sample.values())[idx]
-    #     else:
-    #         samples = []
-    #     class_indices.append(samples)
-    # train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
+
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
@@ -188,7 +173,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
+    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -289,12 +274,6 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
                 param.grad = None
             train_losses.append(loss.item())  # record training loss
 
-            # processed_lines = i + len(train_data) * epoch
-            # progress = processed_lines / float(num_lines)
-            # if processed_lines % 3000 == 0:
-            #     sys.stderr.write(
-            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
-            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
 
@@ -542,7 +521,7 @@ def main():
     print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G = \
+    num_nodes, mlb, vocab, train_dataset, valid_dataset, vectors, G = \
         prepare_dataset(args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path,
                         args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))

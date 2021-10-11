@@ -153,9 +153,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(all_text[:num_example], label_id[:num_example], all_text[-20000:], mesh_mask[:num_example], mesh_mask[-20000:],
-                                          label_id[-20000:], all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
-                                          include_unk=False, is_test=False, is_multichannel=True)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
+                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
@@ -189,7 +189,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
+    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -543,7 +543,7 @@ def main():
     print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G = \
+    num_nodes, mlb, vocab, train_dataset, valid_dataset, vectors, G = \
         prepare_dataset(args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path,
                         args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
