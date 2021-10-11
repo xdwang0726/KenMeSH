@@ -34,22 +34,17 @@ def text_clean(tokens):
     return filtered_text
 
 
-def _vocab_iterator(train_text, test_text, train_title=None, test_title=None, ngrams=1):
+def _vocab_iterator(all_text, all_title, ngrams=1):
 
     tokenizer = get_tokenizer('basic_english')
 
-    for i, text in enumerate(train_text):
-        texts = tokenizer(text + train_title[i])
-        texts = text_clean(texts)
-        yield ngrams_iterator(texts, ngrams)
-
-    for i, text in enumerate(test_text):
-        texts = tokenizer(text + test_title[i])
+    for i, text in enumerate(all_text):
+        texts = tokenizer(text + all_title[i])
         texts = text_clean(texts)
         yield ngrams_iterator(texts, ngrams)
 
 
-def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yield_label=False, is_multichannel=True):
+def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, is_multichannel=True):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         if is_multichannel:
@@ -62,11 +57,9 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
             if len(heading) > 60:
                 heading = heading[:60]
             mask = mesh_mask[i]
-            if yield_label:
-                label = labels[i]
-                yield label, mask, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
-            else:
-                yield mask, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
+            label = labels[i]
+            yield label, mask, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
+
         else:
             heading = tokenizer(title[i])
             abstract = tokenizer(text)
@@ -75,80 +68,45 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, yiel
             if len(texts) > 460:
                 texts = texts[:460]
             mask = mesh_mask[i]
-            if yield_label:
-                label = labels[i]
-                yield label, mask, ngrams_iterator(texts, ngrams)
-            else:
-                yield mask, ngrams_iterator(texts, ngrams)
+            label = labels[i]
+            yield label, mask, ngrams_iterator(texts, ngrams)
 
 
-def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False, is_multichannel=True):
+def _create_data_from_iterator(vocab, iterator, include_unk, is_multichannel=True):
     data = []
     labels = []
     with tqdm(unit_scale=0, unit='lines') as t:
         if is_multichannel:
-            if is_test:
-                for mask, text, title in iterator:
-                    if include_unk:
-                        ab_tokens = torch.tensor([vocab[token] for token in text])
-                        title_tokens = torch.tensor([vocab[token] for token in title])
-                    else:
-                        ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                                  for token in text]))
-                        ab_tokens = torch.tensor(ab_token_ids)
-                        title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                                     for token in title]))
-                        title_tokens = torch.tensor(title_token_ids)
-                    if len(ab_tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((mask, ab_tokens, title_tokens))
-                    t.update(1)
-                return data
-            else:
-                for label, mask, text, title in iterator:
-                    if include_unk:
-                        text = [token for token in text]
-                        ab_tokens = torch.tensor([vocab[token] for token in text])
-                        title_tokens = torch.tensor([vocab[token] for token in title])
-                    else:
-                        ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in text]))
-                        ab_tokens = torch.tensor(ab_token_ids)
-                        title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in title]))
-                        title_tokens = torch.tensor(title_token_ids)
-                    if len(ab_tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((label, mask, ab_tokens, title_tokens))
-                    labels.extend(label)
-                    t.update(1)
-                return data, list(set(labels))
+            for label, mask, text, title in iterator:
+                if include_unk:
+                    text = [token for token in text]
+                    ab_tokens = torch.tensor([vocab[token] for token in text])
+                    title_tokens = torch.tensor([vocab[token] for token in title])
+                else:
+                    ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in text]))
+                    ab_tokens = torch.tensor(ab_token_ids)
+                    title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in title]))
+                    title_tokens = torch.tensor(title_token_ids)
+                if len(ab_tokens) == 0:
+                    logging.info('Row contains no tokens.')
+                data.append((label, mask, ab_tokens, title_tokens))
+                labels.extend(label)
+                t.update(1)
+            return data, list(set(labels))
         else:
-            if is_test:
-                for mask, text in iterator:
-                    if include_unk:
-                        tokens = torch.tensor([vocab[token] for token in text])
-                    else:
-                        token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                               for token in text]))
-                        tokens = torch.tensor(token_ids)
-                    if len(tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((mask, tokens))
-                    t.update(1)
-                return data
-            else:
-                for label, mask, text in iterator:
-                    if include_unk:
-                        tokens = torch.tensor([vocab[token] for token in text])
-                    else:
-                        token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                               for token in text]))
-                        tokens = torch.tensor(token_ids)
-                    if len(tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((label, mask, tokens))
-                    labels.extend(label)
-                    t.update(1)
-                return data, list(set(labels))
+            for label, mask, text in iterator:
+                if include_unk:
+                    tokens = torch.tensor([vocab[token] for token in text])
+                else:
+                    token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
+                                                                           for token in text]))
+                    tokens = torch.tensor(token_ids)
+                if len(tokens) == 0:
+                    logging.info('Row contains no tokens.')
+                data.append((label, mask, tokens))
+                labels.extend(label)
+                t.update(1)
+            return data, list(set(labels))
 
 
 class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
@@ -184,50 +142,50 @@ class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
         return self._vocab
 
 
-def _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask, test_mask, train_title=None, test_title=None, ngrams=1, vocab=None,
+def _setup_datasets(all_text, all_title, train_text, train_labels, test_text, test_labels, train_mask, test_mask, train_title=None, test_title=None, ngrams=1, vocab=None,
                     include_unk=False, is_test=False, is_multichannel=True):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        vocab = build_vocab_from_iterator(_vocab_iterator(train_text, test_text, train_title, test_title, ngrams))
+        vocab = build_vocab_from_iterator(_vocab_iterator(all_text, all_title, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
     print('Vocab has {} entries'.format(len(vocab)))
-    logging.info('Creating training data')
+
     if is_multichannel:
-        train_data, train_labels = _create_data_from_iterator(
-            vocab, _text_iterator(train_text, train_title, labels=train_labels, mesh_mask=train_mask, ngrams=ngrams,
-                                  yield_label=True, is_multichannel=is_multichannel), include_unk, is_test=False, is_multichannel=is_multichannel)
-        logging.info('Creating testing data')
         if is_test:
+            logging.info('Creating testing data')
             test_data = _create_data_from_iterator(
-            vocab, _text_iterator(test_text, test_title, labels=None, mesh_mask=test_mask, ngrams=ngrams, yield_label=False, is_multichannel=is_multichannel), include_unk,
-            is_test=is_test, is_multichannel=is_multichannel)
+                vocab, _text_iterator(test_text, test_title, labels=test_labels, mesh_mask=test_mask, ngrams=ngrams,
+                                      is_multichannel=True), include_unk, is_multichannel=True)
             logging.info('Total number of labels in training set:'.format(len(train_labels)))
-            return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-                    MultiLabelTextClassificationDataset(vocab, test_data))
+            return MultiLabelTextClassificationDataset(vocab, test_data)
         else:
-            test_data, test_labels = _create_data_from_iterator(
-                vocab, _text_iterator(test_text, test_title, labels=test_labels, mesh_mask=test_mask, ngrams=ngrams, yield_label=True, is_multichannel=is_multichannel), include_unk,
-                is_test=False, is_multichannel=is_multichannel)
+            logging.info('Creating training data')
+            train_data, train_labels = _create_data_from_iterator(
+                vocab, _text_iterator(train_text, train_title, labels=train_labels, mesh_mask=train_mask, ngrams=ngrams,
+                                      is_multichannel=True), include_unk, is_multichannel=True)
             logging.info('Total number of labels in training set:'.format(len(train_labels)))
-            return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-                    MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
+            return MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
     else:
-        train_data, train_labels = _create_data_from_iterator(
-            vocab, _text_iterator(train_text, train_title, labels=train_labels, mesh_mask=train_mask, ngrams=ngrams, yield_label=True, is_multichannel=is_multichannel), include_unk,
-            is_test=False, is_multichannel=is_multichannel)
-        logging.info('Creating testing data')
-        test_data, test_labels = _create_data_from_iterator(
-            vocab, _text_iterator(test_text, test_title, labels=test_labels, mesh_mask=test_mask, ngrams=ngrams, yield_label=True, is_multichannel=is_multichannel), include_unk,
-            is_test=False, is_multichannel=is_multichannel)
-        logging.info('Total number of labels in training set:'.format(len(train_labels)))
-        return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-                MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
+        if is_test:
+            logging.info('Creating testing data')
+            test_data, test_labels = _create_data_from_iterator(
+                vocab, _text_iterator(test_text, test_title, labels=test_labels, mesh_mask=test_mask, ngrams=ngrams,
+                                      is_multichannel=False), include_unk, is_multichannel=False)
+            return MultiLabelTextClassificationDataset(vocab, test_data, test_labels)
+        else:
+            logging.info('Creating training data')
+            train_data, train_labels = _create_data_from_iterator(
+                vocab, _text_iterator(train_text, train_title, labels=train_labels, mesh_mask=train_mask, ngrams=ngrams,
+                                      is_multichannel=is_multichannel), include_unk, is_multichannel=False)
+
+            logging.info('Total number of labels in training set:'.format(len(train_labels)))
+            return MultiLabelTextClassificationDataset(vocab, train_data, train_labels)
 
 
-def MeSH_indexing(train_text, train_labels, test_text, train_mask, test_mask, test_labels=None, train_title=None, test_title=None, ngrams=1, vocab=None,
-                  include_unk=False, is_test=False, is_multichannel=True):
+def MeSH_indexing(all_text, all_title, train_text, train_title, train_labels, train_mask, test_text, test_title,
+                  test_labels, test_mask, is_test, is_multichannel):
     """
 
     Defines MeSH_indexing datasets.
@@ -235,16 +193,9 @@ def MeSH_indexing(train_text, train_labels, test_text, train_mask, test_mask, te
 
 
     """
-    if is_multichannel:
-        if is_test:
-            return _setup_datasets(train_text, train_labels, test_text, None, train_mask, test_mask, train_title, test_title, ngrams,
-                                   vocab, include_unk, is_test=True, is_multichannel=True)
-        else:
-            return _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask, test_mask, train_title, test_title, ngrams, vocab,
-                                   include_unk, is_multichannel=True)
-    else:
-        return _setup_datasets(train_text, train_labels, test_text, test_labels, train_mask, test_mask, train_title, test_title, ngrams=ngrams, vocab=vocab,
-                               include_unk=include_unk, is_multichannel=False)
+    return _setup_datasets(all_text, all_title, train_text, train_labels, test_text, test_labels, train_mask, test_mask,
+                           train_title, test_title, ngrams=1, vocab=None, include_unk=False, is_test=is_test,
+                           is_multichannel=is_multichannel)
 
 
 def pad_sequence(sequences, ksz, batch_first=False, padding_value=0.0):
