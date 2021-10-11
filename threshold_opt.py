@@ -187,9 +187,9 @@ def main():
     args = parser.parse_args()
 
     P_score = pickle.load(open(args.predicted, 'rb'))
-    P_score = np(P_score, axis=0)
+    P_score = np.concatenate(P_score, axis=0)
     T_score = pickle.load(open(args.true, 'rb'))
-    T_score = np(T_score, axis=0)
+    T_score = np.concatenate(T_score, axis=0)
     _N = len(P_score[0])
     _n = len(P_score)
     maximum_iteration = 3
