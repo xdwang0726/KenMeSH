@@ -1,6 +1,6 @@
 import argparse
 import pickle
-
+import numpy as np
 
 def create_score_per_class(P_score, _N, _n):
     scores_per_class = {}  # it will hold predicted score for each class in incresing order
@@ -30,8 +30,7 @@ def calculateF(P_score, T_score, T, _N, _n, beta=1):  # return F1-score for any 
     B = 0
     C = 0
     D = 0
-    precision = 0
-    recall = 0
+
     for x in range(_N):
         tp = 0
         fp = 0
@@ -98,7 +97,6 @@ def updated_score_T(P_score, T_score, _n, k, curT, prevT, beta, pd, pn, rd, rn):
     C = rd - PTP + TP
     D = rn - (PTP + PFN) + (TP + FN)
     recall = C / D
-    # print(precision," ", recall)
     f_score = (1 + beta * beta) / ((1.0 / precision) + (beta * beta) / recall)
 
     return f_score, A, B, C, D
@@ -137,11 +135,11 @@ def maximization_Algo1(P_score, T_score, scores_per_class, _N, _n, maximum_itera
         This run-time will not be feasible for larger data-sets (number of class and number of data point)
         However, as the improvment is increamental may be we can treat the iteration as a hyper-parameter.
     '''
-    t = []
+    # initialize t
+    t = [0.35] * _N
     beta = 1
-    for i in range(_N):
-        t.append(scores_per_class[i][0])  # assuming we have at least one example with class i
-    # print("Init t : ", t)
+    # for i in range(_N):
+    #     t.append(scores_per_class[i][0])  # assuming we have at least one example with class i
     iter = 0
     curF, precd, precsum, recalld, recallsum = calculateF(P_score, T_score, t, _N, _n, beta)
     print("Init F: ", curF)
@@ -185,14 +183,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--predicted')
     parser.add_argument('--true')
-    parser.add_argument('--train_json')
-    parser.add_argument('--years', type=list, default=['2012', '2013', '2014', '2015', '2016'])
+    parser.add_argument('--save')
     args = parser.parse_args()
 
     P_score = pickle.load(open(args.predicted, 'rb'))
+    P_score = np(P_score, axis=0)
     T_score = pickle.load(open(args.true, 'rb'))
+    T_score = np(T_score, axis=0)
     _N = len(P_score[0])
     _n = len(P_score)
     maximum_iteration = 3
     scores_per_class = create_score_per_class(P_score, _N, _n)
     t, imp_F = maximization_Algo1(P_score, T_score, scores_per_class, _N, _n, maximum_iteration)
+    print(imp_F)
+    pickle.dump(t, open(args.save, 'wb'))
+
+
+if __name__ == "__main__":
+    main()
