@@ -68,8 +68,7 @@ def calculateF(T, beta=1):  # return F1-score for any given ThreshHold tensor
     B = 0
     C = 0
     D = 0
-    precision = 0
-    recall = 0
+
     for x in range(_N):
         tp = 0
         fp = 0
@@ -178,11 +177,8 @@ def maximization_Algo1():  # will return the threshhold
         This run-time will not be feasible for larger data-sets (number of class and number of data point)
         However, as the improvment is increamental may be we can treat the iteration as a hyper-parameter.
     '''
-    t = []
+    t = [0.35] * _N
     beta = 1
-    for i in range(_N):
-        t.append(scores_per_class[i][0])  # assuming we have at least one example with class i
-    # print("Init t : ", t)
     iter = 0
     curF, precd, precsum, recalld, recallsum = calculateF(t, beta)
     print("Init F: ", curF)
