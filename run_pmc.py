@@ -588,8 +588,8 @@ def main():
     pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
 
     # save
-    pickle.dump(pred, open(args.results, 'rb'))
-    pickle.dump(true_label, open(args.true, 'rb'))
+    pickle.dump(pred, open(args.results, 'wb'))
+    pickle.dump(true_label, open(args.true, 'wb'))
 
 
 if __name__ == "__main__":
