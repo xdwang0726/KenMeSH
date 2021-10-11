@@ -373,51 +373,51 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
             results = output.data.cpu().numpy()
             pred.append(results)
             true_label.append(label)
-            test_labelsIndex = getLabelIndex(label)
-            precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
-            top_k_precisions.append(precisions)
-            # calculate example-based evaluation
-            sums = example_based_evaluation(results, label, threshold=0.5)
-            sum_ebp += sums[0]
-            sum_ebr += sums[1]
-            sum_ebf += sums[2]
-            # calculate label-based evaluation
-            confusion = micro_macro_eval(results, label, threshold=0.5)
-            tp += confusion[0]
-            tn += confusion[1]
-            fp += confusion[2]
-            fn += confusion[3]
+            # test_labelsIndex = getLabelIndex(label)
+            # precisions = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
+            # top_k_precisions.append(precisions)
+            # # calculate example-based evaluation
+            # sums = example_based_evaluation(results, label, threshold=0.5)
+            # sum_ebp += sums[0]
+            # sum_ebr += sums[1]
+            # sum_ebf += sums[2]
+            # # calculate label-based evaluation
+            # confusion = micro_macro_eval(results, label, threshold=0.5)
+            # tp += confusion[0]
+            # tn += confusion[1]
+            # fp += confusion[2]
+            # fn += confusion[3]
 
-    # Evaluations
-    print('Calculate Precision at K...')
-    p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
-    p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
-    p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
-    for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
-        print('p@{}: {:.5f}'.format(k, p))
-
-    print('Calculate Example-based Evaluation')
-    ebp = sum_ebp / len(test_dataset)
-    print('sum_ebp', sum_ebp)
-    print('dataset length', len(test_dataset))
-    ebr = sum_ebp / len(test_dataset)
-    ebf = sum_ebp / len(test_dataset)
-    for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
-        print('{}: {:.5f}'.format(n, m))
-
-    print('Calculate Label-based Evaluation')
-    mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
-    mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
-    mif = zero_division(2 * mir * mip, (mir + mip))
-    for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
-        print('{}: {:.5f}'.format(n, m))
-
-    print('Calculate Label-based Evaluation')
-    map = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
-    mar = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
-    maf = zero_division(2 * mir * mip, (mir + mip))
-    for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
-        print('{}: {:.5f}'.format(n, m))
+    # # Evaluations
+    # print('Calculate Precision at K...')
+    # p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
+    # p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
+    # p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
+    # for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
+    #     print('p@{}: {:.5f}'.format(k, p))
+    #
+    # print('Calculate Example-based Evaluation')
+    # ebp = sum_ebp / len(test_dataset)
+    # print('sum_ebp', sum_ebp)
+    # print('dataset length', len(test_dataset))
+    # ebr = sum_ebp / len(test_dataset)
+    # ebf = sum_ebp / len(test_dataset)
+    # for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
+    #     print('{}: {:.5f}'.format(n, m))
+    #
+    # print('Calculate Label-based Evaluation')
+    # mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    # mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    # mif = zero_division(2 * mir * mip, (mir + mip))
+    # for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
+    #     print('{}: {:.5f}'.format(n, m))
+    #
+    # print('Calculate Label-based Evaluation')
+    # map = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    # mar = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    # maf = zero_division(2 * mir * mip, (mir + mip))
+    # for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
+    #     print('{}: {:.5f}'.format(n, m))
 
     return pred, true_label
     print('###################DONE#########################')
@@ -572,28 +572,25 @@ def main():
     # criterion = AsymmetricLossOptimized()
 
     # pre-allocate GPU memory
-    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
     # training
-    print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
-    print('Finish training!')
-    #
-    # plot_loss(train_loss, valid_loss, args.loss)
-    #
+    # print("Start training!")
+    # model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
+    #                                       args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
+    # print('Finish training!')
 
-    print('save model for inference')
-    torch.save(model.state_dict(), args.save_model_path)
+    # print('save model for inference')
+    # torch.save(model.state_dict(), args.save_model_path)
 
-    # load model
-    # model = torch.load(args.model_path)
+    print('loading model')
+    model.load_state_dict(torch.load(args.save_model_path))
     #
     # testing
-    # pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
 
     # save
-    # pickle.dump(pred, open(args.results, 'rb'))
-    # pickle.dump(true_label, open(args.true, 'rb'))
+    pickle.dump(pred, open(args.results, 'rb'))
+    pickle.dump(true_label, open(args.true, 'rb'))
 
 
 if __name__ == "__main__":
