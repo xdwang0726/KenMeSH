@@ -2,7 +2,6 @@ import random
 import numpy as np
 from tqdm import tqdm
 import pickle
-import torch
 
 # Algorithm from the paper : Threshold optimization for multi-label classifieres
 
@@ -10,10 +9,7 @@ _N = 28415  # number of class
 _n = 20000  # number of test data
 maximum_iteration = 3
 P_score = pickle.load(open('../pmc_result.pkl', 'rb'))
-P_score = np.concatenate(P_score, axis=0)
-P_score = torch.Tensor(P_score)
-m = torch.nn.Sigmoid()
-P_score = m(P_score).tolist()
+P_score = np.concatenate(P_score, axis=0).tolist()
 T_score = pickle.load(open('../pmc_true.pkl', 'rb'))
 T_score = np.concatenate(T_score, axis=0).tolist()
 print('finish loading')
