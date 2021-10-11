@@ -155,7 +155,7 @@ def _setup_datasets(all_text, all_title, train_text, train_labels, test_text, te
     if is_multichannel:
         if is_test:
             logging.info('Creating testing data')
-            test_data = _create_data_from_iterator(
+            test_data, test_labels = _create_data_from_iterator(
                 vocab, _text_iterator(test_text, test_title, labels=test_labels, mesh_mask=test_mask, ngrams=ngrams,
                                       is_multichannel=True), include_unk, is_multichannel=True)
             logging.info('Total number of labels in training set:'.format(len(train_labels)))
@@ -178,7 +178,7 @@ def _setup_datasets(all_text, all_title, train_text, train_labels, test_text, te
             logging.info('Creating training data')
             train_data, train_labels = _create_data_from_iterator(
                 vocab, _text_iterator(train_text, train_title, labels=train_labels, mesh_mask=train_mask, ngrams=ngrams,
-                                      is_multichannel=is_multichannel), include_unk, is_multichannel=False)
+                                      is_multichannel=False), include_unk, is_multichannel=False)
 
             logging.info('Total number of labels in training set:'.format(len(train_labels)))
             return MultiLabelTextClassificationDataset(vocab, train_data, train_labels)
