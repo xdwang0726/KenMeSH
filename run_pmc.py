@@ -153,35 +153,21 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], mesh_mask, mesh_mask[-20000:],
-                                          label_id[-20000:], all_title, all_title[-20000:], ngrams=1, vocab=None,
-                                          include_unk=False, is_test=False, is_multichannel=True)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example],
+                            label_id[:num_example],
+                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+                            mesh_mask[-20000:], is_test=True, is_multichannel=True)
 
     # build vocab
     print('building vocab')
     vocab = dataset.get_vocab()
 
     # get validation set
-    valid_size = 0.02
-    # indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(all_title)))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title) - split, split])
-    # train_idx, valid_idx = indices[split:], indices[:split]
-    # train_sampler = SubsetRandomSampler(train_idx)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
-    # class_indices = list(label_sample.values())
-    # sampler_ids = list(label_sample.keys())
-    # mlb_sampler = MultiLabelBinarizer(classes=sampler_ids)
-    # mlb_sampler.fit(sampler_ids)
-    # for ids in meshIDs:
-    #     if ids in list(label_sample.keys()):
-    #         idx = list(label_sample.keys()).index(ids)
-    #         samples = list(label_sample.values())[idx]
-    #     else:
-    #         samples = []
-    #     class_indices.append(samples)
-    # train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
+    # valid_size = 0.02
+    # # indices = list(range(len(pmid)))
+    # split = int(np.floor(valid_size * len(all_title)))
+    # train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title) - split, split])
+
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
@@ -189,7 +175,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
+    return len(meshIDs), mlb, vocab, dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -363,6 +349,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
             G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
+            output = nn.Sigmoid(output)
             # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
@@ -541,9 +528,9 @@ def main():
     print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, valid_dataset, test_dataset, vectors, G = \
-        prepare_dataset(args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path,
-                        args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
+    num_nodes, mlb, vocab, test_dataset, vectors, G = prepare_dataset(args.title_path, args.abstract_path, args.label_path,
+                                                                      args.mask_path, args.meSH_pair_path, args.word2vec_path,
+                                                                      args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
     model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
@@ -562,10 +549,11 @@ def main():
     # neg_pos_ratio = neg_pos_ratio.to(device)
     # G_c.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCEWithLogitsLoss()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    #
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    # criterion = nn.BCEWithLogitsLoss()
+
     # criterion = FocalLoss_MultiLabel()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
