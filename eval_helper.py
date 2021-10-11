@@ -216,19 +216,17 @@ def find_common_label(y_actual, y_hat):
 
 
 def example_based_evaluation(pred, target, threshold):
-    print('pred', pred.shape)
-    pred = (pred > threshold).astype(np.int)
+    pred = np.greater_equal(pred, threshold).astype(np.int)
 
-    tp = np.logical_and(pred == 1, target == 1).astype(np.int)
-    tn = np.logical_and(pred == 0, target == 0).astype(np.int)
-    common_label = np.sum(tp) + np.sum(tn)
+    common_label = np.sum(np.multiply(pred, target), axis=1)
+    sum_pred = np.sum(pred, axis=1)
+    sum_true = np.sum(target, axis=1)
 
-    ebp = common_label / np.sum(pred, axis=1)
-    print('ebp', ebp)
-    ebr = common_label / np.sum(target, axis=1)
-    # print('ebr', ebr)
-    ebf = 2 * common_label / (np.sum(pred, axis=1) + np.sum(target, axis=1))
-    # print('ebf', ebf)
+
+    ebp = np.average(np.sum(common_label / sum_pred))
+    ebr = np.average(np.sum(common_label / sum_true))
+    ebf = 2 * ebp * ebr / (ebp + ebr)
+
     return (ebp, ebr, ebf)
 
 
@@ -236,7 +234,7 @@ def micro_macro_eval(pred, target, threshold):
     positive = 1
     negative = 0
 
-    pred = (pred > threshold).astype(np.int)
+    pred = np.greater_equal(pred, threshold).astype(np.int)
 
     tp = np.logical_and(pred == positive, target == positive).astype(np.int)
     tn = np.logical_and(pred == negative, target == negative).astype(np.int)
@@ -248,6 +246,14 @@ def micro_macro_eval(pred, target, threshold):
     sum_fp = np.sum(fp)
     sum_fn = np.sum(fn)
 
-    return (sum_tp, sum_tn, sum_fp, sum_fn)
+    MiP = sum_tp / (sum_tp + sum_fp)
+    MiR = sum_tp / (sum_tp + sum_fn)
+    MiF = 2 * MiP * MiR / (MiP + MiR)
+
+    MaP = np.average(np.nan_to_num(np.divide(np.sum(tp, axis=0), (np.sum(tp, axis=0) + np.sum(fp, axis=0)))))
+    MaR = np.average(np.nan_to_num(np.divide(np.sum(tp, axis=0), (np.sum(tp, axis=0) + np.sum(fn, axis=0)))))
+    MaF  = 2 * MaP * MaR / (MaP + MaR)
+
+    return (MiF, MiP, MiR, MaF, MaP, MaR)
 
 
