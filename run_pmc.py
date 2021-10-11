@@ -340,7 +340,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
             mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
             G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
-            m = nn.Sigmoid().to(device)
+            m = torch.nn.Sigmoid().to(device)
             output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             output = m(output)
             # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
