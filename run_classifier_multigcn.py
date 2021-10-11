@@ -209,7 +209,7 @@ def generate_batch(batch):
             concatenated as a single tensor for the input of nn.EmbeddingBag.
         cls: a tensor saving the labels of individual text entries.
     """
-    # check if the dataset if train or test
+    # check if the dataset is multi-channel or not
     if len(batch[0]) == 4:
         label = [entry[0] for entry in batch]
         mesh_mask = [entry[1] for entry in batch]
@@ -231,22 +231,14 @@ def generate_batch(batch):
         return label, mesh_mask, abstract, title, abstract_length, title_length
 
     else:
-        mesh_mask = [entry[0] for entry in batch]
+        label = [entry[0] for entry in batch]
+        mesh_mask = [entry[1] for entry in batch]
 
-        abstract = [entry[1] for entry in batch]
-        abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=3, batch_first=True)
+        text = [entry[2] for entry in batch]
+        text_length = [len(seq) for seq in text]
+        text = pad_sequence(text, ksz=3, batch_first=True)
 
-        title = [entry[2] for entry in batch]
-        title_length = []
-        for i, seq in enumerate(title):
-            if len(seq) == 0:
-                length = len(seq) + 1
-            else:
-                length = len(seq)
-            title_length.append(length)
-        title = pad_sequence(title, ksz=3, batch_first=True)
-        return mesh_mask, abstract, title, abstract_length, title_length
+        return label, mesh_mask, text, text_length
 
 
 def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
