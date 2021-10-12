@@ -1,6 +1,7 @@
 import argparse
 import pickle
 import numpy as np
+from tqdm import tqdm
 
 def create_score_per_class(P_score, _N, _n):
     scores_per_class = {}  # it will hold predicted score for each class in incresing order
