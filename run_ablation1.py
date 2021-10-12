@@ -154,7 +154,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('prepare training and test sets')
     dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
                             mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            mesh_mask[-20000:], is_test=False, is_multichannel=False)
+                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
@@ -245,7 +245,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     print("Training....")
     for epoch in range(num_epochs):
         model.train()  # prep model for training
-        for i, (label, mask, text, text_length) in enumerate(train_data):
+        for i, (label, mesh_mask, text, text_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             text_length = torch.Tensor(text_length)
@@ -253,7 +253,6 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             G = G.to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
             output = model(text, text_length, mask, G, G.ndata['feat'])
-
             loss = criterion(output, label)
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
@@ -264,18 +263,12 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
                 param.grad = None
             train_losses.append(loss.item())  # record training loss
 
-            # processed_lines = i + len(train_data) * epoch
-            # progress = processed_lines / float(num_lines)
-            # if processed_lines % 3000 == 0:
-            #     sys.stderr.write(
-            #         "\rProgress: {:3.0f}% lr: {:3.8f} loss: {:3.8f}\n".format(
-            #             progress * 100, lr_scheduler.get_last_lr()[0], loss))
         # Adjust the learning rate
         lr_scheduler.step()
 
         with torch.no_grad():
             model.eval()
-            for i, (label, mask, text, text_length) in enumerate(valid_data):
+            for i, (label, mesh_mask, text, text_length) in enumerate(valid_data):
                 label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
                 mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
                 text_length = torch.Tensor(text_length)
@@ -328,14 +321,19 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     print('Testing....')
     with torch.no_grad():
         model.eval()
-        for label, mask, text, text_length in test_data:
+        for label, mask, abstract, title, abstract_length, title_length in test_data:
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-            text_length = torch.Tensor(text_length)
-            text, label, mask, text_length = text.to(device), label.to(device), mask.to(device), text_length.to(device)
+            abstract_length = torch.Tensor(abstract_length)
+            title_length = torch.Tensor(title_length)
+            mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
             G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
+            # G.ndata['feat'] = G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
 
-            output = model(text, text_length, mask, G, G.ndata['feat'])
+            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
+            # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
+            # output = model(abstract, title, G.ndata['feat'])
+            # pred = torch.cat((pred, output), dim=0)
 
             # calculate precision at k
             results = output.data.cpu().numpy()
@@ -452,15 +450,18 @@ def plot_loss(train_loss, valid_loss, save_path):
 
 def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
     sudo_text = torch.randint(123827, size=(batch_sz, 400), device=device)
+    # sudo_title = torch.randint(123827, size=(batch_sz, 60), device=device)
     sudo_label = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
     sudo_mask = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
     sudo_text_length = torch.full((batch_sz,), 400, dtype=int, device=device)
+    # sudo_title_length = torch.full((batch_sz,), 60, dtype=int, device=device)
 
     output = model(sudo_text, sudo_text_length, sudo_mask, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
     # output = model(sudo_abstract, sudo_title, sudo_abstract_length, sudo_title_length, G, G.ndata['feat'])
     loss = criterion(output, sudo_label)
     loss.backward()
     model.zero_grad()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -489,7 +490,7 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=20)
     parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -513,7 +514,8 @@ def main():
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
 
-    model = single_channel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
+    model = single_channel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200, rnn_num_layers=2,
+                                      cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     model.to(device)
@@ -523,7 +525,6 @@ def main():
     # G_c.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    # lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
     criterion = nn.BCEWithLogitsLoss()
     # criterion = FocalLoss_MultiLabel()
