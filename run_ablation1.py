@@ -449,11 +449,11 @@ def plot_loss(train_loss, valid_loss, save_path):
 
 
 def preallocate_gpu_memory(G, model, batch_sz, device, num_label, criterion):
-    sudo_text = torch.randint(123827, size=(batch_sz, 380), device=device)
+    sudo_text = torch.randint(123827, size=(batch_sz, 400), device=device)
     # sudo_title = torch.randint(123827, size=(batch_sz, 60), device=device)
     sudo_label = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
     sudo_mask = torch.randint(2, size=(batch_sz, num_label), device=device).type(torch.float)
-    sudo_text_length = torch.full((batch_sz,), 380, dtype=int, device=device)
+    sudo_text_length = torch.full((batch_sz,), 400, dtype=int, device=device)
     # sudo_title_length = torch.full((batch_sz,), 60, dtype=int, device=device)
 
     output = model(sudo_text, sudo_text_length, sudo_mask, G, G.ndata['feat'])  # , G_c, G_c.ndata['feat'])
