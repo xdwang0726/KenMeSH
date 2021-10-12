@@ -232,7 +232,6 @@ class single_channel_dilatedCNN(nn.Module):
 
     def forward(self, input_seq, input_length, mask, g, g_node_feature):
         embedded_seq = self.emb_drop(self.embedding_layer(input_seq))  # size: (bs, seq_len, embed_dim)
-        embedded_seq = self.emb_drop(embedded_seq)
 
         packed_seq = pack_padded_sequence(embedded_seq, input_length, batch_first=True, enforce_sorted=False)
         packed_output, (_,_) = self.rnn(packed_seq)
