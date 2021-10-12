@@ -259,8 +259,8 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     early_stopping = EarlyStopping(patience=3, verbose=True)
 
     print("Training....")
+    model.train()  # prep model for training
     for epoch in range(num_epochs):
-        model.train()  # prep model for training
         for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
@@ -506,7 +506,7 @@ def main():
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
     parser.add_argument('--true')
-    parser.add_argument('--loss')
+    parser.add_argument('--model')
 
     parser.add_argument('--num_example', type=int, default=10000)
     parser.add_argument('--device', default='cuda', type=str)
@@ -567,7 +567,13 @@ def main():
     # criterion = AsymmetricLossOptimized()
 
     # pre-allocate GPU memory
-    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+
+    # load model
+    checkpoint = torch.load(args.model)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    loss = checkpoint['loss']
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
