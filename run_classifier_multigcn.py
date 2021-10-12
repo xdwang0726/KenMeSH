@@ -552,7 +552,7 @@ def main():
                                                   rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
-    model.to(device)
+
     G = G.to(device)
     # G = dgl.add_self_loop(G)
     # neg_pos_ratio = neg_pos_ratio.to(device)
@@ -570,10 +570,8 @@ def main():
     # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # load model
-    checkpoint = torch.load(args.model)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    loss = checkpoint['loss']
+    model.load_state_dict(torch.load(args.model))
+    model.to(device)
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
