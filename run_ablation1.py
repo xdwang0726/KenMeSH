@@ -247,12 +247,12 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
         model.train()  # prep model for training
         for i, (label, mesh_mask, text, text_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+            mesh_mask = torch.from_numpy(mlb.fit_transform(mesh_mask)).type(torch.float)
             text_length = torch.Tensor(text_length)
-            text, label, mask, text_length = text.to(device), label.to(device), mask.to(device), text_length.to(device)
+            text, label, mesh_mask, text_length = text.to(device), label.to(device), mesh_mask.to(device), text_length.to(device)
             G = G.to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
-            output = model(text, text_length, mask, G, G.ndata['feat'])
+            output = model(text, text_length, mesh_mask, G, G.ndata['feat'])
             loss = criterion(output, label)
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
@@ -270,13 +270,13 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             model.eval()
             for i, (label, mesh_mask, text, text_length) in enumerate(valid_data):
                 label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-                mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+                mesh_mask = torch.from_numpy(mlb.fit_transform(mesh_mask)).type(torch.float)
                 text_length = torch.Tensor(text_length)
-                text, label, mask, text_length = text.to(device), label.to(device), mask.to(device), text_length.to(device)
+                text, label, mesh_mask, text_length = text.to(device), label.to(device), mesh_mask.to(device), text_length.to(device)
                 G = G.to(device)
                 G.ndata['feat'] = G.ndata['feat'].to(device)
 
-                output = model(text, text_length, mask, G, G.ndata['feat'])
+                output = model(text, text_length, mesh_mask, G, G.ndata['feat'])
 
                 loss = criterion(output, label)
                 valid_losses.append(loss.item())
