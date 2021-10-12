@@ -249,12 +249,11 @@ class single_channel_dilatedCNN(nn.Module):
         abstract_atten = torch.softmax(torch.matmul(outputs.transpose(1, 2), atten_mask), dim=1)
         x_feature = torch.matmul(outputs, abstract_atten).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
-        x = torch.sum(x_feature * label_feature, dim=2)
+        x_feature = torch.sum(x_feature * label_feature, dim=2)
 
         # CorNet
-        cor_logit = self.cornet(x)
-        cor_logit = torch.sigmoid(cor_logit)
-        return cor_logit
+        x_feature = self.cornet(x_feature)
+        return x_feature
 
 
 class multichannel_dilatedCNN(nn.Module):
@@ -319,7 +318,6 @@ class multichannel_dilatedCNN(nn.Module):
 
         # add CorNet
         cor_logit = self.cornet(x)
-        cor_logit = torch.sigmoid(cor_logit)
         return cor_logit
 
 
