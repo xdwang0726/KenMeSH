@@ -154,7 +154,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('prepare training and test sets')
     dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
                             mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
+                            mesh_mask[-20000:], is_test=False, is_multichannel=False)
 
     # build vocab
     print('building vocab')
