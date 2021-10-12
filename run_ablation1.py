@@ -154,7 +154,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('prepare training and test sets')
     dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
                             mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
+                            mesh_mask[-20000:], is_test=False, is_multichannel=False)
 
     # build vocab
     print('building vocab')
@@ -165,22 +165,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # indices = list(range(len(pmid)))
     split = int(np.floor(valid_size * len(all_title[:num_example])))
     train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
-    # train_idx, valid_idx = indices[split:], indices[:split]
-    # train_sampler = SubsetRandomSampler(train_idx)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
-    # class_indices = list(label_sample.values())
-    # sampler_ids = list(label_sample.keys())
-    # mlb_sampler = MultiLabelBinarizer(classes=sampler_ids)
-    # mlb_sampler.fit(sampler_ids)
-    # for ids in meshIDs:
-    #     if ids in list(label_sample.keys()):
-    #         idx = list(label_sample.keys()).index(ids)
-    #         samples = list(label_sample.values())[idx]
-    #     else:
-    #         samples = []
-    #     class_indices.append(samples)
-    # train_sampler = MultilabelBalancedRandomSampler(label_id, len(sampler_ids), len(pmid), class_indices, mlb_sampler, train_index)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
+
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
@@ -527,13 +512,6 @@ def main():
                         args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
-    # model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-    #                                                embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
-                                    #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    # model = multichannel_dilatedCNN_without_graph(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200,
-    #                                               rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
-    # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device, embedding_dim=200,
-    #                                 rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
 
     model = single_channel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
