@@ -259,8 +259,8 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     early_stopping = EarlyStopping(patience=3, verbose=True)
 
     print("Training....")
-    model.train()  # prep model for training
     for epoch in range(num_epochs):
+        model.train()  # prep model for training
         for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
