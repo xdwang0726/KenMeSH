@@ -3,7 +3,7 @@ from scipy import stats
 from scipy.sparse import issparse
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score
-
+import pickle
 
 def zero_division(x, y):
     try:
@@ -257,3 +257,37 @@ def micro_macro_eval(pred, target, threshold):
     return (MiF, MiP, MiR, MaF, MaP, MaR)
 
 
+def getLabelIndex(labels):
+    label_index = np.zeros((len(labels), len(labels[1])))
+    for i in range(0, len(labels)):
+        index = np.where(labels[i] == 1)
+        index = np.asarray(index)
+        N = len(labels[1]) - index.size
+        index = np.pad(index, [(0, 0), (0, N)], 'constant')
+        label_index[i] = index
+
+    label_index = np.array(label_index, dtype=int)
+    label_index = label_index.astype(np.int32)
+    return label_index
+
+
+def main():
+    P_score = pickle.load(open('../results.pkl', 'rb'))
+    P_score = np.concatenate(P_score, axis=0)
+    T_score = pickle.load(open('../true.pkl', 'rb'))
+    T_score = np.concatenate(T_score, axis=0)
+    threshold = np.array([0.5] * 28415)
+
+    test_labelsIndex = getLabelIndex(T_score)
+    precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
+    print('p@k', precisions)
+
+    emb = example_based_evaluation(P_score, T_score, threshold)
+    print('emb', emb)
+
+    micro = micro_macro_eval(P_score, T_score, threshold)
+    print('mi/ma', micro)
+
+
+if __name__ == "__main__":
+    main()
