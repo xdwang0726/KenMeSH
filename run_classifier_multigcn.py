@@ -572,6 +572,7 @@ def main():
     # load model
     model.load_state_dict(torch.load(args.model))
     model.to(device)
+    model.train()
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
