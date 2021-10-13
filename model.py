@@ -266,7 +266,6 @@ class multichannel_dilatedCNN(nn.Module):
         self.embedding_dim = embedding_dim
 
         self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-        self.emb_drop = nn.Dropout(0.2)
 
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
@@ -290,7 +289,6 @@ class multichannel_dilatedCNN(nn.Module):
 
         # get title content features
         embedded_title = self.embedding_layer(input_title.long())
-        embedded_title = self.emb_drop(embedded_title)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
 
         packed_output_title, (_,_) = self.rnn(packed_title)
@@ -301,7 +299,6 @@ class multichannel_dilatedCNN(nn.Module):
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
-        embedded_abstract = self.emb_drop(embedded_abstract)
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
         packed_output_abstract, (_,_) = self.rnn(packed_abstract)
         output_unpacked_abstract, _ = pad_packed_sequence(packed_output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
@@ -405,7 +402,6 @@ class multichannel_with_MeSH_mask(nn.Module):
         self.embedding_dim = embedding_dim
 
         self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-        self.emb_drop = nn.Dropout(0.2)
 
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
@@ -423,7 +419,6 @@ class multichannel_with_MeSH_mask(nn.Module):
         # get title content features
         atten_mask = label_feature.transpose(0, 1) * mask.unsqueeze(1)
         title = self.embedding_layer(title.long())
-        title = self.emb_drop(title)
         title = pack_padded_sequence(title, title_length, batch_first=True, enforce_sorted=False) # packed input title
 
         output_title, (_,_) = self.rnn(title) # packed rnn output title
@@ -434,7 +429,6 @@ class multichannel_with_MeSH_mask(nn.Module):
 
         # get abstract content features
         abstract = self.embedding_layer(abstract)  # size: (bs, seq_len, embed_dim)
-        abstract = self.emb_drop(abstract)
         abstract = pack_padded_sequence(abstract, ab_length, batch_first=True, enforce_sorted=False)
         output_abstract, (_,_) = self.rnn(abstract)
         output_abstract, _ = pad_packed_sequence(output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
@@ -462,7 +456,6 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         self.embedding_dim = embedding_dim
 
         self.embedding_layer = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-        self.emb_drop = nn.Dropout(0.2)
 
         self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=embedding_dim, num_layers=rnn_num_layers,
                            dropout=self.dropout, bidirectional=True, batch_first=True)
@@ -488,7 +481,6 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         # get title content features
         atten_mask = g_node_feature.transpose(0, 1) * mask.unsqueeze(1)
         embedded_title = self.embedding_layer(input_title.long())
-        embedded_title = self.emb_drop(embedded_title)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
 
         output_title, (_,_) = self.rnn(packed_title)
@@ -500,7 +492,6 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
-        embedded_abstract = self.emb_drop(embedded_abstract)
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
         output_abstract, (_,_) = self.rnn(packed_abstract)
         output_abstract, _ = pad_packed_sequence(output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
