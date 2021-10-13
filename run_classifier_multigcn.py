@@ -552,7 +552,7 @@ def main():
                                                   rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
-
+    model.to(device)
     G = G.to(device)
     # G = dgl.add_self_loop(G)
     # neg_pos_ratio = neg_pos_ratio.to(device)
