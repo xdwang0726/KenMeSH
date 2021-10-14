@@ -471,8 +471,6 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
 
-        self.fc_drop = nn.Dropout(0.5)
-
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
 
@@ -507,7 +505,6 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim)
 
         x_feature = torch.tanh(self.fc1(x_feature))
-        x_feature = self.fc_drop(x_feature)
 
         # add CorNet
         cor_logit = self.cornet(x_feature.squeeze(2))
@@ -548,7 +545,7 @@ class HGCN4MeSH(nn.Module):
 
         # get title content features
         embedded_title = self.embedding_layer(input_title.long())
-        embedded_title = self.emb_drop(embedded_title)
+        # embedded_title = self.emb_drop(embedded_title)
         packed_title = pack_padded_sequence(embedded_title, title_length, batch_first=True, enforce_sorted=False)
 
         packed_output_title, _ = self.rnn(packed_title)
@@ -559,7 +556,7 @@ class HGCN4MeSH(nn.Module):
 
         # get abstract content features
         embedded_abstract = self.embedding_layer(input_abstract)  # size: (bs, seq_len, embed_dim)
-        embedded_abstract = self.emb_drop(embedded_abstract)
+        # embedded_abstract = self.emb_drop(embedded_abstract)
         packed_abstract = pack_padded_sequence(embedded_abstract, ab_length, batch_first=True, enforce_sorted=False)
         packed_output_abstract, _ = self.rnn(packed_abstract)
         output_unpacked_abstract, _ = pad_packed_sequence(packed_output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
