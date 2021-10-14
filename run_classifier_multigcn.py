@@ -570,7 +570,7 @@ def main():
     # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # load model
-    model.load_state_dict(torch.load(args.model))
+    model.load_state_dict(torch.load(args.model), strict=False)
     model.to(device)
     model.train()
     # training

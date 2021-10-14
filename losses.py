@@ -1,46 +1,245 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import mmcv
 import torch.nn.functional as F
 
 
 class FocalLoss(nn.Module):
-    """FocalLoss.
-    .. seealso::
-        Lin, Tsung-Yi, et al. "Focal loss for dense object detection."
-        Proceedings of the IEEE international conference on computer vision. 2017.
-    Args:
-        gamma (float): Value from 0 to 5, Control between easy background and hard ROI
-            training examples. If set to 0, equivalent to cross-entropy.
-        alpha (float): Value from 0 to 1, usually corresponding to the inverse of class frequency to address class
-            imbalance.
-        eps (float): Epsilon to avoid division by zero.
-    Attributes:
-        gamma (float): Value from 0 to 5, Control between easy background and hard ROI
-            training examples. If set to 0, equivalent to cross-entropy.
-        alpha (float): Value from 0 to 1, usually corresponding to the inverse of class frequency to address class
-            imbalance.
-        eps (float): Epsilon to avoid division by zero.
-    """
-    def __init__(self, gamma=2, alpha=0.25, eps=1e-7):
+    def __init__(self, gamma=2, eps=1e-7, size_average=True):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
-        self.alpha = alpha
         self.eps = eps
+        self.size_average = size_average
 
-    def forward(self, input, target):
-        input = input.clamp(self.eps, 1. - self.eps)
+    def forward(self, pred, target, alpha):
+        pred = torch.sigmoid(pred)
+        pred = pred.clamp(self.eps, 1. - self.eps)
+        alpha = alpha.cuda()
 
-        cross_entropy = - (target * torch.log(input) + (1 - target) * torch.log(1 - input))  # eq1
-        logpt = - cross_entropy
-        pt = torch.exp(logpt)  # eq2
+        pred = pred.view(-1, 1)
+        target = target.view(-1, 1)
 
-        at = self.alpha * target + (1 - self.alpha) * (1 - target)
-        balanced_cross_entropy = - at * logpt  # eq3
+        pred = torch.cat((1-pred, pred), dim=1)
 
-        focal_loss = balanced_cross_entropy * ((1 - pt) ** self.gamma)  # eq5
+        class_mask = torch.zeros(pred.shape[0], pred.shape[1]).cuda()
+        class_mask.scatter_(1, target.view(-1, 1).long(), 1.)
 
-        return focal_loss.sum()
+        probs = (pred * class_mask).sum(dim=1).view(-1, 1)
+        probs = probs.clamp(min=0.0001, max=1.0)
+
+        log_p = probs.log()
+
+        # 根据论文中所述，对 alpha　进行设置（该参数用于调整正负样本数量不均衡带来的问题）
+        alpha = torch.ones(pred.shape[0], pred.shape[1]).cuda()
+        alpha[:, 0] = alpha[:, 0] * (1-alpha)
+        alpha[:, 1] = alpha[:, 1] * alpha
+        alpha = (alpha * class_mask).sum(dim=1).view(-1, 1)
+
+        # 根据 Focal Loss 的公式计算 Loss
+        batch_loss = -alpha*(torch.pow((1-probs), self.gamma))*log_p
+
+         # Loss Function的常规操作，mean 与 sum 的区别不大，相当于学习率设置不一样而已
+        if self.size_average:
+            loss = batch_loss.mean()
+        else:
+            loss = batch_loss.sum()
+
+        return loss
+
+
+class FocalLoss_MultiLabel(nn.Module):
+    """Apply element-wise weight and reduce loss.
+        Args: alpha (Tensor) weighted term for each label
+
+    """
+    def __init__(self, gamma=5, size_average=True):
+        super(FocalLoss_MultiLabel, self).__init__()
+        self.gamma = gamma
+        self.size_average = size_average
+
+    def forward(self, pred, target, alpha):
+        criterion = FocalLoss(self.gamma, self.size_average)
+        loss = torch.zeros(1, target.shape[1]).cuda()
+
+        # 对每个 Label 计算一次 Focal Loss
+        for i, label in enumerate(range(target.shape[1])):
+            batch_loss = criterion(pred[:, label], target[:, label], alpha[i])
+            loss[0, label] = batch_loss.mean()
+
+        # Loss Function的常规操作
+        if self.size_average:
+            loss = loss.mean()
+        else:
+            loss = loss.sum()
+
+        return loss
+
+
+def reduce_loss(loss, reduction):
+    """Reduce loss as specified.
+    Args:
+        loss (Tensor): Elementwise loss tensor.
+        reduction (str): Options are "none", "mean" and "sum".
+    Return:
+        Tensor: Reduced loss tensor.
+    """
+    reduction_enum = F._Reduction.get_enum(reduction)
+    # none: 0, elementwise_mean:1, sum: 2
+    if reduction_enum == 0:
+        return loss
+    elif reduction_enum == 1:
+        return loss.mean()
+    elif reduction_enum == 2:
+        return loss.sum()
+
+
+def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
+    """Apply element-wise weight and reduce loss.
+    Args:
+        loss (Tensor): Element-wise loss.
+        weight (Tensor): Element-wise weights.
+        reduction (str): Same as built-in losses of PyTorch.
+        avg_factor (float): Avarage factor when computing the mean of losses.
+    Returns:
+        Tensor: Processed loss values.
+    """
+    # if weight is specified, apply element-wise weight
+    if weight is not None:
+        loss = loss * weight
+
+    # if avg_factor is not specified, just reduce the loss
+    if avg_factor is None:
+        loss = reduce_loss(loss, reduction)
+    else:
+        # if reduction is mean, then average the loss by avg_factor
+        if reduction == 'mean':
+            loss = loss.sum() / avg_factor
+        # if reduction is 'none', then do nothing, otherwise raise an error
+        elif reduction != 'none':
+            raise ValueError('avg_factor can not be used with reduction="sum"')
+    return loss
+
+
+def _squeeze_binary_labels(label):
+    if label.size(1) == 1:
+        squeeze_label = label.view(len(label), -1)
+    else:
+        inds = torch.nonzero(label >= 1).squeeze()
+        squeeze_label = inds[:,-1]
+    return squeeze_label
+
+
+def cross_entropy(pred, label, weight=None, reduction='mean', avg_factor=None):
+    # element-wise losses
+    if label.size(-1) != pred.size(0):
+        label = _squeeze_binary_labels(label)
+
+    loss = F.cross_entropy(pred, label, reduction='none')
+
+    # apply weights and do the reduction
+    if weight is not None:
+        weight = weight.float()
+    loss = weight_reduce_loss(
+        loss, weight=weight, reduction=reduction, avg_factor=avg_factor)
+
+    return loss
+
+
+def _expand_binary_labels(labels, label_weights, label_channels):
+    bin_labels = labels.new_full((labels.size(0), label_channels), 0)
+    inds = torch.nonzero(labels >= 1).squeeze()
+    if inds.numel() > 0:
+        bin_labels[inds, labels[inds] - 1] = 1
+    if label_weights is None:
+        bin_label_weights = None
+    else:
+        bin_label_weights = label_weights.view(-1, 1).expand(
+            label_weights.size(0), label_channels)
+    return bin_labels, bin_label_weights
+
+
+def binary_cross_entropy(pred,
+                         label,
+                         weight=None,
+                         reduction='mean',
+                         avg_factor=None):
+    if pred.dim() != label.dim():
+        label, weight = _expand_binary_labels(label, weight, pred.size(-1))
+
+    # weighted element-wise losses
+    if weight is not None:
+        weight = weight.float()
+
+    loss = F.binary_cross_entropy_with_logits(
+        pred, label.float(), weight, reduction='none')
+    loss = weight_reduce_loss(loss, reduction=reduction, avg_factor=avg_factor)
+
+    return loss
+
+
+def partial_cross_entropy(pred,
+                          label,
+                          weight=None,
+                          reduction='mean',
+                          avg_factor=None):
+    if pred.dim() != label.dim():
+        label, weight = _expand_binary_labels(label, weight, pred.size(-1))
+
+    # weighted element-wise losses
+    if weight is not None:
+        weight = weight.float()
+
+    mask = label == -1
+    loss = F.binary_cross_entropy_with_logits(
+        pred, label.float(), weight, reduction='none')
+    if mask.sum() > 0:
+        loss *= (1-mask).float()
+        avg_factor = (1-mask).float().sum()
+
+    # do the reduction for the weighted loss
+    loss = weight_reduce_loss(loss, reduction=reduction, avg_factor=avg_factor)
+
+    return
+
+
+# class FocalLoss(nn.Module):
+#     """FocalLoss.
+#     .. seealso::
+#         Lin, Tsung-Yi, et al. "Focal loss for dense object detection."
+#         Proceedings of the IEEE international conference on computer vision. 2017.
+#     Args:
+#         gamma (float): Value from 0 to 5, Control between easy background and hard ROI
+#             training examples. If set to 0, equivalent to cross-entropy.
+#         alpha (float): Value from 0 to 1, usually corresponding to the inverse of class frequency to address class
+#             imbalance.
+#         eps (float): Epsilon to avoid division by zero.
+#     Attributes:
+#         gamma (float): Value from 0 to 5, Control between easy background and hard ROI
+#             training examples. If set to 0, equivalent to cross-entropy.
+#         alpha (float): Value from 0 to 1, usually corresponding to the inverse of class frequency to address class
+#             imbalance.
+#         eps (float): Epsilon to avoid division by zero.
+#     """
+#     def __init__(self, gamma=2, alpha=0.25, eps=1e-7):
+#         super(FocalLoss, self).__init__()
+#         self.gamma = gamma
+#         self.alpha = alpha
+#         self.eps = eps
+#
+#     def forward(self, input, target):
+#         input = input.clamp(self.eps, 1. - self.eps)
+#
+#         cross_entropy = - (target * torch.log(input) + (1 - target) * torch.log(1 - input))  # eq1
+#         logpt = - cross_entropy
+#         pt = torch.exp(logpt)  # eq2
+#
+#         at = self.alpha * target + (1 - self.alpha) * (1 - target)
+#         balanced_cross_entropy = - at * logpt  # eq3
+#
+#         focal_loss = balanced_cross_entropy * ((1 - pt) ** self.gamma)  # eq5
+#
+#         return focal_loss.sum()
 
 
 class AsymmetricLossOptimized(nn.Module):

@@ -9,6 +9,8 @@ import string
 Extract the articles from 2012-2016 from the BioASQ dataset for Taska
 
 """
+
+
 def from_mesh2id(labels_list, mapping_id):
     mesh_id = []
     for mesh in labels_list:
@@ -37,8 +39,6 @@ def main():
         for line in f:
             (key, value) = line.split('=')
             mapping_id[key] = value
-
-
 
     """ get text(abstract and title) and MeSH terms to each document """
     f = open(args.allMesh, encoding="utf8", errors='ignore')

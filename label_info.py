@@ -44,6 +44,7 @@ def label_count(train_data_path):
                 class_freq[label] = 1
 
     train_labels = list(class_freq.keys())
+    freq_label = [label for label, freq in class_freq.items() if freq >= 1000]
     # all_meshIDs = list(set([ids for docs in label_id for ids in docs]))
 
     # missing_mesh = list(set(all_meshIDs) - set(train_labels))

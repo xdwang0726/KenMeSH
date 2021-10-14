@@ -558,8 +558,8 @@ def main():
     # visualize the loss as the network trained
     # plot_loss(train_loss, valid_loss, args.loss)
 
-    # print('save model')
-    # torch.save(model.state_dict(), args.save_model_path)
+    print('save model')
+    torch.save(model.state_dict(), args.save_model_path)
 
     # print('loading model')
     # state_dict = torch.load(args.save_model_path, map_location='cuda:0')
