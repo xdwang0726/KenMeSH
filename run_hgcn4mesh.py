@@ -336,10 +336,11 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
         label = mlb.fit_transform(label)
-
+        m = nn.Sigmoid()
         with torch.no_grad():
             # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
+            output = m(output)
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
 
@@ -347,44 +348,44 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         output = output.data.cpu().numpy()
         pred.append(output)
         true_label.append(label)
-        test_labelsIndex = getLabelIndex(label)
-        precisions = precision_at_ks(output, test_labelsIndex, ks=[1, 3, 5])
-        top_k_precisions.append(precisions)
-        # calculate example-based evaluation
-        sums = example_based_evaluation(output, label, threshold=0.5)
-        sum_ebp += sums[0]
-        sum_ebr += sums[1]
-        sum_ebf += sums[2]
-        # calculate label-based evaluation
-        confusion = micro_macro_eval(output, label, threshold=0.5)
-        tp += confusion[0]
-        tn += confusion[1]
-        fp += confusion[2]
-        fn += confusion[3]
-
-    # Evaluations
-    print('Calculate Precision at K...')
-    p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
-    p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
-    p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
-    for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
-        print('p@{}: {:.5f}'.format(k, p))
-
-    print('Calculate Example-based Evaluation')
-    ebp = sum_ebp / len(test_dataset)
-    print('sum_ebp', sum_ebp)
-    print('dataset length', len(test_dataset))
-    ebr = sum_ebp / len(test_dataset)
-    ebf = sum_ebp / len(test_dataset)
-    for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
-        print('{}: {:.5f}'.format(n, m))
-
-    print('Calculate Label-based Evaluation')
-    mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
-    mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
-    mif = zero_division(2 * mir * mip, (mir + mip))
-    for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
-        print('{}: {:.5f}'.format(n, m))
+    #     test_labelsIndex = getLabelIndex(label)
+    #     precisions = precision_at_ks(output, test_labelsIndex, ks=[1, 3, 5])
+    #     top_k_precisions.append(precisions)
+    #     # calculate example-based evaluation
+    #     sums = example_based_evaluation(output, label, threshold=0.5)
+    #     sum_ebp += sums[0]
+    #     sum_ebr += sums[1]
+    #     sum_ebf += sums[2]
+    #     # calculate label-based evaluation
+    #     confusion = micro_macro_eval(output, label, threshold=0.5)
+    #     tp += confusion[0]
+    #     tn += confusion[1]
+    #     fp += confusion[2]
+    #     fn += confusion[3]
+    #
+    # # Evaluations
+    # print('Calculate Precision at K...')
+    # p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
+    # p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
+    # p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
+    # for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
+    #     print('p@{}: {:.5f}'.format(k, p))
+    #
+    # print('Calculate Example-based Evaluation')
+    # ebp = sum_ebp / len(test_dataset)
+    # print('sum_ebp', sum_ebp)
+    # print('dataset length', len(test_dataset))
+    # ebr = sum_ebp / len(test_dataset)
+    # ebf = sum_ebp / len(test_dataset)
+    # for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
+    #     print('{}: {:.5f}'.format(n, m))
+    #
+    # print('Calculate Label-based Evaluation')
+    # mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
+    # mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
+    # mif = zero_division(2 * mir * mip, (mir + mip))
+    # for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
+    #     print('{}: {:.5f}'.format(n, m))
 
     print('###################DONE#########################')
     return pred, true_label
@@ -506,24 +507,25 @@ def main():
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
-    set_seed(0)
-    ngpus_per_node = torch.cuda.device_count()
-    print('number of gpus per node: %d' % ngpus_per_node)
-    world_size = int(os.environ['SLURM_NTASKS'])
-    local_rank = int(os.environ['SLURM_LOCALID'])
-    rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
-
-    available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
-    print('available gpus: ', available_gpus)
-    current_device = int(available_gpus[local_rank])
-    torch.cuda.set_device(current_device)
-
-    print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
-    # init the process group
-    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size, rank=rank)
-    print("process group ready!")
-
-    print('From Rank: {}, ==> Making model..'.format(rank))
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    # set_seed(0)
+    # ngpus_per_node = torch.cuda.device_count()
+    # print('number of gpus per node: %d' % ngpus_per_node)
+    # world_size = int(os.environ['SLURM_NTASKS'])
+    # local_rank = int(os.environ['SLURM_LOCALID'])
+    # rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
+    #
+    # available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
+    # print('available gpus: ', available_gpus)
+    # current_device = int(available_gpus[local_rank])
+    # torch.cuda.set_device(current_device)
+    #
+    # print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
+    # # init the process group
+    # dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size, rank=rank)
+    # print("process group ready!")
+    #
+    # print('From Rank: {}, ==> Making model..'.format(rank))
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
         args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path, args.word2vec_path,
@@ -534,30 +536,40 @@ def main():
     model = HGCN4MeSH(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).cuda()
 
-    model.cuda()
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], output_device=current_device)
-    print('From Rank: {}, ==> Preparing data..'.format(rank))
+    # model.cuda()
+    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], output_device=current_device)
+    # print('From Rank: {}, ==> Preparing data..'.format(rank))
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCEWithLogitsLoss().cuda()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    #
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    # criterion = nn.BCEWithLogitsLoss().cuda()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
-    preallocate_gpu_memory(G, model, args.batch_sz, current_device, num_nodes, criterion)
+    # preallocate_gpu_memory(G, model, args.batch_sz, current_device, num_nodes, criterion)
     # training
-    print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, current_device, args.num_workers, optimizer,
-                                          lr_scheduler, world_size, rank)
+    # print("Start training!")
+    # model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
+    #                                       args.num_epochs, criterion, current_device, args.num_workers, optimizer,
+    #                                       lr_scheduler, world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
     # plot_loss(train_loss, valid_loss, args.loss)
 
-    print('save model')
-    torch.save(model.state_dict(), args.save_model_path)
+    # print('save model')
+    # torch.save(model.state_dict(), args.save_model_path)
+    print('loading model')
+    model.load_state_dict(torch.load(args.save_model_path))
+    model.to(device)
+    #
+    # testing
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
+
+    # save
+    pickle.dump(pred, open(args.results, 'wb'))
+    pickle.dump(true_label, open(args.true, 'wb'))
 
 
 if __name__ == "__main__":
