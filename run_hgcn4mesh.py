@@ -561,7 +561,7 @@ def main():
     # print('save model')
     # torch.save(model.state_dict(), args.save_model_path)
     print('loading model')
-    model.load_state_dict(torch.load(args.save_model_path))
+    model.load_state_dict(torch.load(args.save_model_path, map_location='cuda:0'))
     model.to(device)
     #
     # testing
