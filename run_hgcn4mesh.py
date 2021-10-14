@@ -336,11 +336,11 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
         # G_c, G_c.ndata['feat'] = G_c.to(device), G_c.ndata['feat'].to(device)
         label = mlb.fit_transform(label)
-        m = nn.Sigmoid()
+        #m = nn.Sigmoid()
         with torch.no_grad():
             # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
-            output = m(output)
+            # output = m(output)
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
 
@@ -348,8 +348,8 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
         output = output.data.cpu().numpy()
         pred.append(output)
         true_label.append(label)
-    #     test_labelsIndex = getLabelIndex(label)
-    #     precisions = precision_at_ks(output, test_labelsIndex, ks=[1, 3, 5])
+        test_labelsIndex = getLabelIndex(label)
+        precisions = precision_at_ks(output, test_labelsIndex, ks=[1, 3, 5])
     #     top_k_precisions.append(precisions)
     #     # calculate example-based evaluation
     #     sums = example_based_evaluation(output, label, threshold=0.5)
@@ -363,13 +363,13 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     #     fp += confusion[2]
     #     fn += confusion[3]
     #
-    # # Evaluations
-    # print('Calculate Precision at K...')
-    # p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
-    # p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
-    # p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
-    # for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
-    #     print('p@{}: {:.5f}'.format(k, p))
+    # Evaluations
+    print('Calculate Precision at K...')
+    p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
+    p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
+    p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
+    for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
+        print('p@{}: {:.5f}'.format(k, p))
     #
     # print('Calculate Example-based Evaluation')
     # ebp = sum_ebp / len(test_dataset)
@@ -574,8 +574,8 @@ def main():
     pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
 
     # save
-    pickle.dump(pred, open(args.results, 'wb'))
-    pickle.dump(true_label, open(args.true, 'wb'))
+    # pickle.dump(pred, open(args.results, 'wb'))
+    # pickle.dump(true_label, open(args.true, 'wb'))
 
 
 if __name__ == "__main__":
