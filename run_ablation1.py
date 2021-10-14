@@ -152,8 +152,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
-                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+    dataset = MeSH_indexing(all_text, all_title, all_text[400000:num_example], all_title[400000:num_example], label_id[400000:num_example],
+                            mesh_mask[400000:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
                             mesh_mask[-20000:], is_test=False, is_multichannel=False)
 
     # build vocab
@@ -163,8 +163,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # get validation set
     valid_size = 0.02
     # indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(all_title[:num_example])))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
+    split = int(np.floor(valid_size * len(all_title[400000:num_example])))
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[400000:num_example]) - split, split])
 
     # Prepare label features
     print('Load graph')
@@ -478,6 +478,7 @@ def main():
     parser.add_argument('--graph_cooccurence')
     parser.add_argument('--results')
     parser.add_argument('--save-model-path')
+    parser.add_argument('--model')
     parser.add_argument('--true')
     parser.add_argument('--loss')
 
@@ -518,7 +519,7 @@ def main():
                                       cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
-    model.to(device)
+    # model.to(device)
     G = G.to(device)
     # G = dgl.add_self_loop(G)
     # neg_pos_ratio = neg_pos_ratio.to(device)
@@ -532,7 +533,11 @@ def main():
     # criterion = AsymmetricLossOptimized()
 
     # pre-allocate GPU memory
-    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    # load model
+    model.load_state_dict(torch.load(args.model))
+    model.to(device)
+    model.train()
     # training
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
