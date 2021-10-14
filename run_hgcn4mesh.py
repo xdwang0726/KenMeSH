@@ -561,7 +561,13 @@ def main():
     # print('save model')
     # torch.save(model.state_dict(), args.save_model_path)
     print('loading model')
-    model.modules.load_state_dict(torch.load(args.save_model_path, map_location='cuda:0'))
+    state_dict = torch.load(args.save_model_path, map_location='cuda:0')
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = k[7:]  # remove module.
+    new_state_dict[name] = v
+    model.load_state_dict(new_state_dict)
     model.to(device)
     #
     # testing
