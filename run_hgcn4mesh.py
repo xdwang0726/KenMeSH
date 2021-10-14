@@ -566,8 +566,7 @@ def main():
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
         name = k.replace('module.', '')  # remove module.
-        print(name)
-    new_state_dict[name] = v
+        new_state_dict[name] = v
     model.load_state_dict(new_state_dict)
     model.to(device)
     #
