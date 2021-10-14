@@ -539,7 +539,7 @@ class HGCN4MeSH(nn.Module):
         nn.init.xavier_normal_(self.fc2.weight)
         nn.init.zeros_(self.fc2.bias)
 
-        self.fc_drop = nn.Dropout(0.2)
+        #self.fc_drop = nn.Dropout(0.2)
 
     def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature):
         # get label features
@@ -569,9 +569,9 @@ class HGCN4MeSH(nn.Module):
 
         # get document feature
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim*2)
-        x_feature = nn.functional.tanh(self.fc1(x_feature))
-        x_feature = nn.functional.tanh(self.fc2(x_feature))
-        x_feature = self.fc_drop(x_feature)
+        x_feature = nn.functional.leaky_relu(self.fc1(x_feature), negative_slope=0.2)
+        x_feature = nn.functional.leaky_relu(self.fc2(x_feature), negative_slope=0.2)
+        # x_feature = self.fc_drop(x_feature)
 
         return x_feature.squeeze(2)
 

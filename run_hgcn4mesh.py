@@ -130,14 +130,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #                                       all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
     #                                       include_unk=False, is_test=False, is_multichannel=True)
 
-    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], label_id[-20000:], all_title,
+    dataset, test_dataset = MeSH_indexing(all_text[:10000], label_id[:10000], all_text[-20000:], label_id[-20000:], all_title[:10000],
                                           all_title[-20000:], ngrams=1, vocab=None, include_unk=False, is_test=False,
                                           is_multichannel=True)
 
     # get validation set
     valid_size = 0.02
-    indices = list(range(len(all_title)))
-    split = int(np.floor(valid_size * len(all_title)))
+    indices = list(range(len(all_title[:10000])))
+    split = int(np.floor(valid_size * len(all_title[:10000])))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
@@ -507,25 +507,25 @@ def main():
     parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
 
     args = parser.parse_args()
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # set_seed(0)
-    # ngpus_per_node = torch.cuda.device_count()
-    # print('number of gpus per node: %d' % ngpus_per_node)
-    # world_size = int(os.environ['SLURM_NTASKS'])
-    # local_rank = int(os.environ['SLURM_LOCALID'])
-    # rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
-    #
-    # available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
-    # print('available gpus: ', available_gpus)
-    # current_device = int(available_gpus[local_rank])
-    # torch.cuda.set_device(current_device)
-    #
-    # print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
-    # # init the process group
-    # dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size, rank=rank)
-    # print("process group ready!")
-    #
-    # print('From Rank: {}, ==> Making model..'.format(rank))
+    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    set_seed(0)
+    ngpus_per_node = torch.cuda.device_count()
+    print('number of gpus per node: %d' % ngpus_per_node)
+    world_size = int(os.environ['SLURM_NTASKS'])
+    local_rank = int(os.environ['SLURM_LOCALID'])
+    rank = int(os.environ.get("SLURM_NODEID")) * ngpus_per_node + int(local_rank)
+
+    available_gpus = list(os.environ.get('CUDA_VISIBLE_DEVICES').replace(',',""))  # check if it is multiple gpu
+    print('available gpus: ', available_gpus)
+    current_device = int(available_gpus[local_rank])
+    torch.cuda.set_device(current_device)
+
+    print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
+    # init the process group
+    dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=world_size, rank=rank)
+    print("process group ready!")
+
+    print('From Rank: {}, ==> Making model..'.format(rank))
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
         args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path, args.word2vec_path,
@@ -536,23 +536,23 @@ def main():
     model = HGCN4MeSH(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).cuda()
 
-    # model.cuda()
-    # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], output_device=current_device)
-    # print('From Rank: {}, ==> Preparing data..'.format(rank))
+    model.cuda()
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], output_device=current_device)
+    print('From Rank: {}, ==> Preparing data..'.format(rank))
 
-    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    #
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    # criterion = nn.BCEWithLogitsLoss().cuda()
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    criterion = nn.BCEWithLogitsLoss().cuda()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
 
-    # preallocate_gpu_memory(G, model, args.batch_sz, current_device, num_nodes, criterion)
+    preallocate_gpu_memory(G, model, args.batch_sz, current_device, num_nodes, criterion)
     # training
-    # print("Start training!")
-    # model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
-    #                                       args.num_epochs, criterion, current_device, args.num_workers, optimizer,
-    #                                       lr_scheduler, world_size, rank)
+    print("Start training!")
+    model, train_loss, valid_loss = train(train_dataset, train_sampler, valid_sampler, model, mlb, G, args.batch_sz,
+                                          args.num_epochs, criterion, current_device, args.num_workers, optimizer,
+                                          lr_scheduler, world_size, rank)
     print('Finish training!')
 
     # visualize the loss as the network trained
@@ -560,18 +560,19 @@ def main():
 
     # print('save model')
     # torch.save(model.state_dict(), args.save_model_path)
-    print('loading model')
-    state_dict = torch.load(args.save_model_path, map_location='cuda:0')
-    from collections import OrderedDict
-    new_state_dict = OrderedDict()
-    for k, v in state_dict.items():
-        name = k.replace('module.', '')  # remove module.
-        new_state_dict[name] = v
-    model.load_state_dict(new_state_dict)
-    model.to(device)
+
+    # print('loading model')
+    # state_dict = torch.load(args.save_model_path, map_location='cuda:0')
+    # from collections import OrderedDict
+    # new_state_dict = OrderedDict()
+    # for k, v in state_dict.items():
+    #     name = k.replace('module.', '')  # remove module.
+    #     new_state_dict[name] = v
+    # model.load_state_dict(new_state_dict)
+    # model.to(device)
     #
-    # testing
-    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
+    # # testing
+    # pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
 
     # save
     # pickle.dump(pred, open(args.results, 'wb'))
