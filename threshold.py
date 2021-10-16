@@ -215,7 +215,7 @@ def main():
     create_score_per_class()
     t, imp_F = maximization_Algo1()
     print("F: ", calculateF(t))
-    pickle.dump(t, open('../pmc_threshold.pkl', 'wb'))
+    pickle.dump(t, open('../pmc_threshold_03.pkl', 'wb'))
 
 
 if __name__ == "__main__":
