@@ -8,9 +8,9 @@ import pickle
 _N = 28415  # number of class
 _n = 20000  # number of test data
 maximum_iteration = 3
-P_score = pickle.load(open('../results.pkl', 'rb'))
+P_score = pickle.load(open('../pmc_result.pkl', 'rb'))
 P_score = np.concatenate(P_score, axis=0).tolist()
-T_score = pickle.load(open('../true.pkl', 'rb'))
+T_score = pickle.load(open('../pmc_true.pkl', 'rb'))
 T_score = np.concatenate(T_score, axis=0).tolist()
 print('finish loading')
 
@@ -215,7 +215,7 @@ def main():
     create_score_per_class()
     t, imp_F = maximization_Algo1()
     print("F: ", calculateF(t))
-    pickle.dump(t, open('../threshold.pkl', 'wb'))
+    pickle.dump(t, open('../pmc_threshold.pkl', 'wb'))
 
 
 if __name__ == "__main__":
