@@ -384,7 +384,7 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         # get document feature
         x_feature = title_features + abstract_features  # size: (bs, 29368, embed_dim*2)
         x_feature = torch.sum(x_feature * label_feature, dim=2)
-        x_feature = torch.sum(x_feature * (atten_mask.transpose(1, 2)), dim=2)
+        # x_feature = torch.sum(x_feature * (atten_mask.transpose(1, 2)), dim=2)
 
         # add CorNet
         x_feature = self.cornet(x_feature)
