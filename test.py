@@ -161,9 +161,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     vocab = dataset.get_vocab()
 
     # get validation set
-    valid_size = 0.02
-    split = int(np.floor(valid_size * len(all_title[:num_example])))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
+    # valid_size = 0.02
+    # split = int(np.floor(valid_size * len(all_title[:num_example])))
+    # train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
 
     # Prepare label features
     print('Load graph')
