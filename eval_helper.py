@@ -215,7 +215,7 @@ def find_common_label(y_actual, y_hat):
 # """
 
 
-def example_based_evaluation(pred, target, threshold):
+def example_based_evaluation(pred, target, threshold, num_example):
     pred = np.greater_equal(pred, threshold).astype(np.int)
 
     common_label = np.sum(np.multiply(pred, target), axis=1)
@@ -223,8 +223,8 @@ def example_based_evaluation(pred, target, threshold):
     sum_true = np.sum(target, axis=1)
 
 
-    ebp = np.average(np.sum(common_label / sum_pred))
-    ebr = np.average(np.sum(common_label / sum_true))
+    ebp = np.sum(np.nan_to_num(common_label / sum_pred)) / num_example
+    ebr = np.sum(np.nan_to_num(common_label / sum_true)) / num_example
     ebf = 2 * ebp * ebr / (ebp + ebr)
 
     return (ebp, ebr, ebf)
