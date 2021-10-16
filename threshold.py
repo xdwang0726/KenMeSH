@@ -7,7 +7,7 @@ import pickle
 
 _N = 28415  # number of class
 _n = 20000  # number of test data
-maximum_iteration = 3
+maximum_iteration = 5
 P_score = pickle.load(open('../pmc_result.pkl', 'rb'))
 P_score = np.concatenate(P_score, axis=0).tolist()
 T_score = pickle.load(open('../pmc_true.pkl', 'rb'))
