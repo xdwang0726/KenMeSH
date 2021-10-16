@@ -177,7 +177,7 @@ def maximization_Algo1():  # will return the threshhold
         This run-time will not be feasible for larger data-sets (number of class and number of data point)
         However, as the improvment is increamental may be we can treat the iteration as a hyper-parameter.
     '''
-    t = [0.3] * _N
+    t = [0.1] * _N
     beta = 1
     iter = 0
     curF, precd, precsum, recalld, recallsum = calculateF(t, beta)
@@ -215,7 +215,7 @@ def main():
     create_score_per_class()
     t, imp_F = maximization_Algo1()
     print("F: ", calculateF(t))
-    pickle.dump(t, open('../pmc_threshold_03.pkl', 'wb'))
+    pickle.dump(t, open('../pmc_threshold_01.pkl', 'wb'))
 
 
 if __name__ == "__main__":
