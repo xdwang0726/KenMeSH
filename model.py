@@ -470,7 +470,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         self.fc1 = nn.Linear(self.embedding_dim, 1)
         nn.init.xavier_normal_(self.fc1.weight)
         nn.init.zeros_(self.fc1.bias)
-        self.dropout = nn.Dropout(0.5)
+        # self.dropout = nn.Dropout(0.5)
 
         # corNet
         self.cornet = CorNet(output_size, cornet_dim, n_cornet_blocks)
@@ -506,7 +506,7 @@ class multichannel_dilatedCNN_without_graph(nn.Module):
         x_feature = title_feature + abstract_feature  # size: (bs, 29368, embed_dim)
 
         x_feature = torch.tanh(self.fc1(x_feature))
-        x_feature = self.fc_drop(x_feature)
+        # x_feature = self.fc_drop(x_feature)
         # add CorNet
         cor_logit = self.cornet(x_feature.squeeze(2))
         return cor_logit
