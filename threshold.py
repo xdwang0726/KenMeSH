@@ -177,7 +177,7 @@ def maximization_Algo1():  # will return the threshhold
         This run-time will not be feasible for larger data-sets (number of class and number of data point)
         However, as the improvment is increamental may be we can treat the iteration as a hyper-parameter.
     '''
-    t = [0.35] * _N
+    t = [0.3] * _N
     beta = 1
     iter = 0
     curF, precd, precsum, recalld, recallsum = calculateF(t, beta)
