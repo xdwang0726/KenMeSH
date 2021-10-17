@@ -7,7 +7,7 @@ import pickle
 
 _N = 28415  # number of class
 _n = 20000  # number of test data
-maximum_iteration = 20
+maximum_iteration = 10
 P_score = pickle.load(open('../pmc_result.pkl', 'rb'))
 P_score = np.concatenate(P_score, axis=0).tolist()
 T_score = pickle.load(open('../pmc_true.pkl', 'rb'))
@@ -177,7 +177,7 @@ def maximization_Algo1():  # will return the threshhold
         This run-time will not be feasible for larger data-sets (number of class and number of data point)
         However, as the improvment is increamental may be we can treat the iteration as a hyper-parameter.
     '''
-    t = [5e-5] * _N
+    t = [5e-6] * _N
     beta = 1
     iter = 0
     curF, precd, precsum, recalld, recallsum = calculateF(t, beta)
@@ -215,7 +215,7 @@ def main():
     create_score_per_class()
     t, imp_F = maximization_Algo1()
     print("F: ", calculateF(t))
-    pickle.dump(t, open('../pmc_threshold_5e5.pkl', 'wb'))
+    pickle.dump(t, open('../pmc_threshold_5e6.pkl', 'wb'))
 
 
 if __name__ == "__main__":
