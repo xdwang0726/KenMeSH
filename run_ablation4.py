@@ -564,7 +564,7 @@ def main():
     # criterion = AsymmetricLossOptimized()
 
     # pre-allocate GPU memory
-    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # # load model
     # model.load_state_dict(torch.load(args.model), strict=False)
