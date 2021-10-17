@@ -321,16 +321,16 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     print('Testing....')
     with torch.no_grad():
         model.eval()
-        for label, mask, abstract, title, abstract_length, title_length in test_data:
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-            abstract_length = torch.Tensor(abstract_length)
-            title_length = torch.Tensor(title_length)
-            mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+        for label, mesh_mask, text, text_length in test_data:
+            mesh_mask = torch.from_numpy(mlb.fit_transform(mesh_mask)).type(torch.float)
+            text_length = torch.Tensor(text_length)
+
+            mesh_mask, text, text_length = mesh_mask.to(device), text.to(device), text_length.to(device)
             G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
             # G.ndata['feat'] = G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
 
-            output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
+            output = model(text, text_length, mesh_mask, G, G.ndata['feat'])
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
