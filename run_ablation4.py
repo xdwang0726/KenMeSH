@@ -268,6 +268,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             title_length = torch.Tensor(title_length)
             abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
             G = G.to(device)
+            print(G.device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
             output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             loss = criterion(output, label)
