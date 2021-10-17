@@ -543,6 +543,7 @@ def main():
 
     # model.to(device)
     G = G.to(device)
+    G.ndata['feat'] = G.ndata['feat'].to(device)
     # G = dgl.add_self_loop(G)
     # neg_pos_ratio = neg_pos_ratio.to(device)
     # G_c.to(device)
