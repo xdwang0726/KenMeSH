@@ -130,14 +130,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #                                       all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
     #                                       include_unk=False, is_test=False, is_multichannel=True)
 
-    dataset, test_dataset = MeSH_indexing(all_text[:10000], label_id[:10000], all_text[-20000:], label_id[-20000:], all_title[:10000],
+    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], label_id[-20000:], all_title,
                                           all_title[-20000:], ngrams=1, vocab=None, include_unk=False, is_test=False,
                                           is_multichannel=True)
 
     # get validation set
     valid_size = 0.02
-    indices = list(range(len(all_title[:10000])))
-    split = int(np.floor(valid_size * len(all_title[:10000])))
+    indices = list(range(len(all_title)))
+    split = int(np.floor(valid_size * len(all_title)))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
