@@ -284,8 +284,6 @@ class multichannel_dilatedCNN(nn.Module):
 
     def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature): #g_c, g_node_feature_c):
         # get label features
-        g = g.to('cuda')
-        g_node_feature = g_node_feature.to('cuda')
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1)
 
@@ -543,8 +541,6 @@ class HGCN4MeSH(nn.Module):
 
     def forward(self, input_abstract, input_title, ab_length, title_length, g, g_node_feature):
         # get label features
-        g = g.to('cuda')
-        g_node_feature = g_node_feature.to('cuda')
         label_feature = self.gcn(g, g_node_feature)
         label_feature = torch.cat((label_feature, g_node_feature), dim=1) # torch.Size([29368, 200*2])
 

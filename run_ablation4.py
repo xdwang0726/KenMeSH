@@ -267,9 +267,8 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
             abstract_length = torch.Tensor(abstract_length)
             title_length = torch.Tensor(title_length)
             abstract, title, label, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), abstract_length.to(device), title_length.to(device)
-            G = G.to(device)
-            print(G.device)
-            G.ndata['feat'] = G.ndata['feat'].to(device)
+            G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
+            print(G.device, G.ndata['feat'].device)
             output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             loss = criterion(output, label)
 
@@ -549,7 +548,7 @@ def main():
                                                   rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
-    # model.to(device)
+    model.to(device)
     G = G.to(device)
     G.ndata['feat'] = G.ndata['feat'].to(device)
     # G = dgl.add_self_loop(G)
@@ -565,7 +564,7 @@ def main():
     # criterion = AsymmetricLossOptimized()
 
     # pre-allocate GPU memory
-    # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # # load model
     # model.load_state_dict(torch.load(args.model), strict=False)
