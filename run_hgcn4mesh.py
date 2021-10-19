@@ -132,7 +132,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example],
                             label_id[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            is_test=True, is_multichannel=False)
+                            is_test=False, is_multichannel=True)
 
     # get validation set
     valid_size = 0.02
