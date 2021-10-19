@@ -34,28 +34,17 @@ def text_clean(tokens):
     return filtered_text
 
 
-def _vocab_iterator(train_text, test_text, train_title=None, test_title=None, ngrams=1, is_multichannel=True):
+def _vocab_iterator(all_text, all_title, ngrams=1):
 
     tokenizer = get_tokenizer('basic_english')
 
-    for i, text in enumerate(train_text):
-        if is_multichannel:
-            texts = tokenizer(text + train_title[i])
-        else:
-            texts = tokenizer(text)
-        texts = text_clean(texts)
-        yield ngrams_iterator(texts, ngrams)
-
-    for i, text in enumerate(test_text):
-        if is_multichannel:
-            texts = tokenizer(text + test_title[i])
-        else:
-            texts = tokenizer(text)
+    for i, text in enumerate(all_text):
+        texts = tokenizer(text + all_title[i])
         texts = text_clean(texts)
         yield ngrams_iterator(texts, ngrams)
 
 
-def _text_iterator(text, title=None, labels=None, ngrams=1, yield_label=False, is_multichannel=True):
+def _text_iterator(text, title=None, labels=None, ngrams=1, is_multichannel=True):
     tokenizer = get_tokenizer('basic_english')
     for i, text in enumerate(text):
         if is_multichannel:
@@ -67,91 +56,55 @@ def _text_iterator(text, title=None, labels=None, ngrams=1, yield_label=False, i
             heading = text_clean(heading)
             if len(heading) > 60:
                 heading = heading[:60]
-            if yield_label:
-                label = labels[i]
-                yield label, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
-            else:
-                yield ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
+            label = labels[i]
+            yield label, ngrams_iterator(texts, ngrams), ngrams_iterator(heading, ngrams)
+
         else:
             heading = tokenizer(title[i])
-            heading = text_clean(heading)
             abstract = tokenizer(text)
-            abstract = text_clean(abstract)
             texts = heading + abstract
-            if yield_label:
-                label = labels[i]
-                yield label, ngrams_iterator(texts, ngrams)
-            else:
-                yield ngrams_iterator(texts, ngrams)
+            texts = text_clean(texts)
+            if len(texts) > 460:
+                texts = texts[:460]
+            label = labels[i]
+            yield label, ngrams_iterator(texts, ngrams)
 
 
-def _create_data_from_iterator(vocab, iterator, include_unk, is_test=False, is_multichannel=True):
+def _create_data_from_iterator(vocab, iterator, include_unk, is_multichannel=True):
     data = []
     labels = []
     with tqdm(unit_scale=0, unit='lines') as t:
         if is_multichannel:
-            if is_test:
-                for text, title in iterator:
-                    if include_unk:
-                        ab_tokens = torch.tensor([vocab[token] for token in text])
-                        title_tokens = torch.tensor([vocab[token] for token in title])
-                    else:
-                        ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                                  for token in text]))
-                        ab_tokens = torch.tensor(ab_token_ids)
-                        title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                                     for token in title]))
-                        title_tokens = torch.tensor(title_token_ids)
-                    if len(ab_tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((ab_tokens, title_tokens))
-                    t.update(1)
-                return data
-            else:
-                for label, text, title in iterator:
-                    if include_unk:
-                        text = [token for token in text]
-                        ab_tokens = torch.tensor([vocab[token] for token in text])
-                        title_tokens = torch.tensor([vocab[token] for token in title])
-                    else:
-                        ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in text]))
-                        ab_tokens = torch.tensor(ab_token_ids)
-                        title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in title]))
-                        title_tokens = torch.tensor(title_token_ids)
-                    if len(ab_tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((label, ab_tokens, title_tokens))
-                    labels.extend(label)
-                    t.update(1)
-                return data, list(set(labels))
+            for label, text, title in iterator:
+                if include_unk:
+                    text = [token for token in text]
+                    ab_tokens = torch.tensor([vocab[token] for token in text])
+                    title_tokens = torch.tensor([vocab[token] for token in title])
+                else:
+                    ab_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in text]))
+                    ab_tokens = torch.tensor(ab_token_ids)
+                    title_token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token] for token in title]))
+                    title_tokens = torch.tensor(title_token_ids)
+                if len(ab_tokens) == 0:
+                    logging.info('Row contains no tokens.')
+                data.append((label, ab_tokens, title_tokens))
+                labels.extend(label)
+                t.update(1)
+            return data, list(set(labels))
         else:
-            if is_test:
-                for text in iterator:
-                    if include_unk:
-                        tokens = torch.tensor([vocab[token] for token in text])
-                    else:
-                        token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                               for token in text]))
-                        tokens = torch.tensor(token_ids)
-                    if len(tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append(tokens)
-                    t.update(1)
-                return data
-            else:
-                for label, text in iterator:
-                    if include_unk:
-                        tokens = torch.tensor([vocab[token] for token in text])
-                    else:
-                        token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                               for token in text]))
-                        tokens = torch.tensor(token_ids)
-                    if len(tokens) == 0:
-                        logging.info('Row contains no tokens.')
-                    data.append((label, tokens))
-                    labels.extend(label)
-                    t.update(1)
-                return data, list(set(labels))
+            for label, text in iterator:
+                if include_unk:
+                    tokens = torch.tensor([vocab[token] for token in text])
+                else:
+                    token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
+                                                                           for token in text]))
+                    tokens = torch.tensor(token_ids)
+                if len(tokens) == 0:
+                    logging.info('Row contains no tokens.')
+                data.append((label, tokens))
+                labels.extend(label)
+                t.update(1)
+            return data, list(set(labels))
 
 
 class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
@@ -187,53 +140,50 @@ class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
         return self._vocab
 
 
-def _setup_datasets(train_text, train_labels, test_text, test_labels, train_title=None, test_title=None, ngrams=1, vocab=None,
+def _setup_datasets(all_text, all_title, train_text, train_labels, test_text, test_labels, train_title=None, test_title=None, ngrams=1, vocab=None,
                     include_unk=False, is_test=False, is_multichannel=True):
     if vocab is None:
         logging.info('Building Vocab based on {}'.format(train_text))
-        if is_multichannel:
-            vocab = build_vocab_from_iterator(_vocab_iterator(train_text, test_text, train_title, test_title, ngrams))
-        else:
-            vocab = build_vocab_from_iterator(_vocab_iterator(train_text, test_text, ngrams, is_multichannel=is_multichannel))
+        vocab = build_vocab_from_iterator(_vocab_iterator(all_text, all_title, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
     print('Vocab has {} entries'.format(len(vocab)))
-    logging.info('Creating training data')
+
     if is_multichannel:
-        train_data, train_labels = _create_data_from_iterator(
-            vocab, _text_iterator(train_text, train_title, labels=train_labels, ngrams=ngrams,
-                                  yield_label=True, is_multichannel=is_multichannel), include_unk, is_test=False, is_multichannel=is_multichannel)
-        logging.info('Creating testing data')
         if is_test:
-            test_data = _create_data_from_iterator(
-            vocab, _text_iterator(test_text, test_title, labels=None, ngrams=ngrams, yield_label=False, is_multichannel=is_multichannel), include_unk,
-            is_test=is_test, is_multichannel=is_multichannel)
-            logging.info('Total number of labels in training set:'.format(len(train_labels)))
-            return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-                    MultiLabelTextClassificationDataset(vocab, test_data))
-        else:
+            logging.info('Creating testing data')
             test_data, test_labels = _create_data_from_iterator(
-                vocab, _text_iterator(test_text, test_title, labels=test_labels, ngrams=ngrams, yield_label=True, is_multichannel=is_multichannel), include_unk,
-                is_test=False, is_multichannel=is_multichannel)
+                vocab, _text_iterator(test_text, test_title, labels=test_labels, ngrams=ngrams, is_multichannel=True),
+                include_unk, is_multichannel=True)
             logging.info('Total number of labels in training set:'.format(len(train_labels)))
-            return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-                    MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
+            return MultiLabelTextClassificationDataset(vocab, test_data, test_labels)
+        else:
+            logging.info('Creating training data')
+            train_data, train_labels = _create_data_from_iterator(
+                vocab, _text_iterator(train_text, train_title, labels=train_labels, ngrams=ngrams,
+                                      is_multichannel=True), include_unk, is_multichannel=True)
+            logging.info('Total number of labels in training set:'.format(len(train_labels)))
+            return MultiLabelTextClassificationDataset(vocab, train_data, train_labels)
     else:
-        train_data, train_labels = _create_data_from_iterator(
-            vocab, _text_iterator(train_text, labels=train_labels, ngrams=ngrams, yield_label=True, is_multichannel=is_multichannel), include_unk,
-            is_test=False, is_multichannel=is_multichannel)
-        logging.info('Creating testing data')
-        test_data, test_labels = _create_data_from_iterator(
-            vocab, _text_iterator(test_text, labels=test_labels, ngrams=ngrams, yield_label=True, is_multichannel=is_multichannel), include_unk,
-            is_test=False, is_multichannel=is_multichannel)
-        logging.info('Total number of labels in training set:'.format(len(train_labels)))
-        return (MultiLabelTextClassificationDataset(vocab, train_data, train_labels),
-                MultiLabelTextClassificationDataset(vocab, test_data, test_labels))
+        if is_test:
+            logging.info('Creating testing data')
+            test_data, test_labels = _create_data_from_iterator(
+                vocab, _text_iterator(test_text, test_title, labels=test_labels, ngrams=ngrams,
+                                      is_multichannel=False), include_unk, is_multichannel=False)
+            return MultiLabelTextClassificationDataset(vocab, test_data, test_labels)
+        else:
+            logging.info('Creating training data')
+            train_data, train_labels = _create_data_from_iterator(
+                vocab, _text_iterator(train_text, train_title, labels=train_labels, ngrams=ngrams,
+                                      is_multichannel=False), include_unk, is_multichannel=False)
+
+            logging.info('Total number of labels in training set:'.format(len(train_labels)))
+            return MultiLabelTextClassificationDataset(vocab, train_data, train_labels)
 
 
-def MeSH_indexing(train_text, train_labels, test_text, test_labels=None, train_title=None, test_title=None, ngrams=1, vocab=None,
-                  include_unk=False, is_test=False, is_multichannel=True):
+def MeSH_indexing(all_text, all_title, train_text, train_title, train_labels, test_text, test_title,
+                  test_labels, is_test, is_multichannel):
     """
 
     Defines MeSH_indexing datasets.
@@ -241,16 +191,8 @@ def MeSH_indexing(train_text, train_labels, test_text, test_labels=None, train_t
 
 
     """
-    if is_multichannel:
-        if is_test:
-            return _setup_datasets(train_text, train_labels, test_text, None, train_title, test_title, ngrams,
-                                   vocab, include_unk, is_test=True, is_multichannel=True)
-        else:
-            return _setup_datasets(train_text, train_labels, test_text, test_labels, train_title, test_title, ngrams, vocab,
-                                   include_unk, is_multichannel=True)
-    else:
-        return _setup_datasets(train_text, train_labels, test_text, test_labels, ngrams=ngrams, vocab=vocab,
-                               include_unk=include_unk, is_multichannel=False)
+    return _setup_datasets(all_text, all_title, train_text, train_labels, test_text, test_labels, train_title, test_title,
+                           ngrams=1, vocab=None, include_unk=False, is_test=is_test, is_multichannel=is_multichannel)
 
 
 def pad_sequence(sequences, ksz, batch_first=False, padding_value=0.0):
@@ -313,6 +255,30 @@ def pad_sequence(sequences, ksz, batch_first=False, padding_value=0.0):
             out_tensor[:length, i, ...] = tensor
 
     return out_tensor
+
+
+# torchtext 0.6.0 rewrite torchtext.data.Dataset to inherit torch.data.utils.Dataset
+# class TextMultiLabelDataset(data.Dataset):
+#     def __init__(self, df, text_field, label_field, txt_col, lbl_cols, **kwargs):
+#         # torchtext Field objects
+#         fields = [('text', text_field), ('label', label_field)]
+#         # for l in lbl_cols:
+#         #     fields.append((l, label_field))
+#
+#         is_test = False if lbl_cols[0] in df.columns else True
+#         n_labels = len(lbl_cols)
+#
+#         examples = []
+#         for idx, row in df.iterrows():
+#             if not is_test:
+#                 lbls = [row[l] for l in lbl_cols]
+#             else:
+#                 lbls = [0.0] * n_labels
+#
+#             txt = str(row[txt_col])
+#             examples.append(data.Example.fromlist([txt, lbls], fields))
+#
+#         super(TextMultiLabelDataset, self).__init__(examples, fields, **kwargs)
 
 
 def text_preprocess(string):
@@ -531,3 +497,133 @@ class DistributedSamplerWrapper(DistributedSampler):
         indexes_of_indexes = super().__iter__()
         subsampler_indexes = self.dataset
         return iter(itemgetter(*indexes_of_indexes)(subsampler_indexes))
+
+
+# class Subset(Dataset):
+#     r"""
+#     Subset of a dataset at specified indices.
+#     Args:
+#         dataset (Dataset): The whole Dataset
+#         indices (sequence): Indices in the whole set selected for subset
+#     """
+#     dataset: Dataset
+#     indices: Sequence
+#
+#     def __init__(self, dataset: Dataset, indices: Sequence) -> None:
+#         self.dataset = dataset
+#         self.indices = indices
+#
+#     def __getitem__(self, idx):
+#         new_idx = self.indices[idx]
+#         # if isinstance(idx, list):
+#         #     return self.dataset[[self.indices[i] for i in idx]]
+#
+#         return self.dataset[new_idx]
+#
+#     def __len__(self):
+#         print('subset length', len(self.indices))
+#         return len(self.indices)
+#
+#
+# def random_split(dataset: Dataset, lengths: Sequence) -> Subset:
+#     r"""
+#     Randomly split a dataset into non-overlapping new datasets of given lengths.
+#     Optionally fix the generator for reproducible results, e.g.:
+#     >>> random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
+#     Args:
+#         dataset (Dataset): Dataset to be split
+#         lengths (sequence): lengths of splits to be produced
+#         generator (Generator): Generator used for the random permutation.
+#     """
+#     # Cannot verify that dataset is Sized
+#     if sum(lengths) != len(dataset):
+#         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+#
+#     indices = randperm(sum(lengths), generator=default_generator).tolist()
+#     return ([Subset(dataset, indices[offset - length: offset]) for offset, length in zip(_accumulate(lengths), lengths)],
+#             [indices[offset - length: offset] for offset, length in zip(_accumulate(lengths), lengths)])
+#
+#
+# class MultilabelBalancedRandomSampler(Sampler):
+#     """
+#     MultilabelBalancedRandomSampler: Given a multilabel dataset of length n_samples and
+#     number of classes n_classes, samples from the data with equal probability per class
+#     effectively oversampling minority classes and undersampling majority classes at the
+#     same time. Note that using this sampler does not guarantee that the distribution of
+#     classes in the output samples will be uniform, since the dataset is multilabel and
+#     sampling is based on a single class. This does however guarantee that all classes
+#     will have at least batch_size / n_classes samples as batch_size approaches infinity
+#     """
+#
+#     def __init__(self, labels, num_labels, num_examples, class_indices, mlb, train_indices=None, class_choice="least_sampled"):
+#         """
+#         Parameters:
+#         -----------
+#             labels: a multi-hot encoding numpy array of shape (n_samples, n_classes)
+#             indices: an arbitrary-length 1-dimensional numpy array representing a list
+#             of indices to sample only from
+#             class_choice: a string indicating how class will be selected for every
+#             sample:
+#                 "least_sampled": class with the least number of sampled labels so far
+#                 "random": class is chosen uniformly at random
+#                 "cycle": the sampler cycles through the classes sequentially
+#         """
+#         self.labels = labels
+#         self.num_labels = num_labels
+#         self.num_examples = num_examples
+#         self.indices = train_indices
+#         if self.indices is None:
+#             self.indices = range(num_examples)
+#
+#         # List of lists of example indices per class
+#         self.class_indices = class_indices
+#         self.mlb = mlb
+#
+#         self.counts = [0] * self.num_labels
+#
+#         assert class_choice in ["least_sampled", "random", "cycle"]
+#         self.class_choice = class_choice
+#         self.current_class = 0
+#
+#     def __iter__(self):
+#         self.count = 0
+#         return self
+#
+#     def __next__(self):
+#         if self.count >= len(self.indices):
+#             raise StopIteration
+#         self.count += 1
+#         print('smaple', self.sample())
+#         return self.sample()
+#
+#     def sample(self):
+#         class_ = self.get_class()
+#         class_indices = self.class_indices[class_]
+#         chosen_index = np.random.choice(class_indices)
+#         if self.class_choice == "least_sampled":
+#             label_transform = self.mlb.fit_transform([self.labels[chosen_index]])
+#             for class_, indicator in enumerate(label_transform[0]):
+#                 if indicator == 1:
+#                     self.counts[class_] += 1
+#         return chosen_index
+#
+#     def get_class(self):
+#         if self.class_choice == "random":
+#             class_ = random.randint(0, self.num_labels - 1)
+#         elif self.class_choice == "cycle":
+#             class_ = self.current_class
+#             self.current_class = (self.current_class + 1) % self.num_labels
+#         elif self.class_choice == "least_sampled":
+#             min_count = self.counts[0]
+#             min_classes = [0]
+#             for class_ in range(1, self.num_labels):
+#                 if self.counts[class_] < min_count:
+#                     min_count = self.counts[class_]
+#                     min_classes = [class_]
+#                 if self.counts[class_] == min_count:
+#                     min_classes.append(class_)
+#             class_ = np.random.choice(min_classes)
+#         return class_
+#
+#     def __len__(self):
+#         return len(self.indices)
