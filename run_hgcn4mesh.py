@@ -130,14 +130,14 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     #                                       all_title[:num_example], all_title[-20000:], ngrams=1, vocab=None,
     #                                       include_unk=False, is_test=False, is_multichannel=True)
 
-    dataset, test_dataset = MeSH_indexing(all_text, label_id, all_text[-20000:], label_id[-20000:], all_title,
-                                          all_title[-20000:], ngrams=1, vocab=None, include_unk=False, is_test=False,
-                                          is_multichannel=True)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example],
+                            label_id[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+                            is_test=True, is_multichannel=False)
 
     # get validation set
     valid_size = 0.02
-    indices = list(range(len(all_title)))
-    split = int(np.floor(valid_size * len(all_title)))
+    indices = list(range(len(all_title[:num_example])))
+    split = int(np.floor(valid_size * len(all_title[:num_example])))
     train_idx, valid_idx = indices[split:], indices[:split]
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
@@ -153,7 +153,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, dataset, test_dataset, vectors, G, train_sampler, valid_sampler # G_c
+    return len(meshIDs), mlb, vocab, dataset, vectors, G, train_sampler, valid_sampler # G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -173,10 +173,9 @@ def generate_batch(batch):
             concatenated as a single tensor for the input of nn.EmbeddingBag.
         cls: a tensor saving the labels of individual text entries.
     """
-    # check if the dataset if train or test
+    # check if the dataset is multi-channel or not
     if len(batch[0]) == 3:
         label = [entry[0] for entry in batch]
-        # mesh_mask = [entry[1] for entry in batch]
 
         # padding according to the maximum sequence length in batch
         abstract = [entry[1] for entry in batch]
@@ -192,24 +191,16 @@ def generate_batch(batch):
                 length = len(seq)
             title_length.append(length)
         title = pad_sequence(title, ksz=3, batch_first=True)
-        # return label, mesh_mask, abstract, title, abstract_length, title_length
         return label, abstract, title, abstract_length, title_length
 
     else:
-        abstract = [entry[0] for entry in batch]
-        abstract_length = [len(seq) for seq in abstract]
-        abstract = pad_sequence(abstract, ksz=3, batch_first=True)
+        label = [entry[0] for entry in batch]
 
-        title = [entry[1] for entry in batch]
-        title_length = []
-        for i, seq in enumerate(title):
-            if len(seq) == 0:
-                length = len(seq) + 1
-            else:
-                length = len(seq)
-            title_length.append(length)
-        title = pad_sequence(title, ksz=3, batch_first=True)
-        return abstract, title, abstract_length, title_length
+        text = [entry[1] for entry in batch]
+        text_length = [len(seq) for seq in text]
+        text = pad_sequence(text, ksz=3, batch_first=True)
+
+        return label, text, text_length
 
 
 def train(train_dataset, train_sampler, valid_sampler, model, mlb, G, batch_sz, num_epochs, criterion, device,
@@ -493,9 +484,9 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=20)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_sz', type=int, default=16)
-    parser.add_argument('--num_workers', type=int, default=3)
+    parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
@@ -527,7 +518,7 @@ def main():
 
     print('From Rank: {}, ==> Making model..'.format(rank))
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab, train_dataset, test_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
+    num_nodes, mlb, vocab, train_dataset, vectors, G, train_sampler, valid_sampler = prepare_dataset(
         args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path, args.word2vec_path,
         args.graph, args.num_example) # args. graph_cooccurence,
 
