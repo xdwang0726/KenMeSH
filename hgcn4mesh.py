@@ -203,16 +203,15 @@ def generate_batch(batch):
         cls: a tensor saving the labels of individual text entries.
     """
     # check if the dataset is multi-channel or not
-    if len(batch[0]) == 4:
+    if len(batch[0]) == 3:
         label = [entry[0] for entry in batch]
-        mesh_mask = [entry[1] for entry in batch]
 
         # padding according to the maximum sequence length in batch
-        abstract = [entry[2] for entry in batch]
+        abstract = [entry[1] for entry in batch]
         abstract_length = [len(seq) for seq in abstract]
         abstract = pad_sequence(abstract, ksz=3, batch_first=True)
 
-        title = [entry[3] for entry in batch]
+        title = [entry[2] for entry in batch]
         title_length = []
         for i, seq in enumerate(title):
             if len(seq) == 0:
@@ -221,17 +220,16 @@ def generate_batch(batch):
                 length = len(seq)
             title_length.append(length)
         title = pad_sequence(title, ksz=3, batch_first=True)
-        return label, mesh_mask, abstract, title, abstract_length, title_length
+        return label, abstract, title, abstract_length, title_length
 
     else:
         label = [entry[0] for entry in batch]
-        mesh_mask = [entry[1] for entry in batch]
 
-        text = [entry[2] for entry in batch]
+        text = [entry[1] for entry in batch]
         text_length = [len(seq) for seq in text]
         text = pad_sequence(text, ksz=3, batch_first=True)
 
-        return label, mesh_mask, text, text_length
+        return label, text, text_length
 
 
 def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
@@ -254,7 +252,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
     print("Training....")
     for epoch in range(num_epochs):
         model.train()  # prep model for training
-        for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
+        for i, (label, abstract, title, abstract_length, title_length) in enumerate(train_data):
             label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
             # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             abstract_length = torch.Tensor(abstract_length)
@@ -284,7 +282,7 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
 
         with torch.no_grad():
             model.eval()
-            for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
+            for i, (label, abstract, title, abstract_length, title_length) in enumerate(valid_data):
                 label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
                 # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
                 abstract_length = torch.Tensor(abstract_length)
@@ -337,17 +335,17 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
     print('Testing....')
     with torch.no_grad():
         model.eval()
-        for label, mask, abstract, title, abstract_length, title_length in test_data:
-            mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
+        for label, abstract, title, abstract_length, title_length in test_data:
+            # mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
             abstract_length = torch.Tensor(abstract_length)
             title_length = torch.Tensor(title_length)
-            mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+            abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
             # G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
             G.ndata['feat'] = G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
             # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
             # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
-            output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
+            output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
 
