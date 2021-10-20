@@ -1,25 +1,18 @@
 import argparse
 import os
-import sys
-
-import dgl
-import ijson
-
 import pickle
-import psutil
 import random
+
 import matplotlib.pyplot as plt
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader, random_split
 from torchtext.vocab import Vectors
-from tqdm import tqdm
 
 from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
-from losses import *
 from model import *
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence
+from sort_dataset import MeSH_indexing, pad_sequence
 
 
 def set_seed(seed):
@@ -153,9 +146,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
-                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example],
+                            label_id[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+                            is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
