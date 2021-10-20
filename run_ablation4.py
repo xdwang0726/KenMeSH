@@ -60,7 +60,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # f = open(train_data_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
     print('Start loading training data')
-    mesh_mask = pickle.load(open(mask_path, 'rb'))
+    # mesh_mask = pickle.load(open(mask_path, 'rb'))
 
     all_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))

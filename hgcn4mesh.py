@@ -19,7 +19,7 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from losses import *
 from model import *
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence
+from sort_dataset import MeSH_indexing, pad_sequence
 
 
 def set_seed(seed):
@@ -67,7 +67,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # f = open(train_data_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
     print('Start loading training data')
-    mesh_mask = pickle.load(open(mask_path, 'rb'))
+    # mesh_mask = pickle.load(open(mask_path, 'rb'))
 
     all_title = pickle.load(open(title_path, 'rb'))
     all_text = pickle.load(open(abstract_path, 'rb'))
@@ -153,9 +153,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
-                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            mesh_mask[-20000:], is_test=False, is_multichannel=True)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example],
+                            label_id[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+                            is_test=False, is_multichannel=True)
 
     # build vocab
     print('building vocab')
