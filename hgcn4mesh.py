@@ -520,6 +520,7 @@ def main():
     print('{} gpu is avaliable'.format(n_gpu))
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
+    torch.cuda.empty_cache()
 
     # Get dataset and label graph & Load pre-trained embeddings
     num_nodes, mlb, vocab, train_dataset, valid_dataset, vectors, G = \
@@ -531,9 +532,9 @@ def main():
     model = HGCN4MeSH(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
-    model.to(device)
-    G = G.to(device)
-    G.ndata['feat'] = G.ndata['feat'].to(device)
+    # model.to(device)
+    # G = G.to(device)
+    # G.ndata['feat'] = G.ndata['feat'].to(device)
     # G = dgl.add_self_loop(G)
     # neg_pos_ratio = neg_pos_ratio.to(device)
     # G_c.to(device)
@@ -547,7 +548,7 @@ def main():
     # criterion = AsymmetricLossOptimized()
 
     # pre-allocate GPU memory
-    preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
+    # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # load model
     model.load_state_dict(torch.load(args.model), strict=False)
