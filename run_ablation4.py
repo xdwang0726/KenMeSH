@@ -553,7 +553,14 @@ def main():
     # preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # # load model
-    model.load_state_dict(torch.load(args.model), strict=False)
+    state_dict = torch.load(args.save_model_path, map_location='cuda:0')
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = k.replace('module.', '')  # remove module.
+        new_state_dict[name] = v
+    model.load_state_dict(new_state_dict)
+    # model.load_state_dict(torch.load(args.model), strict=False)
     model.to(device)
     model.eval()
     # training
