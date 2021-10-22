@@ -146,7 +146,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset = MeSH_indexing(all_text, all_title, all_text[800000:num_example], all_title[800000:num_example],
+    dataset = MeSH_indexing(all_text, all_title, all_text[400000:num_example], all_title[400000:num_example],
                             label_id[800000:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
                             is_test=False, is_multichannel=True)
 
@@ -157,8 +157,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # get validation set
     valid_size = 0.02
     # indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(all_title[800000:num_example])))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[800000:num_example]) - split, split])
+    split = int(np.floor(valid_size * len(all_title[400000:num_example])))
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[400000:num_example]) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
