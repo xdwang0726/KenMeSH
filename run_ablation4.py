@@ -148,7 +148,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('prepare training and test sets')
     dataset = MeSH_indexing(all_text, all_title, all_text[800000:num_example], all_title[800000:num_example],
                             label_id[800000:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
-                            is_test=False, is_multichannel=True)
+                            is_test=True, is_multichannel=True)
 
     # build vocab
     print('building vocab')
@@ -157,8 +157,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # get validation set
     valid_size = 0.02
     # indices = list(range(len(pmid)))
-    split = int(np.floor(valid_size * len(all_title[800000:num_example])))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[800000:num_example]) - split, split])
+    # split = int(np.floor(valid_size * len(all_title[800000:num_example])))
+    # train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[800000:num_example]) - split, split])
     # train_idx, valid_idx = indices[split:], indices[:split]
     # train_sampler = SubsetRandomSampler(train_idx)
     # valid_sampler = SubsetRandomSampler(valid_idx)
@@ -182,7 +182,7 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab,  train_dataset, valid_dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
+    return len(meshIDs), mlb, vocab,  dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -341,10 +341,7 @@ def test(test_dataset, model, mlb, G, batch_sz, device):
             title_length = torch.Tensor(title_length)
             abstract, title, abstract_length, title_length = abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
             G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
-            # G.ndata['feat'] = G.ndata['feat'].to(device)
             label = mlb.fit_transform(label)
-            # output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat']) #, G_c, G_c.ndata['feat'])
-            # output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
             output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
             # output = model(abstract, title, G.ndata['feat'])
             # pred = torch.cat((pred, output), dim=0)
@@ -522,18 +519,11 @@ def main():
     print('Device:{}'.format(device))
 
     # Get dataset and label graph & Load pre-trained embeddings
-    num_nodes, mlb, vocab,  train_dataset, valid_dataset, vectors, G = \
+    num_nodes, mlb, vocab, test_dataset, vectors, G = \
         prepare_dataset(args.title_path, args.abstract_path, args.label_path, args.mask_path, args.meSH_pair_path,
                         args.word2vec_path, args.graph, args.num_example) # args. graph_cooccurence,
     # neg_pos_ratio = pickle.load(open(args.neg_pos, 'rb'))
     vocab_size = len(vocab)
-    # model = multichannel_dilatedCNN_with_MeSH_mask(vocab_size, args.dropout, args.ksz, num_nodes, G, device,
-    #                                                embedding_dim=200, rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
-                                    #gat_num_heads=8, gat_num_layers=2, gat_num_out_heads=1)
-    # model = multichannel_dilatedCNN_without_graph(vocab_size, args.dropout, args.ksz, num_nodes, embedding_dim=200,
-    #                                               rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
-    # model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device, embedding_dim=200,
-    #                                 rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model = multichannel_dilatedCNN(vocab_size, args.dropout, args.ksz, num_nodes, G, device, embedding_dim=200,
                                                   rnn_num_layers=2, cornet_dim=1000, n_cornet_blocks=2)
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
@@ -542,9 +532,9 @@ def main():
     # G = G.to(device)
     # G.ndata['feat'] = G.ndata['feat'].to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCEWithLogitsLoss()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
+    # criterion = nn.BCEWithLogitsLoss()
     # criterion = FocalLoss_MultiLabel()
     # criterion = FocalLoss()
     # criterion = AsymmetricLossOptimized()
@@ -562,28 +552,28 @@ def main():
     # model.load_state_dict(new_state_dict)
     model.load_state_dict(torch.load(args.model), strict=False)
     model.to(device)
-    model.train()
+    model.eval()
     # training
-    print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
-    print('Finish training!')
+    # print("Start training!")
+    # model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
+    #                                       args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
+    # print('Finish training!')
     #
     # plot_loss(train_loss, valid_loss, args.loss)
     #
 
-    print('save model for inference')
-    torch.save(model.state_dict(), args.save_model_path)
+    # print('save model for inference')
+    # torch.save(model.state_dict(), args.save_model_path)
 
     # load model
     # model = torch.load(args.model_path)
     #
     # testing
-    # pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device)
 
     # save
-    # pickle.dump(pred, open(args.results, 'wb'))
-    # pickle.dump(true_label, open(args.true, 'wb'))
+    pickle.dump(pred, open(args.results, 'wb'))
+    pickle.dump(true_label, open(args.true, 'wb'))
 
 
 if __name__ == "__main__":
