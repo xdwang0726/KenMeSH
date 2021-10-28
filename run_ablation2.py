@@ -152,8 +152,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset = MeSH_indexing(all_text, all_title, all_text[:num_example], all_title[:num_example], label_id[:num_example],
-                            mesh_mask[:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
+    dataset = MeSH_indexing(all_text, all_title, all_text[400000:num_example], all_title[400000:num_example], label_id[400000:num_example],
+                            mesh_mask[400000:num_example], all_text[-20000:], all_title[-20000:], label_id[-20000:],
                             mesh_mask[-20000:], is_test=False, is_multichannel=True)
 
     # build vocab
@@ -162,8 +162,8 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
 
     # get validation set
     valid_size = 0.02
-    split = int(np.floor(valid_size * len(all_title[:num_example])))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:num_example]) - split, split])
+    split = int(np.floor(valid_size * len(all_title[400000:num_example])))
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[400000:num_example]) - split, split])
 
     # Prepare label features
     print('Load graph')
@@ -524,8 +524,8 @@ def main():
     model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
     # 1st train
-    model.to(device)
-    G = G.to(device)
+    # model.to(device)
+    # G = G.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
@@ -535,9 +535,9 @@ def main():
     preallocate_gpu_memory(G, model, args.batch_sz, device, num_nodes, criterion)
 
     # 2nd train load model
-    # model.load_state_dict(torch.load(args.model))
-    # model.to(device)
-    # model.eval()
+    model.load_state_dict(torch.load(args.model))
+    model.to(device)
+    model.train()
     print("Start training!")
     model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
                                           args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler)
