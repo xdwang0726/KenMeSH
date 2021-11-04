@@ -55,10 +55,7 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, parent_children_file, vectors):
         embedding = []
         for k in key:
             embedding.append(vectors.__getitem__(k))
-            # if vectors.stoi.get(k) is None:
-            #     embedding = torch.zeros([1, 200], dtype=torch.float32)
-            # else:
-            #     embedding = vectors.vectors[vectors.stoi.get(k)].reshape(1, 200)
+
         key_embedding = torch.mean(torch.stack(embedding), dim=0, keepdim=True)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
@@ -101,9 +98,7 @@ def get_edge_and_bert_node_fatures(MeSH_id_pair_file, parent_children_file, toke
         key_encoding = tokenizer.encode(key, add_special_tokens=True)
         with torch.no_grad():
             _, key_embedding = model(torch.tensor([key_encoding]))
-            # print('embedding', key_embedding.shape)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
-        # print('label', label_embedding.shape)
     return edges, node_count, label_embedding
 
 
@@ -173,14 +168,11 @@ def multitype_GCN_get_node_and_edges(train_data_path, MeSH_id_pair_file, parent_
 
     # calculate the occurrence times of each label in the training set
     num = np.diag(cooccurrence_matrix).tolist()
-    # num_label = cooccurrence_matrix.sum(axis=1)
-    # num = num_label.tolist()
 
     # get co-occurrence edges
     edge_frame = cooccurrence_matrix.div(num, axis='index')
     edge_frame = (edge_frame >= threshold) * 1  # replacing each element larger than threshold by 1 else 0
     # remove the lower half of the matrix
-    # edge_frame[:] = np.where(np.arange(len(edge_frame))[:, None] >= np.arange(len(edge_frame)), np.nan, edge_frame)
     edge_index = np.argwhere(edge_frame.values == 1)
     train_mesh_list = list(cooccurrence_matrix)
     edge_cooccurrence = []

@@ -19,7 +19,7 @@ from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_e
 from losses import *
 from model import *
 from pytorchtools import EarlyStopping
-from utils_multi import MeSH_indexing, pad_sequence
+from utils import MeSH_indexing, pad_sequence
 
 
 def set_seed(seed):
@@ -64,8 +64,6 @@ def get_tail_labels(label_id):
 def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, num_example): #graph_cooccurence_file
     """ Load Dataset and Preprocessing """
     # load training data
-    # f = open(train_data_path, encoding="utf8")
-    # objects = ijson.items(f, 'articles.item')
     print('Start loading training data')
     mesh_mask = pickle.load(open(mask_path, 'rb'))
 
@@ -73,60 +71,9 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     all_text = pickle.load(open(abstract_path, 'rb'))
     label_id = pickle.load(open(label_path, 'rb'))
 
-    # train_title = all_title[:num_example]
-    # train_text = all_text[:num_example]
-    # train_label = label_id[:num_example]
-    # train_mesh_mask = mesh_mask[:num_example]
-    # print('Start loading training data')
-    # for i, obj in enumerate(tqdm(objects)):
-    #     if i <= num_example:
-    #         try:
-    #             heading = obj['title'].strip()
-    #             heading = heading.translate(str.maketrans('', '', '[]'))
-    #             text = obj['abstractText'].strip()
-    #             text = text.translate(str.maketrans('', '', '[]'))
-    #             mesh_id = obj['meshId']
-    #             train_title.append(heading)
-    #             all_text.append(text)
-    #             label_id.append(mesh_id)
-    #         except AttributeError:
-    #             print(obj['pmid'].strip())
-    #     else:
-    #         break
-
     assert len(all_text) == len(all_title), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
     print('number of training data %d' % len(all_title))
-
-    # load test data
-    print('Start loading test data')
-    # f_t = open(test_data_path, encoding="utf8")
-    # test_objects = ijson.items(f_t, 'articles.item')
-
-    #test_pmid = []
-    # test_title = all_title[-20000:]
-    # test_text = all_text[-20000:]
-    # test_label_id = label_id[-20000:]
-    # test_mesh_mask = mesh_mask[-20000:]
-    # train_label = label_id[:num_example]
-
-    # for i, obj in enumerate(tqdm(test_objects)):
-    #     if 13000 < i <= 14000:
-    #         ids = obj['pmid']
-    #         heading = obj['title'].strip()
-    #         text = obj['abstractText'].strip()
-    #         mesh_id = obj['meshID']
-    #         journal = obj['journal'].split(',')
-    #         neigh = obj['neighbors'].split(',')
-    #         mesh = set(journal + neigh)
-    #         test_pmid.append(ids)
-    #         test_title.append(heading)
-    #         test_text.append(text)
-    #         test_label_id.append(mesh_id)
-    #         test_mesh_mask.append(mesh)
-    #     elif i > 14000:
-    #         break
-    print('number of test data %d' % len(all_title[-20000:]))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -142,9 +89,6 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     mesh_index = list(index_dic.values())
     mlb = MultiLabelBinarizer(classes=mesh_index)
     mlb.fit(mesh_index)
-
-    # calculate negaitve and positve ratio for each label
-    # neg_pos_ratio = get_tail_labels(label_id, meshIDs)
 
     # create Vector object map tokens to vectors
     print('load pre-trained BioWord2Vec')

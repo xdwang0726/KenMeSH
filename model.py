@@ -7,7 +7,7 @@ from dgl.nn.pytorch.conv import SAGEConv, RelGraphConv
 from transformers import BertModel
 from transformers.modeling_bert import BertPreTrainedModel
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from graph import GAT
+from gat import GAT
 
 ########## Embedding ##########
 class Embedding(nn.Module):

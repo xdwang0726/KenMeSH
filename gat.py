@@ -5,23 +5,6 @@ import torch.nn.functional as F
 from dgl.nn.pytorch import GATConv
 
 
-# class GAT(nn.Module):
-#     def __init__(self, in_node_feats, hidden_gat_size, num_classes, num_heads=1):
-#         super(GAT, self).__init__()
-#         self.gat1 = GATConv(in_node_feats, hidden_gat_size, num_heads, feat_drop=0.0, attn_drop=0.0, negative_slope=0.2, residual=False,
-#                             activation=None, allow_zero_in_degree=True, bias=True)
-#         self.gat2 = GATConv(hidden_gat_size, num_classes, num_heads, feat_drop=0.0, attn_drop=0.0, negative_slope=0.2, residual=False,
-#                             activation=None, allow_zero_in_degree=True, bias=True)
-#
-#     def forward(self, g, features):
-#         x = self.gat1(g, features)
-#         x = x.squeeze(dim=1)
-#         # print('gat1', x.shape)
-#         x = F.elu(x)
-#         x = self.gat2(g, x)
-#         return x.squeeze(dim=1)
-
-
 class GAT(nn.Module):
     def __init__(self,
                  device,
@@ -65,9 +48,4 @@ class GAT(nn.Module):
         logits = self.gat_layers[-1](self.g, h).mean(1)
         # print('logits', logits.shape)
         return logits
-
-
-class DiffPool(nn.Module):
-    def __init__(self, in_node_feats, hidden_gat_size, num_classes):
-        super(DiffPool, self).__init__()
 

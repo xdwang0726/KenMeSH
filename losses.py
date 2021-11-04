@@ -29,16 +29,13 @@ class FocalLoss(nn.Module):
 
         log_p = probs.log()
 
-        # 根据论文中所述，对 alpha　进行设置（该参数用于调整正负样本数量不均衡带来的问题）
         alpha = torch.ones(pred.shape[0], pred.shape[1]).cuda()
         alpha[:, 0] = alpha[:, 0] * (1-alpha)
         alpha[:, 1] = alpha[:, 1] * alpha
         alpha = (alpha * class_mask).sum(dim=1).view(-1, 1)
 
-        # 根据 Focal Loss 的公式计算 Loss
         batch_loss = -alpha*(torch.pow((1-probs), self.gamma))*log_p
 
-         # Loss Function的常规操作，mean 与 sum 的区别不大，相当于学习率设置不一样而已
         if self.size_average:
             loss = batch_loss.mean()
         else:
@@ -61,12 +58,10 @@ class FocalLoss_MultiLabel(nn.Module):
         criterion = FocalLoss(self.gamma, self.size_average)
         loss = torch.zeros(1, target.shape[1]).cuda()
 
-        # 对每个 Label 计算一次 Focal Loss
         for i, label in enumerate(range(target.shape[1])):
             batch_loss = criterion(pred[:, label], target[:, label], alpha[i])
             loss[0, label] = batch_loss.mean()
 
-        # Loss Function的常规操作
         if self.size_average:
             loss = loss.mean()
         else:

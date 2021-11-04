@@ -1,24 +1,16 @@
 import argparse
 import os
-import sys
-
-import dgl
-import ijson
-
 import pickle
-import psutil
 import random
-import matplotlib.pyplot as plt
+
 from dgl.data.utils import load_graphs
 from sklearn.preprocessing import MultiLabelBinarizer
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchtext.vocab import Vectors
-from tqdm import tqdm
 
-from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
-from losses import *
+from eval_helper import precision_at_ks, example_based_evaluation, micro_macro_eval
 from model import *
-from pytorchtools import EarlyStopping
+from threshold import *
 from utils import MeSH_indexing, pad_sequence
 
 
@@ -36,7 +28,7 @@ def flatten(l):
     return flat
 
 
-def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, is_multichannel):
+def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pair_file, word2vec_path, graph_file, is_multichannel=True): #graph_cooccurence_file
     """ Load Dataset and Preprocessing """
     # load training data
     print('Start loading training data')
@@ -49,6 +41,10 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     assert len(all_text) == len(all_title), 'title and abstract in the training set are not matching'
     print('Finish loading training data')
     print('number of training data %d' % len(all_title))
+
+    # load test data
+    print('Start loading test data')
+    print('number of test data %d' % len(all_title[-20000:]))
 
     print('load and prepare Mesh')
     # read full MeSH ID list
@@ -73,21 +69,20 @@ def prepare_dataset(title_path, abstract_path, label_path, mask_path, MeSH_id_pa
     # Preparing training and test datasets
     print('prepare training and test sets')
     dataset = MeSH_indexing(all_text, all_title, all_text, all_title, label_id, mesh_mask, all_text[-20000:],
-                            all_title[-20000:], label_id[-20000:], mesh_mask[-20000:], is_test=False, is_multichannel=is_multichannel)
+                            all_title[-20000:], label_id[-20000:], mesh_mask[-20000:], is_test=True,
+                            is_multichannel=is_multichannel)
 
     # build vocab
     print('building vocab')
     vocab = dataset.get_vocab()
-    valid_size = 0.02
-    split = int(np.floor(valid_size * len(all_title)))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title) - split, split])
+
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
     print('graph', G.ndata['feat'].shape)
 
     print('prepare dataset and labels graph done!')
-    return len(meshIDs), mlb, vocab, train_dataset, valid_dataset, vectors, G
+    return len(meshIDs), mlb, vocab, dataset, vectors, G#, neg_pos_ratio#, train_sampler, valid_sampler #, G_c
 
 
 def weight_matrix(vocab, vectors, dim=200):
@@ -139,72 +134,36 @@ def generate_batch(batch):
         return label, mesh_mask, text, text_length
 
 
-def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, criterion, device, num_workers, optimizer,
-          lr_scheduler, model_name):
+def test(test_dataset, model, mlb, G, batch_sz, device, model_name="Full"):
+    test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
+    pred = []
+    true_label = []
 
-    train_data = DataLoader(train_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers, pin_memory=True)
-
-    valid_data = DataLoader(valid_dataset, batch_size=batch_sz, shuffle=True, collate_fn=generate_batch, num_workers=num_workers, pin_memory=True)
-
-    print('train', len(train_data.dataset))
-
-    train_losses = []
-    valid_losses = []
-    avg_train_losses = []
-    avg_valid_losses = []
-
-    early_stopping = EarlyStopping(patience=3, verbose=True)
-
-    print("Training....")
-    for epoch in range(num_epochs):
-        model.train()  # prep model for training
+    print('Testing....')
+    with torch.no_grad():
+        model.eval()
         if model_name == 'ablation1':
-            for i, (label, mesh_mask, text, text_length) in enumerate(train_data):
-                label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            for label, mesh_mask, text, text_length in test_data:
                 mesh_mask = torch.from_numpy(mlb.fit_transform(mesh_mask)).type(torch.float)
                 text_length = torch.Tensor(text_length)
-                text, label, mesh_mask, text_length = text.to(device), label.to(device), mesh_mask.to(
-                    device), text_length.to(device)
-                G = G.to(device)
-                G.ndata['feat'] = G.ndata['feat'].to(device)
+
+                mesh_mask, text, text_length = mesh_mask.to(device), text.to(device), text_length.to(device)
+                G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
+                label = mlb.fit_transform(label)
                 output = model(text, text_length, mesh_mask, G, G.ndata['feat'])
-                loss = criterion(output, label)
 
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-                for param in model.parameters():
-                    param.grad = None
-                train_losses.append(loss.item())  # record training loss
-
-            # Adjust the learning rate
-            lr_scheduler.step()
-
-            with torch.no_grad():
-                model.eval()
-                for i, (label, mesh_mask, text, text_length) in enumerate(valid_data):
-                    label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-                    mesh_mask = torch.from_numpy(mlb.fit_transform(mesh_mask)).type(torch.float)
-                    text_length = torch.Tensor(text_length)
-                    text, label, mesh_mask, text_length = text.to(device), label.to(device), mesh_mask.to(
-                        device), text_length.to(device)
-                    G = G.to(device)
-                    G.ndata['feat'] = G.ndata['feat'].to(device)
-
-                    output = model(text, text_length, mesh_mask, G, G.ndata['feat'])
-
-                    loss = criterion(output, label)
-                    valid_losses.append(loss.item())
+                results = output.data.cpu().numpy()
+                pred.append(results)
+                true_label.append(label)
         else:
-            for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(train_data):
-                label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
+            for label, mask, abstract, title, abstract_length, title_length in test_data:
                 mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
                 abstract_length = torch.Tensor(abstract_length)
                 title_length = torch.Tensor(title_length)
-                abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
-                G = G.to(device)
-                G.ndata['feat'] = G.ndata['feat'].to(device)
+                mask, abstract, title, abstract_length, title_length = mask.to(device), abstract.to(device), title.to(device), abstract_length.to(device), title_length.to(device)
+                G, G.ndata['feat'] = G.to(device), G.ndata['feat'].to(device)
+                label = mlb.fit_transform(label)
+
                 if model_name == "Full":
                     output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
                 elif model_name == "ablation2":
@@ -214,63 +173,12 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
                 elif model_name == "HGCN4MeSH":
                     output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
 
-                loss = criterion(output, label)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-                for param in model.parameters():
-                    param.grad = None
-                train_losses.append(loss.item())  # record training loss
+                results = output.data.cpu().numpy()
+                pred.append(results)
+                true_label.append(label)
 
-            # Adjust the learning rate
-            lr_scheduler.step()
-
-            with torch.no_grad():
-                model.eval()
-                for i, (label, mask, abstract, title, abstract_length, title_length) in enumerate(valid_data):
-                    label = torch.from_numpy(mlb.fit_transform(label)).type(torch.float)
-                    mask = torch.from_numpy(mlb.fit_transform(mask)).type(torch.float)
-                    abstract_length = torch.Tensor(abstract_length)
-                    title_length = torch.Tensor(title_length)
-                    abstract, title, label, mask, abstract_length, title_length = abstract.to(device), title.to(device), label.to(device), mask.to(device), abstract_length.to(device), title_length.to(device)
-                    G = G.to(device)
-                    G.ndata['feat'] = G.ndata['feat'].to(device)
-
-                    if model_name == "Full":
-                        output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
-                    elif model_name == "ablation2":
-                        output = model(abstract, title, mask, abstract_length, title_length, G, G.ndata['feat'])
-                    elif model_name == "ablation3":
-                        output = model(abstract, title, mask, abstract_length, title_length, G.ndata['feat'])
-                    elif model_name == "HGCN4MeSH":
-                        output = model(abstract, title, abstract_length, title_length, G, G.ndata['feat'])
-
-                    loss = criterion(output, label)
-                    valid_losses.append(loss.item())
-
-        train_loss = np.average(train_losses)
-        valid_loss = np.average(valid_losses)
-        avg_train_losses.append(train_loss)
-        avg_valid_losses.append(valid_loss)
-
-        epoch_len = len(str(num_epochs))
-
-        print_msg = (f'[{epoch:>{epoch_len}}/{num_epochs:>{epoch_len}}] ' +
-                     f'train_loss: {train_loss:.5f} ' +
-                     f'valid_loss: {valid_loss:.5f}')
-        print(print_msg)
-
-        # clear lists to track next epoch
-        train_losses = []
-        valid_losses = []
-
-        early_stopping(valid_loss, model)
-
-        if early_stopping.early_stop:
-            print("Early stopping")
-            break
-    return model, avg_train_losses, avg_valid_losses
+    return pred, true_label
+    print('###################DONE#########################')
 
 
 def top_k_predicted(goldenTruth, predictions, k):
@@ -301,37 +209,6 @@ def getLabelIndex(labels):
     return label_index
 
 
-def binarize_probs(probs, thresholds):
-    nb_classes = probs.shape[-1]
-    binarized_output = np.zeros_like(probs)
-
-    for k in range(nb_classes):
-        binarized_output[:, k] = (np.sign(probs[:, k] - thresholds[k]) + 1) // 2
-
-    return binarized_output
-
-
-def plot_loss(train_loss, valid_loss, save_path):
-    # visualize the loss as the network trained
-    fig = plt.figure(figsize=(10, 8))
-    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
-    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
-
-    # find position of lowest validation loss
-    minposs = valid_loss.index(min(valid_loss)) + 1
-    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
-
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.ylim(0, 0.5)  # consistent scale
-    plt.xlim(0, len(train_loss) + 1)  # consistent scale
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    fig.savefig(save_path, bbox_inches='tight')
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--title_path')
@@ -342,9 +219,9 @@ def main():
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--graph')
-    parser.add_argument('--save-model-path')
     parser.add_argument('--model_name', default='Full', type=str)
 
+    parser.add_argument('--model')
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=200)
     parser.add_argument('--ksz', default=3)
@@ -353,8 +230,8 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
 
-    parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=32)
+    parser.add_argument('--num_epochs', type=int, default=20)
+    parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -429,22 +306,35 @@ def main():
         model = HGCN4MeSH(vocab_size, args.dropout, args.ksz, embedding_dim=200, rnn_num_layers=2)
         model.embedding_layer.weight.data.copy_(weight_matrix(vocab, vectors)).to(device)
 
+    model.load_state_dict(torch.load(args.model))
     model.to(device)
-    G = G.to(device)
+    model.eval()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.scheduler_step_sz, gamma=args.lr_gamma)
-    criterion = nn.BCEWithLogitsLoss()
+    # testing
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device, args.model_name)
+    pred = np.concatenate(pred, axis=0)
+    true_label = np.concatenate(true_label, axis=0)
 
-    # training
-    print("Start training!")
-    model, train_loss, valid_loss = train(train_dataset, valid_dataset, model, mlb, G, args.batch_sz,
-                                          args.num_epochs, criterion, device, args.num_workers, optimizer, lr_scheduler,
-                                          args.model_name)
-    print('Finish training!')
+    # threshold tuning
+    _N = num_nodes  # number of class
+    _n = 20000  # number of test data
+    maximum_iteration = 10
+    P_score = pred.tolist()
+    T_score = true_label.tolist()
+    threshold = get_threshold(_N, _n, P_score, T_score)
 
-    print('save model for inference')
-    torch.save(model.state_dict(), args.save_model_path)
+    # evaluation
+    ks = [1, 3, 5, 10, 15]
+    test_labelsIndex = getLabelIndex(T_score)
+    precisions = precision_at_ks(P_score, test_labelsIndex, ks=ks)
+    for i in range(len(ks)):
+        print(np.mean(precisions[0][i]))
+    for i in range(len(ks)):
+        print(np.mean(precisions[1][i]))
+    emb = example_based_evaluation(P_score, T_score, threshold)
+    print('emb', emb)
+    micro = micro_macro_eval(P_score, T_score, threshold)
+    print('micro', micro)
 
 
 if __name__ == "__main__":

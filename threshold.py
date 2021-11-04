@@ -1,48 +1,13 @@
-import random
-import numpy as np
 from tqdm import tqdm
-import pickle
 
 # Algorithm from the paper : Threshold optimization for multi-label classifieres
 
-_N = 28415  # number of class
-_n = 20000  # number of test data
 maximum_iteration = 10
-P_score = pickle.load(open('../pmc_result.pkl', 'rb'))
-P_score = np.concatenate(P_score, axis=0).tolist()
-T_score = pickle.load(open('../pmc_true.pkl', 'rb'))
-T_score = np.concatenate(T_score, axis=0).tolist()
-print('finish loading')
 
 
-def create_fake_testcase():
-    # creating fake data for testing
-    P_score.clear()
-    T_score.clear()
-    for i in range(_n):
-        T = []
-        P = []
-        got_at_least_one = False
-        for j in range(_N):
-            tt = random.randrange(2)
-            if tt == 1:
-                got_at_least_one = True
-            T.append(tt)
-            pp = random.random()
-            P.append(pp)
-        if got_at_least_one == False:
-            idx = random.randrange(_N)
-            T[idx] = 1
-        P_score.append(P)
-        T_score.append(T)
-
-    # print("#fake : ",P_score,T_score)
-
-
-scores_per_class = {}  # it will hold predicted score for each class in incresing order, will be populated by create_score_per_class()
-
-
-def create_score_per_class():
+def create_score_per_class(_N, _n, P_score):
+    """it will hold predicted score for each class in incresing order"""
+    scores_per_class = {}
     for i in range(_N):
         scores_per_class[i] = []
         prev = 0
@@ -53,9 +18,10 @@ def create_score_per_class():
             prev = P_score[j][i]
             # scores_per_class[i].append(P_score[j][i])
         scores_per_class[i].sort()
+    return scores_per_class
 
 
-def calculateF(T, beta=1):  # return F1-score for any given ThreshHold tensor
+def calculateF(_N, _n, P_score, T_score, T, beta=1):  # return F1-score for any given ThreshHold tensor
     '''
         input threshhold tensor and beta value
         Micro-averaging F-score in the paper eq 5,6
@@ -95,7 +61,7 @@ def calculateF(T, beta=1):  # return F1-score for any given ThreshHold tensor
     return f_score, A, B, C, D
 
 
-def updated_score_T(k, curT, prevT, beta, pd, pn, rd, rn):
+def updated_score_T(_n, P_score, T_score, k, curT, prevT, beta, pd, pn, rd, rn):
     '''
     updates F-score in O(n)
     '''
@@ -125,37 +91,30 @@ def updated_score_T(k, curT, prevT, beta, pd, pn, rd, rn):
             PFP += 1
         if pred == 0 and T_score[i][k] == 1:
             PFN += 1
-    # print("stat for class",k)
-    # print("prev : ",prevT, PTP, PFP, PFN)
-    # print("cur : ", curT, TP, FP, FN)
-    # print("pd : ",pd,pn,rd,rn)
+
     A = pd - PTP + TP
     B = (pn - (PTP + PFP) + (TP + FP))
     precision = A / B
     C = rd - PTP + TP
     D = rn - (PTP + PFN) + (TP + FN)
     recall = C / D
-    # print(precision," ", recall)
     f_score = (1 + beta * beta) / ((1.0 / precision) + (beta * beta) / recall)
-    # print("prev class",k,prevT,PTP,PFP,PFN)
-    # print("class",k,curT,TP,FP,FN)
-    # print("update: ",f_score, " ",A," ",B, " ", C, " ", D)
 
     return f_score, A, B, C, D
 
 
-def find_arg_max(k, t, beta, curF, pd, pn, rd, rn):
+def find_arg_max(_N, _n, P_score, T_score, k, t, beta, curF, pd, pn, rd, rn):
     '''
     Finds armax t for any given class k
     in O(N * n) // as there are O(N) different threshold value and for every possible threshold value we need to see
                 whether we can update the f-score using updated_score_T()
     '''
+    scores_per_class = create_score_per_class(_N, _n, P_score)
     poss_value_for_t = scores_per_class[k]
-    # curF,_,_,_,_ = calculateF(t,beta)
     res = t[k]
     for x in poss_value_for_t:  # probably can be improve using binary search
         if x >= t[k]:
-            tmp_fscore, a, b, c, d = updated_score_T(k, x, t[k], beta, pd, pn, rd, rn)
+            tmp_fscore, a, b, c, d = updated_score_T(_n, P_score, T_score, k, x, t[k], beta, pd, pn, rd, rn)
             if curF < tmp_fscore:
                 curF = tmp_fscore
                 pd = a
@@ -169,7 +128,7 @@ def find_arg_max(k, t, beta, curF, pd, pn, rd, rn):
     return [res, curF, pd, pn, rd, rn]
 
 
-def maximization_Algo1():  # will return the threshhold
+def maximization_Algo1(_N, _n, P_score, T_score):  # will return the threshhold
     '''
         According to the paper : the iterative improvment process will coverge
         However, Total run-time for Iteration : O(N * N * n)
@@ -177,10 +136,10 @@ def maximization_Algo1():  # will return the threshhold
         This run-time will not be feasible for larger data-sets (number of class and number of data point)
         However, as the improvment is increamental may be we can treat the iteration as a hyper-parameter.
     '''
-    t = [5e-6] * _N
+    t = [5e-4] * _N
     beta = 1
     iter = 0
-    curF, precd, precsum, recalld, recallsum = calculateF(t, beta)
+    curF, precd, precsum, recalld, recallsum = calculateF(_N, _n, P_score, T_score, t, beta)
     print("Init F: ", curF)
     while (1):
         if iter % 100 == 0:
@@ -190,7 +149,7 @@ def maximization_Algo1():  # will return the threshhold
             # print(curF,precd,precsum,recalld,recallsum)
             # print(t)
             # print(k)
-            tmp_t, tmp_fscore, a, b, c, d = find_arg_max(k, t, beta, curF, precd, precsum, recalld, recallsum)
+            tmp_t, tmp_fscore, a, b, c, d = find_arg_max(_N, _n, P_score, T_score, k, t, beta, curF, precd, precsum, recalld, recallsum)
             # print(tmp_t," C, ",a," ",b," ",c," ",d)
             if tmp_fscore > curF:
                 curF = tmp_fscore
@@ -210,13 +169,8 @@ def maximization_Algo1():  # will return the threshhold
     return t, curF
 
 
-def main():
-    # create_fake_testcase()
-    create_score_per_class()
-    t, imp_F = maximization_Algo1()
-    print("F: ", calculateF(t))
-    pickle.dump(t, open('../pmc_threshold_5e6.pkl', 'wb'))
+def get_threshold(_N, _n, P_score, T_score):
+    t, imp_F = maximization_Algo1(_N, _n, P_score, T_score)
+    print("F: ", calculateF(_N, _n, P_score, T_score, t))
+    return t
 
-
-if __name__ == "__main__":
-    main()
