@@ -376,10 +376,7 @@ def main():
     with open(args.save_path_idf, "w") as outfile:
         json.dump(idf_data, outfile)
 
-    # 2. get masks from journal
-    journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
-
-    # 3. get masks from KNN
+    # 2. get masks from KNN
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     cache, name = os.path.split(args.word2vec_path)
     vectors = Vectors(name=name, cache=cache)
@@ -387,7 +384,8 @@ def main():
     with open(args.save_path_neigh, "w") as outfile:
         json.dump(knn_mask, outfile)
 
-    # 4. build dataset
+    # 3. get masks from journal and build dataset with masks
+    journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
     dataset = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
     pubmed = {'articles': dataset}
     with open(args.save_path, "w") as outfile:

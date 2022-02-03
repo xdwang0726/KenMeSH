@@ -311,7 +311,7 @@ def main():
     model.eval()
 
     # testing
-    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device, args.model_name)
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device, model)
     pred = np.concatenate(pred, axis=0)
     true_label = np.concatenate(true_label, axis=0)
 
