@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import pickle
 import string
 
@@ -14,6 +15,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from torchtext.data.utils import get_tokenizer
+from torchtext.vocab import Vectors
 from tqdm import tqdm
 
 from run_classifier_multigcn import weight_matrix
@@ -92,6 +94,21 @@ def idf_weighted_wordvec(doc):
     return doc_idfs
 
 
+def get_idf_file(train_path):
+    f = open(train_path, encoding="utf8")
+    object = ijson.items(f, 'articles.item')
+
+    idf_dataset = []
+    for i, obj in enumerate(tqdm(object)):
+        data_point = {}
+        abstract = obj["abstractText"].strip()
+        doc_idfs = idf_weighted_wordvec(abstract)
+        data_point['pmid'] = obj["pmid"]
+        data_point['weighted_doc_vec'] = doc_idfs
+        idf_dataset.append(data_point)
+    return idf_dataset
+
+
 def load_idf_file(idf_path):
     f = open(idf_path, encoding="utf8")
     object = ijson.items(f, 'articles.item')
@@ -146,7 +163,6 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
         except AttributeError:
             print(obj["pmid"].strip())
 
-
     print('Loading document done. ')
 
     dataset = Preprocess(all_text, idfs, labels)
@@ -168,21 +184,6 @@ def get_knn_neighbors_mesh(train_path, vectors, idf_path, k,  device, nprobe=5):
     doc_vecs = pred.data.cpu().numpy()
     doc_vecs = doc_vecs.astype('float32')
     print('number of embedding articles', len(doc_vecs))
-
-    # get k nearest neighors and return their mesh using sklearn
-    # print('start to find the k nearest neibors for each article')
-    # neighbors = NearestNeighbors(n_neighbors=k).fit(doc_vec)
-    # neighbors_meshs = []
-    # for i in range(len(tqdm(doc_vec))):
-    #     idxes = neighbors.kneighbors([doc_vec[i]], return_distance=False)
-    #     idxes = idxes.tolist()[0]
-    #     neighbors_mesh = []
-    #     for idx in idxes:
-    #         mesh = labels[idx]
-    #         neighbors_mesh.append(mesh)
-    #     neighbors_mesh = list(set([m for mesh in neighbors_mesh for m in mesh]))
-    #     neighbors_meshs.append(neighbors_mesh)
-    # print('finding neighbors done')
 
     # get k nearest neighors and return their mesh using faiss
     d = doc_vecs.shape[1]
@@ -256,18 +257,18 @@ def read_neighbors(neighbors, index_dic):
     f = open(neighbors, encoding="utf8")
     objects = ijson.items(f, 'articles.item')
 
-    # pmid = []
+    pmid = []
     # neighbors_mesh = []
     neigh_mask = []
 
     for i, obj in enumerate(tqdm(objects)):
         # data_point = {}
-        # ids = obj['pmid']
+        ids = obj['pmid']
         mesh = obj['neighbors'].split(',')
         mesh_idx = label2index(mesh, index_dic)
         neigh_mask.append(mesh_idx)
-        # neighbors_mesh.append(new_mesh_index)
-    return neigh_mask #pmid, neighbors_mesh
+        pmid.append(ids)
+    return pmid, neigh_mask
 
 
 def mesh_mask(file, neigh_mask, journal_path):
@@ -285,7 +286,6 @@ def mesh_mask(file, neigh_mask, journal_path):
         mesh_index.append(mesh)
 
     return mesh_index
-
 
 
 def build_dataset(train_path, neighbors, journal_mesh, MeSH_id_pair_file):
@@ -356,14 +356,10 @@ def main():
     parser.add_argument('--neigh_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--save_path')
+    parser.add_argument('--save_path_neigh')
+    parser.add_argument('--save_path_idf')
     parser.add_argument('--journal')
     args = parser.parse_args()
-
-    # device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # cache, name = os.path.split(args.word2vec_path)
-    # vectors = Vectors(name=name, cache=cache)
-    # pubmed = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
-    # pubmed = get_knn_neighbors_mesh(args.allMesh, args.idfs_path, args.k, device)
 
     mapping_id = {}
     with open(args.meSH_pair_path, 'r') as f:
@@ -374,17 +370,28 @@ def main():
     meshIDs = list(mapping_id.values())
     index_dic = {k: v for v, k in enumerate(meshIDs)}
 
-    # journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
-    # pickle.dump(journal_mesh, open(args.journal, 'wb'))
+    # 1. get idf vector
+    idfs = get_idf_file(args.allMesh)
+    idf_data = {'articles': idfs}
+    with open(args.save_path_idf, "w") as outfile:
+        json.dump(idf_data, outfile)
 
-    # pubmed = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
-    # dataset = read_neighbors(args.neigh_path, index_dic)
-    # pubmed = {'articles': dataset}
-    # with open(args.save_path, "w") as outfile:
-    #     json.dump(pubmed, outfile)
-    neigh_mask = read_neighbors(args.neigh_path, index_dic)
-    mesh_masks = mesh_mask(args.allMesh, neigh_mask, args.journal)
-    pickle.dump(mesh_masks, open(args.save_path, 'wb'))
+    # 2. get masks from journal
+    journal_mesh = get_journal_mesh(args.journal_info, args.threshold, meshIDs)
+
+    # 3. get masks from KNN
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    cache, name = os.path.split(args.word2vec_path)
+    vectors = Vectors(name=name, cache=cache)
+    knn_mask = get_knn_neighbors_mesh(args.allMesh, vectors, args.idfs_path, args.k, device)
+    with open(args.save_path_neigh, "w") as outfile:
+        json.dump(knn_mask, outfile)
+
+    # 4. build dataset
+    dataset = build_dataset(args.allMesh, args.neigh_path, journal_mesh, args.meSH_pair_path)
+    pubmed = {'articles': dataset}
+    with open(args.save_path, "w") as outfile:
+        json.dump(pubmed, outfile)
 
 
 if __name__ == "__main__":
