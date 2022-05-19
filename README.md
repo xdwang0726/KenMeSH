@@ -51,6 +51,7 @@ python -u run_classifier_multigcn.py --title_path pmc_title.pkl --abstract_path 
 ```
 ## Citing
 If you use KenMeSH in your work, please consider citing our paper：
+```
 @inproceedings{wang-etal-2022-kenmesh,
     title = "{K}en{M}e{SH}: Knowledge-enhanced End-to-end Biomedical Text Labelling",
     author = "Wang, Xindi  and
@@ -65,3 +66,4 @@ If you use KenMeSH in your work, please consider citing our paper：
     pages = "2941--2951",
     abstract = "Currently, Medical Subject Headings (MeSH) are manually assigned to every biomedical article published and subsequently recorded in the PubMed database to facilitate retrieving relevant information. With the rapid growth of the PubMed database, large-scale biomedical document indexing becomes increasingly important. MeSH indexing is a challenging task for machine learning, as it needs to assign multiple labels to each article from an extremely large hierachically organized collection. To address this challenge, we propose KenMeSH, an end-to-end model that combines new text features and a dynamic knowledge-enhanced mask attention that integrates document features with MeSH label hierarchy and journal correlation features to index MeSH terms. Experimental results show the proposed method achieves state-of-the-art performance on a number of measures.",
 }
+```
