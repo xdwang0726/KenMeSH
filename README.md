@@ -19,7 +19,7 @@ ACL 2022
 ## Usage
 ### Build a graph
 ```
-python -u build_graph.py --meSH_pair_path MeSH_name_id_mapping_2019.txt --mesh_parent_children_path MeSH_parent_child_mapping_2019 --word2vec_path BioWord2Vec_standard.w2v --graph_type ‘GCN’
+python -u build_graph.py --meSH_pair_path MeSH_name_id_mapping_2019.txt --mesh_parent_children_path MeSH_parent_child_mapping_2019 --word2vec_path BioWord2Vec_standard.w2v --graph_type 'GCN' --output output_dir
 ```
 ### Get journal name and MeSH term corelations
 ```
