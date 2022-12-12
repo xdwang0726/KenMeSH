@@ -1,0 +1,16 @@
+__pycache__/
+venv_kenmesh/
+home/
+data/
+
+*.json
+*.pkl
+*.txt
+*.csv
+*.w2v
+*.pt
+*.pkl
+*.bin
+
+pred
+true_label
