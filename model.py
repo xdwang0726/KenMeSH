@@ -319,7 +319,6 @@ class multichannel_dilatedCNN(nn.Module):
 
 
 class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
-    # TODO: Change the embedding_dim to 768. Change all dimensions. 
     def __init__(self, vocab_size, dropout, ksz, output_size, G, device, embedding_dim=200, rnn_num_layers=2, cornet_dim=1000,
                  n_cornet_blocks=2):
         super(multichannel_dilatedCNN_with_MeSH_mask, self).__init__()

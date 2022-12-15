@@ -127,7 +127,7 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, word2vec_path, graph_file, 
     # Preparing training and test datasets
     print('prepare training and test sets')
     # Converting texts in Tokens in a Tensor List
-    dataset = MeSH_indexing(all_text, all_title, all_text[:-20000], all_title[:-20000], label_id[:-20000], mesh_mask[:-20000], all_text,
+    dataset = MeSH_indexing(all_text, all_title, all_text[:-20000], all_title[:-20000], label_id[:-20000], mesh_mask[:-20000], all_text[-20000:],
                             all_title[-20000:], label_id[-20000:], mesh_mask[-20000:], is_test=False, is_multichannel=is_multichannel)
 
     # build vocab

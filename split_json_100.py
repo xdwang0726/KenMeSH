@@ -6,6 +6,15 @@ import os
 import math
 import random
 
+def hook(obj):
+    value = obj.get("features")
+    if value:
+        pbar = tqdm(value)
+        for item in pbar:
+            pass
+            pbar.set_description("Loading")
+    return obj
+
 def writefile(data, name):
     tmp = { "articles": []}
     tmp["articles"] = data
@@ -17,8 +26,7 @@ def split_json_data(data_path):
     data = []
     f = open(data_path, encoding="utf8")
     # objects = ijson.items(f, 'articles.item')
-    d = json.load(f)
-
+    d = json.load(f, object_hook=hook)
     objects = d['articles']
     lst = []
     i = 0
