@@ -170,14 +170,9 @@ def generate_batch(batch):
 
 def test(test_dataset, model, mlb, G, batch_sz, device, model_name="Full"):
     test_data = DataLoader(test_dataset, batch_size=batch_sz, collate_fn=generate_batch, shuffle=False, pin_memory=True)
-    top_k_precisions = []
-    sum_pred = 0.
-    sum_target = 0.
-    sum_product = 0.
-    tp = 0.
-    tn = 0.
-    fp = 0.
-    fn = 0.
+
+    pred = []
+    true_label = []
 
     print('Testing....')
     with torch.no_grad():
@@ -211,20 +206,8 @@ def test(test_dataset, model, mlb, G, batch_sz, device, model_name="Full"):
 
                 # calculate precision at k
                 results = output.data.cpu().numpy()
-                test_labelsIndex = getLabelIndex(label)
-                precisions, recall = precision_at_ks(results, test_labelsIndex, ks=[1, 3, 5])
-                top_k_precisions.append(precisions)
-                # calculate example-based evaluation
-                sums = example_based_evaluation(results, label, 0.5, 20000)
-                sum_pred += sums[0]
-                sum_target += sums[1]
-                sum_product += sums[2]
-                # calculate label-based evaluation
-                confusion = micro_macro_eval(results, label, threshold=0.5)
-                tp += confusion[0]
-                tn += confusion[1]
-                fp += confusion[2]
-                fn += confusion[3]
+                pred.append(results)
+                true_label.append(label)
 
                 # print("Precision: ", precisions)
             except BaseException as exception:
@@ -233,113 +216,9 @@ def test(test_dataset, model, mlb, G, batch_sz, device, model_name="Full"):
                 # print("----------------------------------------------------")
                 # print(f'label: ${label}, \n mask: ${mask}, \n abstract: ${abstract}, \n title: ${title}, \n abstract_length: ${abstract_length}, \n title_length: ${title_length}', "\n-----------Test Data-----------")
                 # print("-----Except Test Data-------")
-                
-        # Evaluations
-        print('Calculate Precision at K...')
-        p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in top_k_precisions))
-        # print(p_at_1)
-        p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in top_k_precisions))
-        p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in top_k_precisions))
-        for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
-            print('p@{}: {:.5f}'.format(k, p))
-
-        print('Calculate Example-based Evaluation')
-        ebp = sum_product / sum_pred
-        ebr = sum_product / sum_target
-        ebf = (2 * sum_product) / (sum_pred + sum_target)
-        for n, m in zip(['EBP', 'EBR', 'EBF'], [ebp, ebr, ebf]):
-            print('{}: {:.5f}'.format(n, m))
-
-        print('Calculate Label-based Evaluation')
-        mip = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fp)))
-        mir = zero_division(np.sum(tp), (np.sum(tp) + np.sum(fn)))
-        mif = zero_division(2 * mir * mip, (mir + mip))
-        for n, m in zip(['MiP', 'MiR', 'MiF'], [mip, mir, mif]):
-            print('{}: {:.5f}'.format(n, m))
-
-        print('###################DONE#########################')
-
-def run_evaluation(meshIDs, pred, true_label):
-    # threshold tuning
-    _N = len(meshIDs)  # number of class
-    _n = 20000  # number of test data
-    maximum_iteration = 10
-    P_score = pred.tolist()
-    T_score = true_label.tolist()
-    print(P_score, "\n-----------------P Score--------------------")
-    print(T_score, "\n-----------------T Score--------------------")
-    # threshold = get_threshold(_N, _n, P_score, T_score)
-    threshold = 0.005
-
-    # evaluation
-    ks = [1, 3, 5, 10, 15]
-    test_labelsIndex = getLabelIndex(T_score)
-    precisions = precision_at_ks(P_score, test_labelsIndex, ks=ks)
-    for i in range(len(ks)):
-        print("precision 1: ", np.mean(precisions[0][i]))
-    for i in range(len(ks)):
-        print("precision 2: ", np.mean(precisions[1][i]))
-    emb = example_based_evaluation(P_score, T_score, threshold, 20000)
-    print('emb', emb)
-    micro = micro_macro_eval(P_score, T_score, threshold)
-    print('micro', micro)
-
-def top_k_predicted(goldenTruth, predictions, k):
-    predicted_label = np.zeros(predictions.shape)
-    for i in range(len(predictions)):
-        goldenK = len(goldenTruth[i])
-        if goldenK <= k:
-            top_k_index = (predictions[i].argsort()[-goldenK:][::-1]).tolist()
-        else:
-            top_k_index = (predictions[i].argsort()[-k:][::-1]).tolist()
-        for j in top_k_index:
-            predicted_label[i][j] = 1
-    predicted_label = predicted_label.astype(np.int64)
-    return predicted_label
-
-def getLabelIndex(labels):
-    label_index = np.zeros((len(labels), len(labels[1])))
-    for i in range(0, len(labels)):
-        index = np.where(labels[i] == 1)
-        index = np.asarray(index)
-        N = len(labels[1]) - index.size
-        index = np.pad(index, [(0, 0), (0, N)], 'constant')
-        label_index[i] = index
-
-    label_index = np.array(label_index, dtype=int)
-    label_index = label_index.astype(np.int32)
-    return label_index
-
-
-def binarize_probs(probs, thresholds):
-    nb_classes = probs.shape[-1]
-    binarized_output = np.zeros_like(probs)
-
-    for k in range(nb_classes):
-        binarized_output[:, k] = (np.sign(probs[:, k] - thresholds[k]) + 1) // 2
-
-    return binarized_output
-
-
-def plot_loss(train_loss, valid_loss, save_path):
-    # visualize the loss as the network trained
-    fig = plt.figure(figsize=(10, 8))
-    plt.plot(range(1, len(train_loss) + 1), train_loss, label='Training Loss')
-    plt.plot(range(1, len(valid_loss) + 1), valid_loss, label='Validation Loss')
-
-    # find position of lowest validation loss
-    minposs = valid_loss.index(min(valid_loss)) + 1
-    plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
-
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.ylim(0, 0.5)  # consistent scale
-    plt.xlim(0, len(train_loss) + 1)  # consistent scale
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    fig.savefig(save_path, bbox_inches='tight')
+        
+        print('###################TEST - DONE#########################')
+        return pred, true_label
 
 def main():
     parser = argparse.ArgumentParser()
@@ -401,8 +280,11 @@ def main():
     model.eval()
 
     # testing
-    test(test_dataset, model, mlb, G, args.batch_sz, device, args.model_name)
+    pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device, args.model_name)
 
+    np.save("pred", pred)
+    torch.save(true_label, "true_label")
+    
 
 if __name__ == "__main__":
     main()

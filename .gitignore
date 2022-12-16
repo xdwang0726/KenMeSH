@@ -11,6 +11,9 @@ data/
 *.pt
 *.pkl
 *.bin
+*.npy
 
 pred
 true_label
+pred_past
+true_label_past
