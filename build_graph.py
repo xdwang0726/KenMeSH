@@ -60,6 +60,8 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, MeSH_description, parent_childr
         key = tokenizer(k)
         key = [k.lower() for k in key]
         embedding = []
+       
+        #Load Bio Word2Vec 
         for k in key:
             embedding.append(vectors.__getitem__(k))
 
@@ -69,17 +71,19 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, MeSH_description, parent_childr
 
         key_embedding = torch.mean(torch.stack(embedding), dim=0, keepdim=True)
         
-        if value in mesh_description:
-            description_embedding = get_bert_embedding(mesh_description[value], bert_model)
-        else:
-            description_embedding = get_bert_embedding(k, bert_model)
+        # if value in mesh_description:
+        #     description_embedding = get_bert_embedding(mesh_description[value], bert_model)
+        # else:
+        #     description_embedding = get_bert_embedding(k, bert_model)
 
-        description_embedding = description_embedding.view(1, 200)
-        key_embedding = torch.cat((key_embedding, description_embedding), dim=1)
+        # description_embedding = description_embedding.view(1, 200)
+        # key_embedding = torch.cat((key_embedding, description_embedding), dim=1)
         
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
 
-        print(f'key embedding: {key_embedding.size()} \n label embed: {label_embedding.size()} \n description: {description_embedding.size()}')
+        print(f'key embedding: {key_embedding.size()} \n label embed: {label_embedding.size()}' )
+        
+        # \n description: {description_embedding.size()}')
     
     print(f'key_embedding_dimension: {key_embedding.size()}')
     print(f'total label_embedding_dimension: {label_embedding.size()}')

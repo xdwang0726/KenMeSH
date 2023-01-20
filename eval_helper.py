@@ -294,16 +294,8 @@ def main():
     threshold = np.array([0.0005] * 28415)
 
     test_labelsIndex = getLabelIndex(T_score)
-    # precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
-    # print('p@k', precisions)
-
-    # print('Calculate Precision at K...')
-    # p_at_1 = np.mean(flatten(p_at_k[0] for p_at_k in P_score))
-    # # print(p_at_1)
-    # p_at_3 = np.mean(flatten(p_at_k[1] for p_at_k in P_score))
-    # p_at_5 = np.mean(flatten(p_at_k[2] for p_at_k in P_score))
-    # for k, p in zip([1, 3, 5], [p_at_1, p_at_3, p_at_5]):
-    #     print('p@{}: {:.5f}'.format(k, p))
+    precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
+    print('p@k', precisions)
 
     emb = example_based_evaluation(P_score, T_score, threshold, 20000)
     print('(ebp, ebr, ebf): ', emb)

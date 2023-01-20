@@ -343,7 +343,8 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
                                    nn.SELU(), nn.AlphaDropout(p=0.05))
 
         # Change here to match with the dimension of the node features
-        self.gcn = LabelNet(2 * embedding_dim, 2 * embedding_dim, 2 * embedding_dim)
+        # self.gcn = LabelNet(2 * embedding_dim, 2 * embedding_dim, 2 * embedding_dim)
+        self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         
         # self.gat = GAT(embedding_dim, embedding_dim, embedding_dim)
         # heads = ([gat_num_heads] * gat_num_layers) + [gat_num_out_heads]
@@ -361,13 +362,14 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         label_feature = self.gcn(g, g_node_feature)
         # label_feature = self.gat(g_node_feature)
         # label_cooccurence_feature = self.gcn(g_c, g_node_feature_c)
-        # label_feature = torch.cat((label_feature, g_node_feature), dim=1) # torch.Size([29368, 200*2])
+        label_feature = torch.cat((label_feature, g_node_feature), dim=1) # torch.Size([29368, 200*2])
         # print('label_feature', label_feature.shape)
         # label_feature = torch.cat((label_feature, label_cooccurence_feature), dim=1)  # torch.Size([29368, 200*2])
 
         # print("Label Feature: ", label_feature)
         # get title content features
-        atten_mask = (label_feature.transpose(0, 1) * mask).squeeze(1)
+        atten_mask = (label_feature.transpose(0, 1) * mask).squeeze(1) # Changed here for dimension 
+        # atten_mask = label_feature.transpose(0, 1) * mask.unsqueeze(1) # Changed here for dimension 
         # print("Attention Mask: ", atten_mask)
         # print("Attention Mask Size: ", atten_mask.size())
         # print("Label Feature Size: ", label_feature.size())
@@ -396,11 +398,17 @@ class multichannel_dilatedCNN_with_MeSH_mask(nn.Module):
         output_abstract, _ = pad_packed_sequence(output_abstract, batch_first=True)  # (bs, seq_len, emb_dim*2)
 
         output_abstract = self.dconv(output_abstract.permute(0, 2, 1))  # (bs, embed_dim*2, seq_len-ksz+1)
+        # print('output_abstract', output_abstract.shape)
+        # print('output_abstract', output_abstract.transpose(1, 2).shape)
         alpha_abstract = torch.softmax(torch.matmul(output_abstract.transpose(1, 2), atten_mask), dim=1)  # size: (bs, seq_len-ksz+1, 29368)
+        # print('alpha_abstract', alpha_abstract.shape)
         abstract_features = torch.matmul(output_abstract, alpha_abstract).transpose(1, 2)  # size: (bs, 29368, embed_dim*2)
 
         # get document feature
         x_feature = title_features + abstract_features  # size: (bs, 29368, embed_dim*2)
+        # print('abstract_features', abstract_features.shape)
+        # x_feature = x_feature.squeeze(3)
+        # print('x_feature', x_feature.shape)
         x_feature = torch.sum(x_feature * label_feature, dim=2)
         # x_feature = torch.sum(x_feature * (atten_mask.transpose(1, 2)), dim=2)
 

@@ -127,15 +127,15 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, word2vec_path, graph_file, 
     # Preparing training and test datasets
     print('prepare training and test sets')
     # Converting texts in Tokens in a Tensor List
-    dataset = MeSH_indexing(all_text, all_title, all_text[20000:], all_title[20000:], label_id[20000:], mesh_mask[20000:], all_text[:20000],
-                            all_title[:20000], label_id[:20000], mesh_mask[20000:], is_test=False, is_multichannel=is_multichannel)
+    dataset = MeSH_indexing(all_text, all_title, all_text[20:], all_title[20:], label_id[20:], mesh_mask[20:], all_text[:20],
+                            all_title[:20], label_id[:20], mesh_mask[20:], is_test=False, is_multichannel=is_multichannel)
 
     # build vocab
     print('building vocab')
     vocab = dataset.get_vocab()
     valid_size = 0.02
     split = int(np.floor(valid_size * len(all_title)))
-    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:-20000]) - split, split])
+    train_dataset, valid_dataset = random_split(dataset=dataset, lengths=[len(all_title[:-20]) - split, split])
     print("Prepare Dataset Mesh Indexing: ", tracemalloc.get_traced_memory())
     tracemalloc.stop()
 
@@ -301,11 +301,11 @@ def train(train_dataset, valid_dataset, model, mlb, G, batch_sz, num_epochs, cri
                     optimizer.zero_grad()
                     for param in model.parameters():
                         param.grad = None
-                    train_losses.append(loss.cpu().detach().numpy())  # record training loss
+                    train_losses.append(loss.item())  # record training loss
                 except BaseException as exception:
                     logging.warning(f"Exception Name: {type(exception).__name__}")
                     logging.warning(f"Exception Desc: {exception}")
-                    print("Training Data: ", label, mask, abstract, title, abstract_length, title_length)
+                    # print("Training Data: ", label, mask, abstract, title, abstract_length, title_length)
             # Adjust the learning rate
             lr_scheduler.step()
 
@@ -446,7 +446,8 @@ def main():
     parser.add_argument('--embedding_dim', type=int, default=200)
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--atten_dropout', type=float, default=0.5)
-
+    
+    # lr -> 0.001, 0.0001, 0.0003, 0.0005
     parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_sz', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=8)
@@ -454,7 +455,7 @@ def main():
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=0)
     parser.add_argument('--scheduler_step_sz', type=int, default=2)
-    parser.add_argument('--lr_gamma', type=float, default=0.8)
+    parser.add_argument('--lr_gamma', type=float, default=0.9)
 
     args = parser.parse_args()
 
