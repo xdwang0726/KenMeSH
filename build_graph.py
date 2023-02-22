@@ -15,7 +15,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 from transformers import BertModel
 from transformers import BertTokenizer
-
+import logging
 from mesh_description_embedding import get_bert_embedding
 
 tokenizer = get_tokenizer('basic_english')
@@ -59,34 +59,39 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, MeSH_description, parent_childr
     for k, value in tqdm(mapping_id.items()):
         key = tokenizer(k)
         key = [k.lower() for k in key]
-        embedding = []
+        # embedding = []
        
         #Load Bio Word2Vec 
-        for k in key:
-            embedding.append(vectors.__getitem__(k))
+        # for k in key:
+            # embedding.append(vectors.__getitem__(k))
 
         # feed embedding to LSTM
         # hidden layers are the embedding of the whole MeSH Terms
         # if you do batch tarining don't forget to pack or unpack 
 
-        key_embedding = torch.mean(torch.stack(embedding), dim=0, keepdim=True)
+        # key_embedding = torch.mean(torch.stack(embedding), dim=0, keepdim=True)
         
-        # if value in mesh_description:
-        #     description_embedding = get_bert_embedding(mesh_description[value], bert_model)
-        # else:
-        #     description_embedding = get_bert_embedding(k, bert_model)
+        if value in mesh_description:
+            description_embedding = get_bert_embedding(mesh_description[value], bert_model)
+        else:
+            description_embedding = get_bert_embedding(k, bert_model)
 
-        # description_embedding = description_embedding.view(1, 200)
+        description_embedding = description_embedding.view(1, 768)
         # key_embedding = torch.cat((key_embedding, description_embedding), dim=1)
         
-        label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
-
-        print(f'key embedding: {key_embedding.size()} \n label embed: {label_embedding.size()}' )
+        label_embedding = torch.cat((label_embedding, description_embedding), dim=0)
+        print(f'description embedding: {description_embedding.size()} \n label embed: {label_embedding.size()}' )
         
         # \n description: {description_embedding.size()}')
     
-    print(f'key_embedding_dimension: {key_embedding.size()}')
+    print(f'description_embedding_dimension: {description_embedding.size()}')
     print(f'total label_embedding_dimension: {label_embedding.size()}')
+    
+    try:
+        with open("label_embedding.json", "w") as outfile:
+            json.dump(label_embedding, outfile, indent=4)
+    except BaseException as exception:
+            logging.warning(f"Exception Name: {type(exception).__name__}")
 
     return edges, node_count, label_embedding
 
@@ -443,7 +448,7 @@ def main():
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--meSH_description_path')
     parser.add_argument('--mesh_parent_children_path')
-    parser.add_argument('--bert', default='bert-base-uncased')
+    parser.add_argument('--bert', default='microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext')
     parser.add_argument('--output')
     parser.add_argument('--graph_type', type=str)
 
@@ -457,13 +462,13 @@ def main():
         edge, node_count, label_embedding = get_edge_and_bert_node_fatures(args.meSH_pair_path, args.mesh_parent_children_path, tokenizer, model)
         G = build_MeSH_graph(edge, node_count, label_embedding)
     else:
-        print('Load pre-trained vectors')
-        cache, name = os.path.split(args.word2vec_path)
-        print(f"cache: {cache}, name: {name}")
-        vectors = Vectors(name=name, cache=cache)
+        # print('Load pre-trained vectors')
+        # cache, name = os.path.split(args.word2vec_path)
+        # print(f"cache: {cache}, name: {name}")
+        # vectors = Vectors(name=name, cache=cache)
         if args.graph_type == 'GCN':
             edges, node_count, label_embedding = get_edge_and_node_fatures(args.meSH_pair_path, args.meSH_description_path, args.mesh_parent_children_path,
-                                                                           vectors, args.bert)
+                                                                           [], args.bert)
             G = build_MeSH_graph(edges, node_count, label_embedding)
         elif args.graph_type == 'GCN_cooccurence':
             edge, node_count, label_embedding = cooccurence_node_edge(args.train, args.meSH_pair_path, args.threshold, vectors)

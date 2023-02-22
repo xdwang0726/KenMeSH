@@ -16,7 +16,7 @@ def clean_text(text):
     text = re.sub("(\\W+)", " ", text)
     return text
 
-def get_bert_embedding(text, model = 'bert-base-uncased'):
+def get_bert_embedding(text, model_name = 'bert-base-uncased'):
     logging.set_verbosity_warning()
     # text = "An ionophorous, polyether antibiotic from Streptomyces chartreusensis. It binds and transports CALCIUM and other divalent cations across membranes and uncouples oxidative phosphorylation while inhibiting ATPase of rat liver mitochondria. The substance is used mostly as a biochemical tool to study the role of divalent cations in various biological systems."
 
@@ -34,6 +34,7 @@ def get_bert_embedding(text, model = 'bert-base-uncased'):
         add_special_tokens=True, 
         return_attention_mask=True, 
         pad_to_max_length=True, 
+        truncation=True,
         max_length=512, 
         return_tensors='pt'
     )
@@ -61,7 +62,7 @@ def get_bert_embedding(text, model = 'bert-base-uncased'):
     segments_tensors = torch.tensor([segments_ids])
 
     # Load pre-trained model (weights)
-    model = BertModel.from_pretrained(model,
+    model = BertModel.from_pretrained(model_name,
                                     output_hidden_states = True, # Whether the model returns all hidden-states.
                                     )
 
@@ -139,17 +140,18 @@ def get_bert_embedding(text, model = 'bert-base-uncased'):
         # print("token vecs: ", token_vecs.size())
         # Calculate the average of all 22 token vectors.
         sentence_embedding = torch.mean(token_vecs, dim=0)
-        # print("sentence embedding: ", sentence_embedding.size())
+        print("sentence embedding: ", sentence_embedding.size())
         # pca = PCA(n_components=200)
-        m = torch.nn.Linear(768, 200)
-        sentence_reduced_dimensions_embedding = m(sentence_embedding)
+        # m = torch.nn.Linear(768, 200)
+        # sentence_reduced_dimensions_embedding = m(sentence_embedding)
         # sentence_reduced_dimensions = pca.fit(token_vecs)
         # sentence_reduced_dimensions = models.Dense(in_features=sentence_embedding.tolist(), out_features=200, activation_function=torch.nn.Tanh())
 
         # print ("Our final sentence embedding vector of shape:", sentence_reduced_dimensions)
         #print ("Our final sentence embedding vector of shape after reduction:", sentence_reduced_dimensions.size())
 
-    return sentence_reduced_dimensions_embedding
+    return sentence_embedding
 
 
-# get_bert_embedding()
+# print(get_bert_embedding("After stealing money from the bank vault, the bank robber was seen fishing on the Mississippi river bank."))
+# get_pubmed_bert_embedding()

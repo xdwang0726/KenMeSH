@@ -12,6 +12,10 @@ from torchtext.data.utils import ngrams_iterator
 from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
+from transformers import BertModel
+from transformers import logging
+
+logging.set_verbosity_warning()
 
 T_co = TypeVar('T_co', covariant=True)
 T = TypeVar('T')
@@ -28,6 +32,72 @@ def text_clean(tokens):
     filtered_text = [w for w in text_nostop if len(w) > 1]  # remove single character token
 
     return filtered_text
+
+class bert_MeSHDataset(torch.utils.data.Dataset):
+    def __init__(self, abstract, title, labels, mesh_mask, tokenizer, max_len):
+        super(bert_MeSHDataset, self).__init__()
+        self.title = title
+        self.abstract = abstract 
+        self.labels = labels
+        self.masks = mesh_mask
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.title)
+
+    def get_bert_embedding(self, text):
+        print("text type bert input: ", type(text))
+        # Tokenize the text with BERT tokenizer and convert to tensor
+        input_ids = torch.tensor(self.tokenizer.encode(text, add_special_tokens=True, padding='max_length', truncation=True, max_length=512))
+        # Remove the special tokens ([CLS] and [SEP]) from the input
+        input_ids = input_ids[1:-1]
+        # Create attention mask (1 for input tokens, 0 for padding)
+        attn_mask = torch.ones_like(input_ids)
+        attn_mask[input_ids == self.tokenizer.pad_token_id] = 0
+        # Get the BERT embeddings for the input
+        bert_model = BertModel.from_pretrained('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext',
+                                    output_hidden_states = True, # Whether the model returns all hidden-states.
+                                    )
+        with torch.no_grad():
+            embeddings = bert_model(input_ids.unsqueeze(0), attention_mask=attn_mask.unsqueeze(0))[0]
+        # Take the mean of the embeddings across the tokens
+        embeddings = torch.mean(embeddings, dim=1)
+        # Return the embedding, the label, the input_ids, and the attention_mask as PyTorch tensors
+        return embeddings.squeeze(), input_ids, attn_mask
+
+    
+    def __getitem__(self, idx):
+        # encoding_title = self.tokenizer.encode_plus(
+        #     self.title[item],
+        #     add_special_tokens=True,
+        #     max_length=self.max_len,
+        #     return_token_type_ids=False,
+        #     pad_to_max_length=False,
+        #     return_attention_mask=True,
+        #     padding='max_length', 
+        #     truncation=True
+        # )
+
+        title_embedding, title_input_ids, title_attn_mask = self.get_bert_embedding(self.title[idx])
+        ab_embedding, ab_input_ids, ab_attn_mask = self.get_bert_embedding(self.abstract[idx])
+
+        print("Get Item Bert: ", ab_embedding.size(), ab_input_ids.size(), ab_attn_mask.size())
+
+        yield ngrams_iterator({
+            'title_embedding': title_embedding.numpy(),
+            'title_input_ids': title_input_ids.numpy(), 
+            'title_attention_mask': title_attn_mask.numpy(), 
+            'abstract_embedding': ab_embedding.numpy(),
+            'abstract_input_ids': ab_input_ids.numpy(), 
+            'abstract_attention_mask': ab_attn_mask.numpy(), 
+            'label': self.labels[idx], 
+            'mask': self.masks[idx]
+        })
+
+def bert_MeSH_dataset(train_abstract, train_title, train_labels, train_mesh_mask, tokenizer, max_len):
+    return bert_MeSHDataset(train_abstract, train_title, train_labels, train_mesh_mask, tokenizer, max_len)
+            # bert_MeSHDataset(test_abstract, test_title, test_labels, test_mesh_mask, tokenizer, max_len))
 
 
 def _vocab_iterator(all_text, all_title, ngrams=1):
@@ -67,7 +137,8 @@ def _text_iterator(text, title=None, labels=None, mesh_mask=None, ngrams=1, is_m
             label = labels[i]
             yield label, mask, ngrams_iterator(texts, ngrams)
 
-
+# vocab, _text_iterator(train_text, train_title, labels=train_labels, mesh_mask=train_mask, ngrams=ngrams,
+#                                       is_multichannel=True), include_unk, is_multichannel=True)
 def _create_data_from_iterator(vocab, iterator, include_unk, is_multichannel=True):
     data = []
     labels = []
@@ -103,7 +174,6 @@ def _create_data_from_iterator(vocab, iterator, include_unk, is_multichannel=Tru
                 labels.extend(label)
                 t.update(1)
             return data, list(set(labels))
-
 
 class MultiLabelTextClassificationDataset(torch.utils.data.Dataset):
     def __init__(self, vocab, data, labels=None):

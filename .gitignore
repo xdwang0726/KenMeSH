@@ -1,5 +1,8 @@
 __pycache__/
 venv_kenmesh/
+old_venv_kenmesh/
+venv_bertmesh/
+lightning_logs/
 home/
 data/
 
