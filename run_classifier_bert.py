@@ -1,6 +1,7 @@
 # System
 import argparse
 import io
+import pickle
 
 # Utils
 from tqdm import tqdm, trange
@@ -30,6 +31,11 @@ MAX_LEN = 512
 LR = 2e-05
 
 def split_train_test_val(texts, labels, mesh_masks, test_size = 0.1):
+    """
+    * This Custom function can take as much arguments as required which 
+    * train_test_split from sklearn doesn't support.
+    * x_train,x_test,y_train,y_test = train_test_split(texts, yt, test_size=0.1, random_state=42,shuffle=True)
+    """
     text_train, label_train, mesh_mask_train, text_test, label_test, mesh_mask_test = [], [], [], [], [], []
     total_len = len(texts)
     test_len = int(total_len * test_size)
@@ -126,10 +132,10 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     text_train, label_train, mesh_mask_train, text_test, label_test, mesh_mask_test = split_train_test_val(texts, yt, mesh_mask, test_size = 0.2)
     text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val = split_train_test_val(text_train, label_train, mesh_mask_train, test_size = 0.2)
     
-
-    # x_train,x_test,y_train,y_test = train_test_split(texts, yt, test_size=0.1, random_state=42,shuffle=True)
-    # Next split Train in to training and validation
-    # x_tr,x_val,y_tr,y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42,shuffle=True)
+    # Saving test dataset to pickle for using in evaluation
+    pickle.dump(text_test, open("text_test.pkl", 'wb'))
+    pickle.dump(label_test, open("label_test.pkl", 'wb'))
+    pickle.dump(mesh_mask_test, open("mesh_mask_test.pkl", 'wb'))
 
     steps_per_epoch = len(text_train)//BATCH_SIZE
 
@@ -148,7 +154,11 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     # return text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val, text_test, label_test, mesh_mask_test
     return kenmesh_data_Module, steps_per_epoch, n_classes
 
+def evaluation():
+    pass 
 def main():
+    #region All parser arguments
+
     parser = argparse.ArgumentParser()
 
     # data paths
@@ -182,6 +192,8 @@ def main():
 
     args = parser.parse_args()
 
+    #endregion
+
     # GPU Device assignmentt
     torch.backends.cudnn.benchmark = True
     n_gpu = torch.cuda.device_count()  # check if it is multiple gpu
@@ -210,6 +222,8 @@ def main():
 
     # Instantiate the Model Trainer
     trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', callbacks=[checkpoint_callback])
+    print("Best checkpoint path: ", checkpoint_callback.best_model_path)
+    pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
 
     # Train the Classifier Model
     print("Training...")
@@ -219,6 +233,7 @@ def main():
     print("Evaluation: ")
     print(trainer.test(model,datamodule=kenmesh_data_Module))
     
+    torch.save(model.state_dict(), args.save_model_path)
 
 
 if __name__ == "__main__":
