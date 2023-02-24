@@ -212,9 +212,9 @@ class KenmeshClassifier(pl.LightningModule):
         recall = recall_score(y_true, y_pred, average='weighted')
 
         # Log the metrics to the output
-        self.log('val_f1', f1, prog_bar=True)
-        self.log('val_precision', precision, prog_bar=True)
-        self.log('val_recall', recall, prog_bar=True)
+        self.log('test_f1', f1, prog_bar=True)
+        self.log('test_precision', precision, prog_bar=True)
+        self.log('test_recall', recall, prog_bar=True)
         
         return loss
     

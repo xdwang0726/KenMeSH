@@ -686,7 +686,7 @@ class CorNet(nn.Module):
         return logits
 
 
-gcn_msg = fn.copy_src(src='h', out='m')
+gcn_msg = fn.copy_u('h', 'm')
 gcn_reduce = fn.sum(msg='m', out='h')
 
 

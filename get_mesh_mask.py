@@ -268,9 +268,11 @@ def get_journal_mesh(journal_info, threshold, meshIDs):
 
     journal_mesh = {}
     for k, v in journal.items():
+        # print("k, v: ", k,v)
         num = v['counts']
+        # print("num: ", num)
         mesh = []
-        # new_mesh_index = []
+        new_mesh_index = []
         for i, (ids, counts) in enumerate(v['mesh_counts'].items()):
             if list(v['mesh_counts'].values())[i] / num >= threshold:
                 mesh.append(ids)
@@ -285,7 +287,11 @@ def get_journal_mesh(journal_info, threshold, meshIDs):
         #     except ValueError:
         #         continue
         #     new_mesh_index.append(m_id)
-        journal_mesh[k] = mesh
+        if (k in journal_mesh.keys()):
+            journal_mesh[k] = journal_mesh[k] + mesh
+        else:
+            journal_mesh[k] = mesh
+    # print("Journal from journal: ", journal_mesh)
 
     return journal_mesh
 
@@ -307,7 +313,7 @@ def read_neighbors(neighbors, index_dic = {}):
     objects = ijson.items(f, 'articles.item')
 
     pmid = []
-    # neighbors_mesh = []
+    neighbors_mesh = []
     neigh_mask = []
 
     for i, obj in enumerate(tqdm(objects)):
@@ -315,12 +321,12 @@ def read_neighbors(neighbors, index_dic = {}):
         ids = obj['pmid']
         mesh = obj['neighbors'].split(',')
         # mesh_idx = label2index(mesh, index_dic)
-        neigh_mask.append(mesh)
-        # neighbors_mesh.append(mesh)
+        # neigh_mask.append(mesh_idx)
+        neighbors_mesh.append(mesh)
         pmid.append(ids)
     f.close()
     
-    return pmid, neigh_mask
+    return pmid, neighbors_mesh
 
 
 def mesh_mask(file, neigh_mask, journal_path):
@@ -357,7 +363,8 @@ def build_dataset(train_path, neighbors, journal_mesh, meshIDs, index_dic):
     mlb = MultiLabelBinarizer(classes=meshIDs)
     mlb.fit(meshIDs)
 
-    pmid_neighbors, neighbors_mesh = read_neighbors(neighbors, index_dic)
+    pmid_neighbors, neighbors = read_neighbors(neighbors, index_dic)
+
 
     # print("pmid, neighbour: ", pmid_neighbors, neighbors_mesh)
 
@@ -366,7 +373,9 @@ def build_dataset(train_path, neighbors, journal_mesh, meshIDs, index_dic):
     
 
     dataset = []
-    print("pmid neighbors: ", type(pmid_neighbors))
+    print("pmid neighbors: ", pmid_neighbors, len(pmid_neighbors))
+    print("neighbors_mesh: ", neighbors, len(neighbors))
+
 
     # with tqdm(unit_scale=0, unit='lines') as t:
     for i, obj in enumerate(tqdm(objects)):
@@ -388,23 +397,32 @@ def build_dataset(train_path, neighbors, journal_mesh, meshIDs, index_dic):
                 journal = obj['journal']
                 year = obj['year']
                 mesh_from_journal = journal_mesh[journal]
-                # print("mesh_from_journal: ", mesh_from_journal)
                 mesh_from_neighbors = []
-                if i < len(pmid_neighbors) and ids == pmid_neighbors[i]:
-                    mesh_from_neighbors = neighbors_mesh[i]
+                # print("negh test: ", ids, pmid_neighbors)
+                if ids in pmid_neighbors:
+                    _ = pmid_neighbors.index(ids)
+                    # print("ID in pmid neigh: ", _)
+                    # print("negh test 2: ", neighbors[_])
+                    mesh_from_neighbors = neighbors[_]
                     # print("mesh_from_neighbors: ", mesh_from_neighbors)
                 # mesh_from_journal_str = [str(x) for x in mesh_from_journal]
                 # mesh_from_neighbors_str = [str(x) for x in mesh_from_neighbors]
+                print("mesh_from_journal: ", len(mesh_from_journal))
+                print("mesh_from_neighbors: ", len(mesh_from_neighbors))
                 mesh = list(set(mesh_from_journal + mesh_from_neighbors))
-                # print("Mesh Line 369: ", len(mesh))
-                # print("Mesh Classes: ", mlb.classes_)
+                print("Mesh Line 403: ", type(mesh), len(mesh))
+                print("Mesh Classes: ", len(mlb.classes_))
                 mask = mlb.fit_transform([mesh])
                 # mask = mask.astype(np.int_)
                 mask = mask.tolist()
-                # print("Mask: ", np.bincount(mask[0]))
-                # print("MEsh Size: ", sys.getsizeof(mask))
+                if i == 0:
+                    print("mesh: ", mesh)
+                    print("mask: ", mask)
+                print("Mask: ", np.bincount(mask[0]))
+                print("MEsh Size: ", sys.getsizeof(mask))
                 # print("Mesh content size: ", mask[0][0])
-                # print("Mesh content type: ", type(mask[0][0]))
+                print("Mesh content type: ", type(mask[0][0]))
+
                 data_point['pmid'] = ids
                 data_point['title'] = heading
                 data_point['abstractText'] = clean_abstract
@@ -473,7 +491,6 @@ def main():
     with open(args.save_path, "w") as outfile:
         json.dump(pubmed, outfile)
         print("file write complete on: ", outfile)
-
 
 if __name__ == "__main__":
     main()
