@@ -25,6 +25,7 @@ def precision(p, t):
     >>> precision({1, 2, 3, 4}, {1})
     0.25
     """
+    print("p,t: ", p,t)
     return len(t.intersection(p)) / len(p)
 
 
@@ -39,10 +40,14 @@ def precision_at_ks(Y_pred_scores, Y_test, ks):
         for i in np.arange(Y_pred_scores.shape[0]):
             if issparse(Y_pred_scores):
                 idx = np.argsort(Y_pred_scores[i].data)[::-1]
+                print("if idx: ", idx)
+                print("if Y_pred_score indice: ", Y_pred_scores[i].indices[idx[:k]])
                 Y_pred.append(set(Y_pred_scores[i].indices[idx[:k]]))
             else:  # is ndarray
                 idx = np.argsort(Y_pred_scores[i, :])[::-1]
                 Y_pred.append(set(idx[:k]))
+                print("idx: ", idx)
+                print("Y_pred_score indice: ", idx[:k])
 
         result.append(np.mean([precision(yp, set(yt)) for yt, yp in zip(Y_test, Y_pred)]))
     return result
@@ -220,6 +225,8 @@ def find_common_label(y_actual, y_hat):
 
 def example_based_evaluation(pred, target, threshold, num_example):
     pred = np.greater_equal(pred, threshold).astype(int)
+    # print("Example evaluation pred: ", pred)
+    # print("Example evaluation target: ", target)
 
     common_label = np.sum(np.multiply(pred, target), axis=1)
     sum_pred = np.sum(pred, axis=1)
@@ -294,6 +301,10 @@ def main():
     threshold = np.array([0.0005] * 28415)
 
     test_labelsIndex = getLabelIndex(T_score)
+
+    print("Eval Helper: test_labelsIndex: ", type(test_labelsIndex), test_labelsIndex.size, test_labelsIndex.shape)
+    print("Eval Helper: P_score: ", type(P_score), P_score.size, P_score.shape)
+
     precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
     print('p@k', precisions)
 

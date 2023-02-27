@@ -53,7 +53,10 @@ def split_train_test_val(texts, labels, mesh_masks, test_size = 0.1):
         else:
             text_test.append(texts[num])
             label_test.append(labels[num])
-            mesh_mask_test.append(mesh_masks[num])            
+            mesh_mask_test.append(mesh_masks[num]) 
+        if i == 0:
+            print("First doc: ", type(label_train), type(mesh_mask_train))
+            print(label_train[0], type(label_train[0]), np.count_nonzero(label_train[0]))           
 
     print(f"Total number of documents: {total_len}, train set: {len(text_train)}, test set: {len(text_test)}")
     
@@ -229,11 +232,12 @@ def main():
     print("Training...")
     trainer.fit(model, kenmesh_data_Module)
 
+    torch.save(model.state_dict(), args.save_model_path)
+
     # Evaluate the model performance on the test dataset
     print("Evaluation: ")
     print(trainer.test(model,datamodule=kenmesh_data_Module))
     
-    torch.save(model.state_dict(), args.save_model_path)
 
 
 if __name__ == "__main__":

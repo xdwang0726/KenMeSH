@@ -1,5 +1,6 @@
-import torch
+import numpy as np
 import pytorch_lightning as pl
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import transformers
@@ -7,6 +8,8 @@ from transformers import BertModel, get_linear_schedule_with_warmup
 from torch.optim import AdamW 
 from sklearn.metrics import f1_score, precision_score, recall_score
 import dgl.function as fn
+
+from eval_helper import getLabelIndex, precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 
 BERT_MODEL_NAME = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext'
 
@@ -62,7 +65,7 @@ class KenmeshClassifier(pl.LightningModule):
         self.lr = lr
         self.criterion = nn.BCEWithLogitsLoss()
 
-    def forward(self,input_ids, attn_mask, mesh_masks):
+    def forward(self,input_ids, attn_mask, mesh_mask):
 
         data_module = self.trainer.datamodule
 
@@ -79,8 +82,8 @@ class KenmeshClassifier(pl.LightningModule):
         * label_attn_mask -> [768, 28415]   
         """
         label_feature = self.gcn(g, g_node_feature)
-        mesh_masks = torch.tensor(mesh_masks)  
-        label_attn_mask = label_feature.transpose(0, 1) * mesh_masks 
+        mesh_mask = torch.tensor(mesh_mask)  
+        label_attn_mask = label_feature.transpose(0, 1) * mesh_mask 
     
         # print("Forward Label Attn: ", type(label_attn_mask), label_attn_mask.size()) # [16, 768, 28415]
         # print("Forward Input Id: ", type(input_ids), input_ids.size()) # [16, 512]
@@ -168,22 +171,26 @@ class KenmeshClassifier(pl.LightningModule):
         # loss = self.criterion(outputs,labels.float())
         self.log('val_loss',loss , prog_bar=True,logger=True)
         
-        # Calculate the metrics
-        y_true = labels.cpu().numpy()
-        print("Val Cal")
-        print("y_true : ", y_true, type(y_true), len(y_true))
-        print("y_pred : ", probs, type(probs), len(probs))
-        y_pred = torch.sigmoid(probs).cpu().numpy() > 0.5
+        # # Calculate the metrics
+        # y_true = labels.cpu().numpy()
+        # y_pred = probs.cpu().numpy()
 
-        print("y_pred sigmoid: ", y_pred, type(y_pred), len(y_pred))
-        f1 = f1_score(y_true, y_pred, average='weighted')
-        precision = precision_score(y_true, y_pred, average='weighted')
-        recall = recall_score(y_true, y_pred, average='weighted')
+        # print("Val Cal")
+        # print("Val labels: ", labels, type(labels), labels.shape)
+        # print("y_true : ", y_true, type(y_true), len(y_true), y_true.shape)
+        # print("y_pred : ", y_pred, type(y_pred), len(y_pred), y_pred.shape)
 
-        # Log the metrics to the output
-        self.log('val_f1', f1, prog_bar=True)
-        self.log('val_precision', precision, prog_bar=True)
-        self.log('val_recall', recall, prog_bar=True)
+        # self.evaluate(y_true, y_pred)
+
+        # print("y_pred sigmoid: ", y_pred, type(y_pred), len(y_pred))
+        # f1 = f1_score(y_true, y_pred, average='weighted')
+        # precision = precision_score(y_true, y_pred, average='weighted')
+        # recall = recall_score(y_true, y_pred, average='weighted')
+
+        # # Log the metrics to the output
+        # self.log('val_f1', f1, prog_bar=True)
+        # self.log('val_precision', precision, prog_bar=True)
+        # self.log('val_recall', recall, prog_bar=True)
 
         return loss
 
@@ -206,15 +213,17 @@ class KenmeshClassifier(pl.LightningModule):
 
         # Calculate the metrics
         y_true = labels.cpu().numpy()
-        y_pred = torch.sigmoid(probs).cpu().numpy() > 0.5
-        f1 = f1_score(y_true, y_pred, average='weighted')
-        precision = precision_score(y_true, y_pred, average='weighted')
-        recall = recall_score(y_true, y_pred, average='weighted')
+        # y_pred = torch.sigmoid(probs).cpu().numpy() > 0.5
+        y_pred = probs.cpu().numpy()
+        self.evaluate(y_true, y_pred)
+        # f1 = f1_score(y_true, y_pred, average='weighted')
+        # precision = precision_score(y_true, y_pred, average='weighted')
+        # recall = recall_score(y_true, y_pred, average='weighted')
 
         # Log the metrics to the output
-        self.log('test_f1', f1, prog_bar=True)
-        self.log('test_precision', precision, prog_bar=True)
-        self.log('test_recall', recall, prog_bar=True)
+        # self.log('test_f1', f1, prog_bar=True)
+        # self.log('test_precision', precision, prog_bar=True)
+        # self.log('test_recall', recall, prog_bar=True)
         
         return loss
     
@@ -227,3 +236,24 @@ class KenmeshClassifier(pl.LightningModule):
         scheduler = get_linear_schedule_with_warmup(optimizer,warmup_steps,total_steps)
 
         return [optimizer], [scheduler]
+
+    def evaluate(self, T_score, P_score):
+        # T_score = torch.tensor(T_score)
+        # P_score = np.concatenate(P_score, axis=0) # 3d -> 2d array
+        # T_score = np.concatenate(T_score, axis=0)
+        # T_score = T.numpy()
+        print("True Label load done", type(T_score), T_score.shape)
+        # print(T_score)
+        threshold = np.array([0.0005] * 28415)
+
+        test_labelsIndex = getLabelIndex(T_score)
+        print("test_labelsIndex: ", test_labelsIndex, type(test_labelsIndex))
+        print("P_score: ", P_score, type(P_score))
+        precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
+        print('p@k', precisions)
+
+        emb = example_based_evaluation(P_score, T_score, threshold, 16)
+        print('(ebp, ebr, ebf): ', emb)
+
+        micro = micro_macro_eval(P_score, T_score, threshold)
+        print('mi/ma(MiF, MiP, MiR, MaF, MaP, MaR): ', micro)
