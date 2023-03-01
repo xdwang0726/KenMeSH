@@ -82,9 +82,10 @@ class KenmeshClassifier(pl.LightningModule):
         * label_attn_mask -> [768, 28415]   
         """
         label_feature = self.gcn(g, g_node_feature)
-        mesh_mask = torch.tensor(mesh_mask)  
+        # mesh_mask = torch.tensor(mesh_mask)  
         label_attn_mask = label_feature.transpose(0, 1) * mesh_mask 
-    
+
+        print("mesh_mask: ", type(mesh_mask), mesh_mask.shape)
         # print("Forward Label Attn: ", type(label_attn_mask), label_attn_mask.size()) # [16, 768, 28415]
         # print("Forward Input Id: ", type(input_ids), input_ids.size()) # [16, 512]
         
@@ -111,12 +112,12 @@ class KenmeshClassifier(pl.LightningModule):
         alpha = torch.softmax(torch.matmul(output.transpose(1, 2), label_attn_mask.float()), dim=1)
         print("output_masked: ", type(alpha), alpha.size()) # [16, 500, 28415]
 
-        print("Test 1: ", type(output), type(alpha))
+        # print("Test 1: ", type(output), type(alpha))
         output_features = torch.matmul(output, alpha).transpose(1, 2) # [16, 28415, 768]
         print("output_features", type(output_features), output_features.size())
 
         x_feature = torch.sum(output_features * label_feature, dim=2) # [16, 28415]
-        print("x_feature: ", x_feature, x_feature.size())
+        # print("x_feature: ", x_feature, x_feature.size())
 
         # alpha_text = torch.softmax(torch.matmul(output, label_attn_mask), dim=0)
 

@@ -4,6 +4,7 @@ import string
 from operator import itemgetter
 from typing import Iterator, TypeVar, List
 
+import numpy as np
 import torch
 from nltk.corpus import stopwords
 from torch.utils.data import Dataset, Sampler, DistributedSampler
@@ -23,6 +24,31 @@ T = TypeVar('T')
 stop_words = set(stopwords.words('english'))
 table = str.maketrans('', '', string.punctuation)
 
+def dense_to_sparse(dense_matrix=[[]]):
+    """
+    takes a 2D array/list as input 
+    return a dictionary of format (r,c) : value
+    """
+    sparse_mat = [
+            [rindx, cindx, val]
+            for (rindx, row) in enumerate(dense_matrix)
+            for (cindx, val) in enumerate(row)
+            if (val != 0)
+        ]
+    sparse_mat = {(r, c) : v for (r, c, v) in sparse_mat}
+
+    return sparse_mat
+
+def sparse_to_dense(sparse_matrix={}, r = 1, c = 28415):
+    """
+    takes a sparse dictionary and desired number of row and column as input
+    return a 2D array of the size (r,c)
+    """
+    x = np.zeros((r,c))
+    for k in sparse_matrix:
+        x[k] = sparse_matrix[k]
+    
+    return x
 
 def text_clean(tokens):
 

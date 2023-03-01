@@ -1,6 +1,10 @@
+import ast
+
 from torch.utils.data import Dataset
 import torch
 import torch.nn as nn
+
+from utils import sparse_to_dense
 
 class KenmeshDataset (Dataset):
     def __init__(self, texts, labels, mesh_masks, tokenizer, max_len, device, g, g_node_feature):
@@ -12,9 +16,6 @@ class KenmeshDataset (Dataset):
         self.device = device
         self.g = g
         self.g_node_feature = g_node_feature
-        
-        embedding_dim = 768
-        
         
     def __len__(self):
         return len(self.texts)
@@ -36,7 +37,8 @@ class KenmeshDataset (Dataset):
         input_ids = inputs['input_ids'].flatten()
         attn_mask = inputs['attention_mask'].flatten()
 
-
+        res = ast.literal_eval(self.mesh_masks[item_idx])
+        mesh_mask = sparse_to_dense(res)
 
         # print("Dataset Labels: ", type(self.labels[item_idx]), torch.tensor(self.labels[item_idx]).size() )
         # print("label feature: ", type(label_feature.transpose(0, 1)), label_feature.transpose(0, 1).size() )
@@ -47,5 +49,5 @@ class KenmeshDataset (Dataset):
             'input_ids': input_ids.long() , # Number of tokens in the text
             'attention_mask': attn_mask.long(),
             'label':torch.tensor(self.labels[item_idx]).long(), # Number of labels associated with each document
-            'mesh_mask': torch.tensor(self.mesh_masks[item_idx]).long(), #[1, 28415]
+            'mesh_mask': torch.tensor(mesh_mask).long(), #[1, 28415]
         }

@@ -88,10 +88,10 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
         mesh_mask.append(obj["meshMask"])
         texts.append(text)
         label_id.append(list(obj["meshID"].keys()))
-        if i == 0:
-            print("Mesh Mask: ", len(mesh_mask[0]), len(mesh_mask[0][0]), mesh_mask[0].count(1), mesh_mask[0][0].count(1))
-            print("Label: ", obj["meshID"])
-            print("Label ID: ", len(label_id[0]), label_id[0])
+        # if i == 0:
+        #     print("Mesh Mask: ", len(mesh_mask[0]), len(mesh_mask[0][0]), mesh_mask[0].count(1), mesh_mask[0][0].count(1))
+        #     print("Label: ", obj["meshID"])
+        #     print("Label ID: ", len(label_id[0]), label_id[0])
     
     print('Finish loading training data')
     f.close()
@@ -121,7 +121,7 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     print("3: ", mlb.classes_)
 
     print("4: ", label_id[0])
-    print("5: ", mesh_mask[0][0].count(1)) # mesh_mask -> [1, 28415]
+    # print("5: ", mesh_mask[0][0].count(1)) # mesh_mask -> [1, 28415]
 
     # Prepare label features
     print('Load graph')
