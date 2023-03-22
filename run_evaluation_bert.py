@@ -13,46 +13,33 @@ from dgl.data.utils import load_graphs
 
 # ML Libraries
 import torch
-from torch.utils.data import DataLoader,Dataset,RandomSampler, SequentialSampler, TensorDataset
 import pytorch_lightning as pl
 from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn import metrics
+# from sklearn.model_selection import train_test_split
 from transformers import BertTokenizer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 # Modules
 from bert_data_module import KenmeshDataModule
 from bert_classifier_lightning import KenmeshClassifier
+from eval_helper import getLabelIndex, precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 
 # Global Variables
 BERT_MODEL_NAME = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext'
 N_EPOCHS = 12
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 MAX_LEN = 512
 LR = 2e-05
 
-# convert probabilities into 0 or 1 based on a threshold value
-def classify(pred_prob,thresh):
-    y_pred = []
-
-    for tag_label_row in pred_prob:
-        temp=[]
-        for tag_label in tag_label_row:
-            # print("tag_label: ", tag_label)
-            if tag_label >= thresh:
-                temp.append(1) # Infer tag value as 1 (present)
-            else:
-                temp.append(0) # Infer tag value as 0 (absent)
-        y_pred.append(temp)
-
-    return y_pred
-
-def prepare_dataset(MeSH_id_pair_file, graph_file, device):
+def prepare_dataset(text_test, label_test, mesh_mask_test, MeSH_id_pair_file, graph_file, device):
     """ Load Dataset and Preprocessing """
-    
-    text_test = pickle.load(open("text_test.pkl", 'rb'))
-    label_test = pickle.load(open("label_test.pkl", 'rb'))
-    mesh_mask_test = pickle.load(open("mesh_mask_test.pkl", 'rb'))
+
+    print("text_test: ", len(text_test), len(text_test[0]))
+    print("label_test: ", len(label_test), len(label_test[0]))
+    print("mesh_mask_test: ", len(mesh_mask_test), len(mesh_mask_test[0]))
+    print('number of test data %d' % len(text_test))
+
+    # print('load and prepare Mesh')
 
     mapping_id = {}
     with open(MeSH_id_pair_file, 'r') as f:
@@ -65,30 +52,101 @@ def prepare_dataset(MeSH_id_pair_file, graph_file, device):
 
     print('Total number of labels %d' % n_classes)
 
+    # Encode the tags(labels) in a binary format in order to be used for training
+
+    mlb = MultiLabelBinarizer(classes=meshIDs)
+    yt = mlb.fit_transform(label_test)
 
     # Prepare label features
     print('Load graph')
     G = load_graphs(graph_file)[0][0]
     # print('graph', G.ndata['feat'].shape) # [28415, 768]
+    
 
-    steps_per_epoch = len(text_train)//BATCH_SIZE
+
+    steps_per_epoch = len(text_test)//BATCH_SIZE
 
     # Instantiate and set up the data_module
     Bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
 
-    kenmesh_data_Module = KenmeshDataModule(text_train, label_train, mesh_mask_train,\
-         text_val, label_val, mesh_mask_val, text_test, label_test, mesh_mask_test, Bert_tokenizer,\
+    kenmesh_data_Module = KenmeshDataModule([], [], [],\
+         [], [], [], text_test, yt, mesh_mask_test, Bert_tokenizer,\
           device, G, G.ndata['feat'], BATCH_SIZE, MAX_LEN)
-    kenmesh_data_Module.setup()
+    kenmesh_data_Module.get_test_data()
+
+
 
     print('prepare dataset and labels graph done!')
     # return len(meshIDs), mlb, train_dataset, valid_dataset, vectors, G
     # return text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val, text_test, label_test, mesh_mask_test
-    return kenmesh_data_Module, steps_per_epoch, n_classes
+    return kenmesh_data_Module, steps_per_epoch, n_classes, G
 
+
+def evaluation(P_score, T_score):
+    T_score = torch.tensor(T_score)
+    P_score = np.concatenate(P_score, axis=0) # 3d -> 2d array
+    T_score = np.concatenate(T_score, axis=0)
+    # T_score = T.numpy()
+    print("True Label load done", type(T_score))
+    print("P Label load done", type(P_score))
+    # print(T_score)
+    threshold = np.array([0.0005] * 28415)
+
+    test_labelsIndex = getLabelIndex(T_score)
+    print("test_labelsIndex: ", test_labelsIndex, type(test_labelsIndex))
+    print("P_score: ", P_score, type(P_score))
+    precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
+    print('p@k', precisions)
+
+    emb = example_based_evaluation(P_score, T_score, threshold, 16)
+    print('(ebp, ebr, ebf): ', emb)
+
+    micro = micro_macro_eval(P_score, T_score, threshold)
+    print('mi/ma(MiF, MiP, MiR, MaF, MaP, MaR): ', micro) 
+
+def test(kenmesh_data_Module, model, G, device):
+    data_loader = kenmesh_data_Module.test_dataloader()
+
+    with torch.no_grad():
+
+        model.eval()
+
+        # initialize empty lists to store predicted label features and true labels
+        predicted_label_features = []
+        true_labels = []
+
+        # iterate over batches in the evaluation data loader
+        for batch in tqdm(data_loader):
+            # get input features and true labels from batch
+            torch.cuda.empty_cache()
+
+            input_ids = batch['input_ids'].to(device) 
+            attention_mask = batch['attention_mask'].to(device)
+            mesh_mask = batch['mesh_mask'].to(device)
+            g, g_node_feature = G, G.ndata['feat']
+            g = g.to(device)
+            g_node_feature = g_node_feature.to(device)
+            label = batch['label']
+
+            # make predictions using the model
+            with torch.no_grad():
+                output = model(input_ids,attention_mask, mesh_mask, g, g_node_feature, device)
+            o = output.data.cpu().numpy()
+            predicted_label_features.append(o)
+            del output
+            true_labels.append(label)
+            torch.cuda.empty_cache()
+
+        # concatenate the predicted label features and true labels across batches
+        predicted_label_features = torch.cat(predicted_label_features)
+        true_labels = torch.cat(true_labels)
+
+    return predicted_label_features, true_labels
+
+    
 def main():
-    #region Arguments
-     
+    #region All parser arguments
+
     parser = argparse.ArgumentParser()
 
     # data paths
@@ -97,7 +155,7 @@ def main():
     parser.add_argument('--word2vec_path')
     parser.add_argument('--meSH_pair_path')
     parser.add_argument('--graph')
-    parser.add_argument('--model')
+    parser.add_argument('--save-model-path')
     parser.add_argument('--model_name', default='Full', type=str)
 
     # environment
@@ -132,109 +190,41 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
-    prepare_dataset()
+    # Saving test dataset to pickle for using in evaluation
+    text_test = pickle.load(open("text_test.pkl", 'rb'))
+    label_test = pickle.load(open("label_test.pkl", 'rb'))
+    mesh_mask_test = pickle.load(open("mesh_mask_test.pkl", 'rb'))
 
-
-
-    n_classes = 28415
-    steps_per_epoch = len(text_test)//BATCH_SIZE
-
+    # Get dataset and label graph & Load pre-trained embeddings
+    kenmesh_data_Module, steps_per_epoch, n_classes, G= prepare_dataset(text_test, label_test, mesh_mask_test, args.meSH_pair_path, args.graph, device)
+    
+    # checkpoint_callback = pickle.load(open('checkpoint.pkl', 'rb'))
+    # model_path = checkpoint_callback.best_model_path
+    # Inittialising Bert Classifier Model
     model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
-    model.load_state_dict(torch.load(args.model))
 
-    # Tokenize all questions in x_test
-    input_ids = []
-    attention_masks = []
-
-    Bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
-
-    # Set the batch size.  
-    TEST_BATCH_SIZE = 16  
-
-    # Create the DataLoader.
-    # pred_data = TensorDataset(input_ids, attention_masks, mesh_mask_test, labels)
-    pred_data = KenmeshDataset(texts=text_test, labels=label_test, mesh_masks = mesh_mask_test, g = g, g_node_feature = g_node_feature, tokenizer=tokenizer, max_len = max_token_len, device=device)
-    pred_sampler = SequentialSampler(pred_data)
-    pred_dataloader = DataLoader(pred_data, sampler=pred_sampler, batch_size=TEST_BATCH_SIZE, drop_last=True)
-
-    flat_pred_outs = 0
-    flat_true_labels = 0
-
-    # Put model in evaluation mode
-    model = model.to(device) # moving model to cuda
-    model.eval()
-
-    # Tracking variables 
-    pred_outs, true_labels = [], []
-    #i=0
-    # Predict 
-    for batch in pred_dataloader:
-        # Add batch to GPU
-        batch = tuple(t.to(device) for t in batch)
+    checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=11-val_loss=0.01.ckpt')
+    model.load_state_dict(checkpoint['state_dict'])
     
-        # Unpack the inputs from our dataloader
-        b_input_ids, b_attn_mask, b_label_attn_mask, b_labels = batch
-    
-        with torch.no_grad():
-            # Forward pass, calculate logit predictions
-            pred_out = model(b_input_ids,b_attn_mask, b_label_attn_mask)
-            pred_out = torch.sigmoid(pred_out)
-            # Move predicted output and labels to CPU
-            pred_out = pred_out.detach().cpu().numpy()
-            label_ids = b_labels.to('cpu').numpy()
-            #i+=1
-            # Store predictions and true labels
-            #print(i)
-            #print(outputs)
-            #print(logits)
-            #print(label_ids)
-        print(pred_out[0], label_ids)
-        pred_outs.append(pred_out[0])
-        true_labels.append(label_ids)
+    # model.load_state_dict(torch.load(model_path))
 
-    print("Pred output: ", pred_outs)
-    print("True Labels output: ", true_labels)
+    model.to(device)
 
-    # Combine the results across all batches. 
-    flat_pred_outs = np.concatenate(pred_outs, axis=0)
+    print("Model load successful...")
 
-    # Combine the correct labels for each batch into a single list.
-    flat_true_labels = np.concatenate(true_labels, axis=0)
+    G.to(device)
+   
+    # Evaluate the model performance on the test dataset
+    print("Evaluation: ")
+    predicted_label_features, true_labels = test(kenmesh_data_Module, model, G, device)  
 
-    print("flat_pred_outs, flat_true_labels:", flat_pred_outs.shape , flat_true_labels.shape)
+    print("predicted_label_features", type(predicted_label_features))
+    print("true_labels", type(true_labels))
 
-    #define candidate threshold values
-    threshold  = np.arange(0.4,0.51,0.01)
-    print(threshold)
-    
-    # print(flat_pred_outs[3])
-    # print(flat_true_labels[3])
+    np.save("pred", predicted_label_features)
+    torch.save(true_labels, "true_label")  
+    evaluation(predicted_label_features, true_labels)
 
-    scores=[] # Store the list of f1 scores for prediction on each threshold
-
-    #convert labels to 1D array
-    y_true = flat_true_labels.ravel() 
-
-    for thresh in threshold:
-        
-        #classes for each threshold
-        pred_bin_label = classify(flat_pred_outs,thresh) 
-
-        #convert to 1D array
-        y_pred = np.array(pred_bin_label).ravel()
-        print("y_true: ", len(y_true))
-        print("y_pred: ", len(y_pred))
-        scores.append(metrics.f1_score(y_true,y_pred))
-    
-    # find the optimal threshold
-    opt_thresh = threshold[scores.index(max(scores))]
-    print(f'Optimal Threshold Value = {opt_thresh}')
-
-    #predictions for optimal threshold
-    y_pred_labels = classify(flat_pred_outs,opt_thresh)
-    y_pred = np.array(y_pred_labels).ravel() # Flatten
-
-    print(metrics.classification_report(y_true,y_pred))
 
 if __name__ == "__main__":
     main()

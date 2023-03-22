@@ -65,15 +65,13 @@ class KenmeshClassifier(pl.LightningModule):
         self.lr = lr
         self.criterion = nn.BCEWithLogitsLoss()
 
-    def forward(self,input_ids, attn_mask, mesh_mask):
+    def forward(self,input_ids, attn_mask, mesh_mask, g=[], g_node_feature=[], device="cuda"):
 
-        data_module = self.trainer.datamodule
+        if not g:
+            data_module = self.trainer.datamodule
 
-        # Call the collate_graphs function from the DataModule
-        g, g_node_feature, device = data_module.collate_graphs()
-
-        g = g.to(device)
-        g_node_feature = g_node_feature.to(device)
+            # Call the collate_graphs function from the DataModule
+            g, g_node_feature, device = data_module.collate_graphs()
 
         """
         * component-wise multiplication A[i,j] * B[i,j] = C[i,j]
@@ -85,18 +83,18 @@ class KenmeshClassifier(pl.LightningModule):
         # mesh_mask = torch.tensor(mesh_mask)  
         label_attn_mask = label_feature.transpose(0, 1) * mesh_mask 
 
-        print("mesh_mask: ", type(mesh_mask), mesh_mask.shape)
+        # print("mesh_mask: ", type(mesh_mask), mesh_mask.shape)
         # print("Forward Label Attn: ", type(label_attn_mask), label_attn_mask.size()) # [16, 768, 28415]
         # print("Forward Input Id: ", type(input_ids), input_ids.size()) # [16, 512]
         
         #Take the word tokens to have the sequence length
         outputs = self.bert(input_ids=input_ids,attention_mask=attn_mask)
         output = outputs.last_hidden_state #[16,768] #[16, 512, 768]
-        print("Pooler output: ", type(output), output.size()) 
+        # print("Pooler output: ", type(output), output.size()) 
 
         #CNN output should be: (bs, embed_dim*2, seq_len-ksz+1)
         output = self.cnn(output.permute(0,2,1)) # [1,768,1] # [16, 768, 500]
-        print("CNN output: ", type(output), output.size(), output.view(1,-1).size()) 
+        # print("CNN output: ", type(output), output.size(), output.view(1,-1).size()) 
 
         # output = self.classifier(output.view(1,-1)) # [1, 28415]
         # print("Classifier output: ", type(output), output.size()) 
@@ -110,11 +108,11 @@ class KenmeshClassifier(pl.LightningModule):
         # [16, 768, 500] * [768, 28415]
         
         alpha = torch.softmax(torch.matmul(output.transpose(1, 2), label_attn_mask.float()), dim=1)
-        print("output_masked: ", type(alpha), alpha.size()) # [16, 500, 28415]
+        # print("output_masked: ", type(alpha), alpha.size()) # [16, 500, 28415]
 
         # print("Test 1: ", type(output), type(alpha))
         output_features = torch.matmul(output, alpha).transpose(1, 2) # [16, 28415, 768]
-        print("output_features", type(output_features), output_features.size())
+        # print("output_features", type(output_features), output_features.size())
 
         x_feature = torch.sum(output_features * label_feature, dim=2) # [16, 28415]
         # print("x_feature: ", x_feature, x_feature.size())
@@ -125,11 +123,13 @@ class KenmeshClassifier(pl.LightningModule):
         # probs = torch.sigmoid(x_feature)
 
         # print("Probs: ", type(probs), probs.size())
+
+        torch.cuda.empty_cache()
             
         return x_feature
 
     def training_step(self,batch,batch_idx):
-        print("training_step")
+        # print("training_step")
         input_ids = batch['input_ids']
         attention_mask = batch['attention_mask']
         labels = batch['label']
@@ -157,7 +157,7 @@ class KenmeshClassifier(pl.LightningModule):
         mesh_mask = batch['mesh_mask'] # [1,28415]
         
         probs = self(input_ids,attention_mask, mesh_mask)
-        print("Hello Val: ", probs.size(), labels.size())
+        # print("Hello Val: ", probs.size(), labels.size())
 
         # # flatten predicted probabilities
         # probs_flat = probs.mean(dim=1).view(-1, 28415)
@@ -202,7 +202,7 @@ class KenmeshClassifier(pl.LightningModule):
         mesh_mask = batch['mesh_mask']
         
         probs = self(input_ids,attention_mask, mesh_mask)
-        print("Hello test: ", probs.size(), labels.size())
+        # print("Hello test: ", probs.size(), labels.size())
 
         # # flatten predicted probabilities
         # probs_flat = probs.mean(dim=1).view(-1, 28415)
@@ -213,10 +213,10 @@ class KenmeshClassifier(pl.LightningModule):
         self.log('test_loss',loss , prog_bar=True,logger=True)
 
         # Calculate the metrics
-        y_true = labels.cpu().numpy()
+        # y_true = labels.cpu().numpy()
         # y_pred = torch.sigmoid(probs).cpu().numpy() > 0.5
-        y_pred = probs.cpu().numpy()
-        self.evaluate(y_true, y_pred)
+        # y_pred = probs.cpu().numpy()
+        # self.evaluate(y_true, y_pred)
         # f1 = f1_score(y_true, y_pred, average='weighted')
         # precision = precision_score(y_true, y_pred, average='weighted')
         # recall = recall_score(y_true, y_pred, average='weighted')

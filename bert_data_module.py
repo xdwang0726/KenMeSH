@@ -31,13 +31,13 @@ class KenmeshDataModule (pl.LightningDataModule):
         self.test_dataset = KenmeshDataset(texts=self.test_text, labels=self.test_label, mesh_masks = self.test_mesh_mask, g = self.g, g_node_feature = self.g_node_feature, tokenizer=self.tokenizer, max_len = self.max_token_len, device=self.device)
     
     def train_dataloader(self):
-        return DataLoader(self.train_dataset,batch_size= self.batch_size, shuffle = True , num_workers=4, multiprocessing_context='spawn',  drop_last=True)
+        return DataLoader(self.train_dataset,batch_size= self.batch_size, shuffle = True , num_workers=8, multiprocessing_context='spawn',  drop_last=True, pin_memory=True)
 
     def val_dataloader(self):
-        return DataLoader (self.val_dataset,batch_size= self.batch_size, num_workers=4, multiprocessing_context='spawn',  drop_last=True)
+        return DataLoader (self.val_dataset,batch_size= self.batch_size, num_workers=8, multiprocessing_context='spawn',  drop_last=True, pin_memory=True)
 
     def test_dataloader(self):
-        return DataLoader (self.test_dataset,batch_size= self.batch_size, num_workers=4, multiprocessing_context='spawn',  drop_last=True)
+        return DataLoader (self.test_dataset,batch_size= self.batch_size, num_workers=8, multiprocessing_context='spawn',  drop_last=True, pin_memory=True)
     
     def collate_graphs(self):
 
