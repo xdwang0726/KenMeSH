@@ -35,7 +35,7 @@ def prepare_dataset(text_test, label_test, mesh_mask_test, MeSH_id_pair_file, gr
     """ Load Dataset and Preprocessing """
 
     print("text_test: ", len(text_test), len(text_test[0]))
-    print("label_test: ", len(label_test), len(label_test[0]))
+    print("label_test: ", len(label_test), label_test[0])
     print("mesh_mask_test: ", len(mesh_mask_test), len(mesh_mask_test[0]))
     print('number of test data %d' % len(text_test))
 
@@ -54,8 +54,8 @@ def prepare_dataset(text_test, label_test, mesh_mask_test, MeSH_id_pair_file, gr
 
     # Encode the tags(labels) in a binary format in order to be used for training
 
-    mlb = MultiLabelBinarizer(classes=meshIDs)
-    yt = mlb.fit_transform(label_test)
+    # mlb = MultiLabelBinarizer(classes=meshIDs)
+    # yt = mlb.fit_transform(label_test)
 
     # Prepare label features
     print('Load graph')
@@ -70,9 +70,9 @@ def prepare_dataset(text_test, label_test, mesh_mask_test, MeSH_id_pair_file, gr
     Bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
 
     kenmesh_data_Module = KenmeshDataModule([], [], [],\
-         [], [], [], text_test, yt, mesh_mask_test, Bert_tokenizer,\
+         [], [], [], text_test, label_test, mesh_mask_test, Bert_tokenizer,\
           device, G, G.ndata['feat'], BATCH_SIZE, MAX_LEN)
-    kenmesh_data_Module.get_test_data()
+    print("Big Print: ", kenmesh_data_Module.get_test_data())
 
 
 
@@ -128,18 +128,26 @@ def test(kenmesh_data_Module, model, G, device):
             g_node_feature = g_node_feature.to(device)
             label = batch['label']
 
+            print("1 input_ids: ", input_ids, input_ids.shape)
+            print("2 attention_mask: ", attention_mask, attention_mask.shape)
+            print("3 label: ", label, label.shape)
+            print("4 Mesh_mask: ", mesh_mask, mesh_mask.shape)
+
             # make predictions using the model
             with torch.no_grad():
-                output = model(input_ids,attention_mask, mesh_mask, g, g_node_feature, device)
+                output = model(input_ids,attention_mask, mesh_mask)
+            o = torch.sigmoid(output)
             o = output.data.cpu().numpy()
+            print("Output: ", type(output), output)
+            print("O: ", o)
             predicted_label_features.append(o)
             del output
             true_labels.append(label)
             torch.cuda.empty_cache()
 
         # concatenate the predicted label features and true labels across batches
-        predicted_label_features = torch.cat(predicted_label_features)
-        true_labels = torch.cat(true_labels)
+        # predicted_label_features = torch.cat(predicted_label_features)
+        # true_labels = torch.cat(true_labels)
 
     return predicted_label_features, true_labels
 
@@ -159,6 +167,7 @@ def main():
     parser.add_argument('--model_name', default='Full', type=str)
 
     # environment
+    parser.add_argument('--model')
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=768) # Changed here for embed dimension
     parser.add_argument('--ksz', default=3)
@@ -191,9 +200,9 @@ def main():
     print('Device:{}'.format(device))
 
     # Saving test dataset to pickle for using in evaluation
-    text_test = pickle.load(open("text_test.pkl", 'rb'))
-    label_test = pickle.load(open("label_test.pkl", 'rb'))
-    mesh_mask_test = pickle.load(open("mesh_mask_test.pkl", 'rb'))
+    text_test = pickle.load(open("text_val.pkl", 'rb'))
+    label_test = pickle.load(open("label_val.pkl", 'rb'))
+    mesh_mask_test = pickle.load(open("mesh_mask_val.pkl", 'rb'))
 
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes, G= prepare_dataset(text_test, label_test, mesh_mask_test, args.meSH_pair_path, args.graph, device)
@@ -203,9 +212,10 @@ def main():
     # Inittialising Bert Classifier Model
     model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
 
-    checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=11-val_loss=0.01.ckpt')
+    checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=09-val_loss=0.01.ckpt')
     model.load_state_dict(checkpoint['state_dict'])
-    
+    # model.load_state_dict(torch.load(args.model))
+
     # model.load_state_dict(torch.load(model_path))
 
     model.to(device)
@@ -213,17 +223,35 @@ def main():
     print("Model load successful...")
 
     G.to(device)
+
+    trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu')
+    result = trainer.predict(model, kenmesh_data_Module)
+
+    predicted_labels = []
+    true_labels = []
+    for batch in result:
+        predicted_labels.append(batch["predictions"])
+        true_labels.append(batch["labels"])
+
+    # predictions = result[0]["predictions"]
+
+    # Print the predictions
+    print("predictions: ", result)
    
     # Evaluate the model performance on the test dataset
-    print("Evaluation: ")
-    predicted_label_features, true_labels = test(kenmesh_data_Module, model, G, device)  
+    # print("Evaluation: ")
+    # predicted_label_features, true_labels = test(kenmesh_data_Module, model, G, device)  
 
-    print("predicted_label_features", type(predicted_label_features))
-    print("true_labels", type(true_labels))
+    # print("predicted_label_features", type(predicted_label_features))
+    # print("true_labels", type(true_labels))
 
-    np.save("pred", predicted_label_features)
-    torch.save(true_labels, "true_label")  
-    evaluation(predicted_label_features, true_labels)
+    print("predicted_labels: ", type(predicted_labels), len(predicted_labels), predicted_labels)
+    print("true_labels: ", type(true_labels), len(true_labels), true_labels)
+    # np.save("pred2", predicted_labels)
+    torch.save(predicted_labels, "pred2")  
+    torch.save(true_labels, "true_label2")  
+    # print("pred and true labels saved")
+    # evaluation(predicted_label_features, true_labels)
 
 
 if __name__ == "__main__":

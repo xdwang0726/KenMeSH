@@ -17,8 +17,12 @@ data/
 *.npy
 
 pred
+pred2
 true_label
+true_label2
 pred_past
 true_label_past
 model
 model_new
+model34
+

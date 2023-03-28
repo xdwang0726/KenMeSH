@@ -67,11 +67,16 @@ class KenmeshClassifier(pl.LightningModule):
 
     def forward(self,input_ids, attn_mask, mesh_mask, g=[], g_node_feature=[], device="cuda"):
 
-        if not g:
-            data_module = self.trainer.datamodule
+        print("1 input_ids: ", input_ids, input_ids.shape)
+        print("2 attention_mask: ", attn_mask, attn_mask.shape)
+        print("4 Mesh_mask: ", mesh_mask, mesh_mask.shape)
 
-            # Call the collate_graphs function from the DataModule
-            g, g_node_feature, device = data_module.collate_graphs()
+        data_module = self.trainer.datamodule
+
+        # Call the collate_graphs function from the DataModule
+        g, g_node_feature, device = data_module.collate_graphs()
+        g = g.to(device)
+        g_node_feature = g_node_feature.to(device)
 
         """
         * component-wise multiplication A[i,j] * B[i,j] = C[i,j]
@@ -81,7 +86,7 @@ class KenmeshClassifier(pl.LightningModule):
         """
         label_feature = self.gcn(g, g_node_feature)
         # mesh_mask = torch.tensor(mesh_mask)  
-        label_attn_mask = label_feature.transpose(0, 1) * mesh_mask 
+        label_attn_mask = label_feature.transpose(0, 1) # * mesh_mask 
 
         # print("mesh_mask: ", type(mesh_mask), mesh_mask.shape)
         # print("Forward Label Attn: ", type(label_attn_mask), label_attn_mask.size()) # [16, 768, 28415]
@@ -120,9 +125,10 @@ class KenmeshClassifier(pl.LightningModule):
         # alpha_text = torch.softmax(torch.matmul(output, label_attn_mask), dim=0)
 
         # apply sigmoid activation to get predicted probabilities
-        # probs = torch.sigmoid(x_feature)
+        probs = torch.sigmoid(x_feature)
 
-        # print("Probs: ", type(probs), probs.size())
+        print("Probs classifier bert: ", type(probs), probs.size(), probs)
+        print("x_feature classifier bert: ", type(x_feature), x_feature)
 
         torch.cuda.empty_cache()
             
@@ -137,13 +143,30 @@ class KenmeshClassifier(pl.LightningModule):
         
         probs = self(input_ids,attention_mask, mesh_mask) # torch.Size([32, 28415]); 32 = batch_size
         
-        # print("Hello Train: ", probs.size(), labels.size())
+        print("Hello Train: ", probs.size(), labels.size())
         # # flatten predicted probabilities
         # probs_flat = probs.mean(dim=1).view(-1, 28415)
 
         # # flatten target labels
         # targets_flat = labels.float().mean(dim=0).view(-1, 28415)
         loss = self.criterion(probs,labels.float())
+
+        probs = probs.data.cpu().numpy()
+        labels = labels.cpu().numpy()
+        k = 1
+        n_samples, n_labels = labels.shape
+        precision = 0.0
+        for i in range(n_samples):
+            true_labels = labels[i]
+            pred_labels = probs[i]
+            sorted_indices = np.argsort(pred_labels)[::-1] # sort in descending order
+            top_k = sorted_indices[:k]
+            correct_labels = np.sum(true_labels[top_k])
+            precision += correct_labels / k
+        precision /= n_samples
+
+        print("P@1: ", precision)
+    
         
         self.log('train_loss',loss , prog_bar=True,logger=True)
         
@@ -228,6 +251,28 @@ class KenmeshClassifier(pl.LightningModule):
         
         return loss
     
+    def predict_step(self, batch, batch_idx):
+        # Extract input data and labels from the batch
+        input_ids = batch['input_ids']
+        attention_mask = batch['attention_mask']
+        labels = batch['label']
+        mesh_mask = batch['mesh_mask']
+        
+        # Make predictions on the input data
+        probs = self(input_ids, attention_mask, mesh_mask)
+        
+        # Print the shape of the predicted probabilities tensor and the labels tensor
+        print("Probs shape:", probs.shape)
+        print("Labels shape:", labels.shape)
+
+        # Compute the loss for the predictions
+        loss = self.criterion(probs, labels.float())
+
+        # Apply sigmoid function to get predicted probabilities
+        predictions = torch.sigmoid(probs)
+
+        # Return dictionary with predictions
+        return {"test_loss": loss, "predictions": probs, "labels": labels.float()}
     
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters() , lr=self.lr)

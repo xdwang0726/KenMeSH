@@ -103,8 +103,8 @@ def prepare_dataset(dataset_path, meshIDs, word2vec_path, graph_file, is_multich
 
     # Preparing training and test datasets
     print('prepare training and test sets')
-    dataset = MeSH_indexing(all_text, all_title, all_text[:-20000], all_title[:-20000], label_id[:-20000], mesh_mask[:-20000], all_text[:20000],
-                            all_title[:20000], label_id[:20000], mesh_mask[:20000], is_test=True, is_multichannel=is_multichannel)
+    dataset = MeSH_indexing(all_text, all_title, all_text[:-20], all_title[:-20], label_id[:-20], mesh_mask[:-20], all_text[:20],
+                            all_title[:20], label_id[:20], mesh_mask[:20], is_test=True, is_multichannel=is_multichannel)
     
     # build vocab
     print('building vocab')
@@ -120,8 +120,10 @@ def prepare_dataset(dataset_path, meshIDs, word2vec_path, graph_file, is_multich
 
 
 def weight_matrix(vocab, vectors, dim=200):
-    weight_matrix = np.zeros([len(vocab.itos), dim])
-    for i, token in enumerate(vocab.stoi):
+    itos = vocab.get_itos()
+    stoi = vocab.get_stoi()
+    weight_matrix = np.zeros([len(itos), dim])
+    for i, token in enumerate(stoi):
         try:
             weight_matrix[i] = vectors.__getitem__(token)
         except KeyError:
@@ -282,8 +284,8 @@ def main():
     # testing
     pred, true_label = test(test_dataset, model, mlb, G, args.batch_sz, device, args.model_name)
 
-    np.save("pred", pred)
-    torch.save(true_label, "true_label")
+    np.save("pred_kenmesh", pred)
+    torch.save(true_label, "true_label_kenmesh")
     
 
 if __name__ == "__main__":

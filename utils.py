@@ -14,9 +14,6 @@ from torchtext.vocab import Vocab
 from torchtext.vocab import build_vocab_from_iterator
 from tqdm import tqdm
 from transformers import BertModel
-from transformers import logging
-
-logging.set_verbosity_warning()
 
 T_co = TypeVar('T_co', covariant=True)
 T = TypeVar('T')
@@ -288,7 +285,7 @@ def MeSH_indexing(all_text, all_title, train_text, train_title, train_labels, tr
 
     """
     return _setup_datasets(all_text, all_title, train_text, train_labels, test_text, test_labels, train_mask, test_mask,
-                           train_title, test_title, ngrams=1, vocab=None, include_unk=False, is_test=is_test,
+                           train_title, test_title, ngrams=1, vocab=None, include_unk=True, is_test=is_test,
                            is_multichannel=is_multichannel)
 
 

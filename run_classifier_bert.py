@@ -140,6 +140,12 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     pickle.dump(label_test, open("label_test.pkl", 'wb'))
     pickle.dump(mesh_mask_test, open("mesh_mask_test.pkl", 'wb'))
 
+    pickle.dump(text_val, open("text_val.pkl", 'wb'))
+    pickle.dump(label_val, open("label_val.pkl", 'wb'))
+    pickle.dump(mesh_mask_val, open("mesh_mask_val.pkl", 'wb'))
+
+    print("-"*10, "pickle data dumpled", "-"*10)
+
     steps_per_epoch = len(text_train)//BATCH_SIZE
 
     # Instantiate and set up the data_module
