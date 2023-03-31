@@ -153,8 +153,8 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, word2vec_path, graph_file, 
 
 
 def weight_matrix(vocab, vectors, dim=200):
-    weight_matrix = np.zeros([len(vocab.itos), dim])
-    for i, token in enumerate(vocab.stoi):
+    weight_matrix = np.zeros([len(vocab.get_itos()), dim])
+    for i, token in enumerate(vocab.get_stoi()):
         try:
             weight_matrix[i] = vectors.__getitem__(token)
         except KeyError:

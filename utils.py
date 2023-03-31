@@ -44,7 +44,6 @@ def sparse_to_dense(sparse_matrix={}, r = 1, c = 28415):
     x = np.zeros((r,c))
     for k in sparse_matrix:
         x[k] = sparse_matrix[k]
-    
     return x
 
 def text_clean(tokens):

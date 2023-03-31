@@ -17,7 +17,7 @@ import pytorch_lightning as pl
 from sklearn.preprocessing import MultiLabelBinarizer
 # from sklearn.model_selection import train_test_split
 from transformers import BertTokenizer
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 # Modules
 from bert_data_module import KenmeshDataModule
@@ -25,10 +25,9 @@ from bert_classifier_lightning import KenmeshClassifier
 
 # Global Variables
 BERT_MODEL_NAME = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext'
-N_EPOCHS = 12
 BATCH_SIZE = 16
 MAX_LEN = 512
-LR = 2e-05
+# LR = 2e-05
 
 def split_train_test_val(texts, labels, mesh_masks, test_size = 0.1):
     """
@@ -54,9 +53,9 @@ def split_train_test_val(texts, labels, mesh_masks, test_size = 0.1):
             text_test.append(texts[num])
             label_test.append(labels[num])
             mesh_mask_test.append(mesh_masks[num]) 
-        if i == 0:
-            print("First doc: ", type(label_train), type(mesh_mask_train))
-            print(label_train[0], type(label_train[0]), np.count_nonzero(label_train[0]))           
+        # if i == 0:
+        #     print("First doc: ", type(label_train), type(mesh_mask_train))
+        #     print(label_train[0], type(label_train[0]), np.count_nonzero(label_train[0]))           
 
     print(f"Total number of documents: {total_len}, train set: {len(text_train)}, test set: {len(text_test)}")
     
@@ -70,7 +69,9 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     mesh_mask = []
     texts = []
     label_id = []
-    
+    pubmed_ids = []
+    titles = []
+
     f = open(dataset_path, encoding="utf8")
     objects = ijson.items(f, 'articles.item') 
 
@@ -81,17 +82,18 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
         if len(title) < 1 or len(abstractText) < 1:
             continue      
 
-        titles = title.split(" ")
-        abstractTexts = abstractText.split(" ")
-        text = titles + abstractTexts
-        
+        # titles = title.split(" ")
+        # abstractTexts = abstractText.split(" ")
+        text = title + " " +abstractText
+        pubmed_ids.append(obj["pmid"])
         mesh_mask.append(obj["meshMask"])
         texts.append(text)
         label_id.append(list(obj["meshID"].keys()))
-        # if i == 0:
-        #     print("Mesh Mask: ", len(mesh_mask[0]), len(mesh_mask[0][0]), mesh_mask[0].count(1), mesh_mask[0][0].count(1))
-        #     print("Label: ", obj["meshID"])
-        #     print("Label ID: ", len(label_id[0]), label_id[0])
+        titles.append(title)
+        if i == 0:
+            # print("Mesh Mask: ", len(mesh_mask[0]), len(mesh_mask[0][0]), mesh_mask[0].count(1), mesh_mask[0][0].count(1))
+            print("Label: ", obj["meshID"])
+            print("Label ID: ", len(label_id[0]), label_id[0])
     
     print('Finish loading training data')
     f.close()
@@ -107,6 +109,8 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
             mapping_id[key] = value.strip()
     meshIDs = list(mapping_id.values())
 
+    # print("meshIDs: ", meshIDs)
+
     n_classes = len(meshIDs)
 
     print('Total number of labels %d' % n_classes)
@@ -114,11 +118,15 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     # Encode the tags(labels) in a binary format in order to be used for training
 
     mlb = MultiLabelBinarizer(classes=meshIDs)
+    mlb.fit(meshIDs)
     yt = mlb.fit_transform(label_id)
 
+    print()
+    print("title: ", titles[0])
+    print("pmid: ", pubmed_ids[0])
     print("1: ", np.count_nonzero(yt[0])) # yt[0] -> [28415] -> count_of_nonzero == number of lebels for the doc
     print("2: ", mlb.inverse_transform(yt[0].reshape(1,-1)))
-    print("3: ", mlb.classes_)
+    # print("3: ", mlb.classes_)
 
     print("4: ", label_id[0])
     # print("5: ", mesh_mask[0][0].count(1)) # mesh_mask -> [1, 28415]
@@ -135,7 +143,12 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     text_train, label_train, mesh_mask_train, text_test, label_test, mesh_mask_test = split_train_test_val(texts, yt, mesh_mask, test_size = 0.2)
     text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val = split_train_test_val(text_train, label_train, mesh_mask_train, test_size = 0.2)
     
+    # print("text_test, label_test, mesh_mask_test: ", text_test, label_test, mesh_mask_test)
     # Saving test dataset to pickle for using in evaluation
+    pickle.dump(text_train, open("text_train.pkl", 'wb'))
+    pickle.dump(label_train, open("label_train.pkl", 'wb'))
+    pickle.dump(mesh_mask_train, open("mesh_mask_train.pkl", 'wb'))
+
     pickle.dump(text_test, open("text_test.pkl", 'wb'))
     pickle.dump(label_test, open("label_test.pkl", 'wb'))
     pickle.dump(mesh_mask_test, open("mesh_mask_test.pkl", 'wb'))
@@ -146,6 +159,7 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
 
     print("-"*10, "pickle data dumpled", "-"*10)
 
+    print("Batch size: ", BATCH_SIZE)
     steps_per_epoch = len(text_train)//BATCH_SIZE
 
     # Instantiate and set up the data_module
@@ -182,7 +196,7 @@ def main():
     # environment
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=768) # Changed here for embed dimension
-    parser.add_argument('--ksz', default=3)
+    parser.add_argument('--ksz', default=5)
     parser.add_argument('--hidden_gcn_size', type=int, default=768) # Changed here for embed dimension
     parser.add_argument('--embedding_dim', type=int, default=768) # Changed here for embed dimension
     parser.add_argument('--dropout', type=float, default=0.2)
@@ -191,7 +205,7 @@ def main():
     # hyper params
     # lr -> 0.001, 0.0001, 0.0003, 0.0005
     parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--batch_sz', type=int, default=32)
+    parser.add_argument('--batch_sz', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -211,11 +225,13 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
+    BATCH_SIZE = args.batch_sz
+    N_EPOCHS = args.num_epochs
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes= prepare_dataset(args.dataset_path, args.meSH_pair_path, args.graph, device)
     
     # Inittialising Bert Classifier Model
-    model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
+    model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=args.lr)
     
     model.to(device)
    
@@ -231,8 +247,9 @@ def main():
 
     # Instantiate the Model Trainer
     trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', callbacks=[checkpoint_callback])
-    print("Best checkpoint path: ", checkpoint_callback.best_model_path)
-    pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
+    # trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
+    # print("Best checkpoint path: ", checkpoint_callback.best_model_path)
+    # pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
 
     # Train the Classifier Model
     print("Training...")

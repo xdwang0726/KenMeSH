@@ -27,7 +27,7 @@ from eval_helper import getLabelIndex, precision_at_ks, example_based_evaluation
 # Global Variables
 BERT_MODEL_NAME = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext'
 N_EPOCHS = 12
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 MAX_LEN = 512
 LR = 2e-05
 
@@ -200,9 +200,9 @@ def main():
     print('Device:{}'.format(device))
 
     # Saving test dataset to pickle for using in evaluation
-    text_test = pickle.load(open("text_val.pkl", 'rb'))
-    label_test = pickle.load(open("label_val.pkl", 'rb'))
-    mesh_mask_test = pickle.load(open("mesh_mask_val.pkl", 'rb'))
+    text_test = pickle.load(open("text_train.pkl", 'rb'))
+    label_test = pickle.load(open("label_train.pkl", 'rb'))
+    mesh_mask_test = pickle.load(open("mesh_mask_train.pkl", 'rb'))
 
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes, G= prepare_dataset(text_test, label_test, mesh_mask_test, args.meSH_pair_path, args.graph, device)
@@ -212,9 +212,9 @@ def main():
     # Inittialising Bert Classifier Model
     model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
 
-    checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=09-val_loss=0.01.ckpt')
-    model.load_state_dict(checkpoint['state_dict'])
-    # model.load_state_dict(torch.load(args.model))
+    # checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=09-val_loss=0.01.ckpt')
+    # model.load_state_dict(checkpoint['state_dict'])
+    model.load_state_dict(torch.load(args.model))
 
     # model.load_state_dict(torch.load(model_path))
 

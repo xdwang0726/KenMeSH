@@ -70,6 +70,8 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, MeSH_description, parent_childr
         # if you do batch tarining don't forget to pack or unpack 
 
         # key_embedding = torch.mean(torch.stack(embedding), dim=0, keepdim=True)
+
+        print("Key, Value", k, value, mesh_description[value])
         
         if value in mesh_description:
             description_embedding = get_bert_embedding(mesh_description[value], bert_model)
@@ -80,12 +82,14 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, MeSH_description, parent_childr
         # key_embedding = torch.cat((key_embedding, description_embedding), dim=1)
         
         label_embedding = torch.cat((label_embedding, description_embedding), dim=0)
-        print(f'description embedding: {description_embedding.size()} \n label embed: {label_embedding.size()}' )
+        print(f'description embedding: {description_embedding.size(), description_embedding} \n label embed: {label_embedding.size()}' )
         
         # \n description: {description_embedding.size()}')
     
     print(f'description_embedding_dimension: {description_embedding.size()}')
     print(f'total label_embedding_dimension: {label_embedding.size()}')
+
+    print("edges, node_count, label_embedding: ", edges, node_count, label_embedding)
     
     try:
         with open("label_embedding.json", "w") as outfile:
@@ -93,10 +97,12 @@ def get_edge_and_node_fatures(MeSH_id_pair_file, MeSH_description, parent_childr
     except BaseException as exception:
             logging.warning(f"Exception Name: {type(exception).__name__}")
 
+    
+
     return edges, node_count, label_embedding
 
 
-def get_edge_and_bert_node_fatures(MeSH_id_pair_file, parent_children_file, tokenizer, model):
+def get_edge_and_bert_node_fatures(MeSH_id_pair_file, MeSH_description, parent_children_file, tokenizer, model):
     """
 
     :param file:
@@ -112,6 +118,9 @@ def get_edge_and_bert_node_fatures(MeSH_id_pair_file, parent_children_file, toke
         for line in f:
             (key, value) = line.split('=')
             mapping_id[key] = value.strip()
+
+    with open(MeSH_description) as json_file:
+        mesh_description = json.load(json_file)
 
     # count number of nodes and get edges
     print('count number of nodes and get edges of the graph')
@@ -129,10 +138,21 @@ def get_edge_and_bert_node_fatures(MeSH_id_pair_file, parent_children_file, toke
     print('get label embeddings')
     label_embedding = torch.zeros(0)
     for key, value in tqdm(mapping_id.items()):
-        key_encoding = tokenizer.encode(key, add_special_tokens=True)
+        # print("Key, Value", key, value)
+        if value in mesh_description:
+            # print("Mesh Description: ", mesh_description[value])
+            key_encoding = tokenizer.encode(mesh_description[value], add_special_tokens=False)
+        else:
+            key_encoding = tokenizer.encode(key, add_special_tokens=False)
+        
         with torch.no_grad():
-            _, key_embedding = model(torch.tensor([key_encoding]))
+            output = model(torch.tensor([key_encoding]))
+
+        key_embedding = torch.mean(input=output.last_hidden_state, dim=1, keepdim=True).squeeze(1)
+
+        # print("Embedding: ", key_embedding)
         label_embedding = torch.cat((label_embedding, key_embedding), dim=0)
+
     return edges, node_count, label_embedding
 
 
@@ -459,7 +479,7 @@ def main():
         model = BertModel.from_pretrained(args.bert)
         model.eval()
         # BERT GCN
-        edge, node_count, label_embedding = get_edge_and_bert_node_fatures(args.meSH_pair_path, args.mesh_parent_children_path, tokenizer, model)
+        edge, node_count, label_embedding = get_edge_and_bert_node_fatures(args.meSH_pair_path, args.meSH_description_path, args.mesh_parent_children_path, tokenizer, model)
         G = build_MeSH_graph(edge, node_count, label_embedding)
     else:
         # print('Load pre-trained vectors')

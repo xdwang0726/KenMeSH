@@ -33,7 +33,7 @@ def split_json_data(data_path):
     lst = []
     i = 0
 
-    while i < 100:  
+    while i < 10000:  
         r = random.randint(0, len(objects))
         if r in lst:
             continue
@@ -42,7 +42,7 @@ def split_json_data(data_path):
         print(f"{i}. {b} appended..." )
         i += 1
 
-    writefile(data, 'hundred_pmc')
+    writefile(data, 'tenk_pmc')
     print('data saved...')
 
 def convert_mesh_mask(data_path):
@@ -72,8 +72,8 @@ def main():
 
     args = parser.parse_args()
 
-    # split_json_data(args.data)
-    convert_mesh_mask(args.data)
+    split_json_data(args.data)
+    # convert_mesh_mask(args.data)
 
 
 if __name__ == "__main__":

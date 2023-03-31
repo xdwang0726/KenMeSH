@@ -25,7 +25,7 @@ class KenmeshDataset (Dataset):
         inputs = self.tokenizer.encode_plus(
             text,
             None,
-            add_special_tokens=True,
+            add_special_tokens=False,
             max_length= self.max_len,
             padding = 'max_length',
             return_token_type_ids= False,
@@ -41,11 +41,13 @@ class KenmeshDataset (Dataset):
         mesh_mask = sparse_to_dense(res)
 
         label = torch.tensor(self.labels[item_idx]).long()
-        print("Dataset Labels: ", type(self.labels[item_idx]), torch.tensor(self.labels[item_idx]).size() )
-        print("input_ids: ", type(input_ids) )
-        print("mesh_masks: ", type(mesh_mask) ,mesh_mask.shape)
-        print("label: ", type(label) ,label.shape)
-        print("attn_mask: ", type(attn_mask))
+        
+        # print("Word tokens: ", text)
+        # print("Dataset Labels: ", type(self.labels[item_idx]), torch.tensor(self.labels[item_idx]).size() ) # <class 'numpy.ndarray'> torch.Size([28415])
+        # print("input_ids: ", type(input_ids) ) # <class 'torch.Tensor'>
+        # print("mesh_masks: ", type(mesh_mask) ,mesh_mask.shape) # <class 'numpy.ndarray'> (1, 28415)
+        # print("label: ", type(label) ,label.shape) # <class 'torch.Tensor'> torch.Size([28415])
+        # print("attn_mask: ", type(attn_mask)) # <class 'torch.Tensor'>
 
         return {
             'input_ids': input_ids.long() , # Number of tokens in the text

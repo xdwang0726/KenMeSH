@@ -27,11 +27,11 @@ def get_bert_embedding(text, model_name = 'bert-base-uncased'):
 
     # Tokenize our sentence with the BERT tokenizer.
     # 
-    tokenizer = BertTokenizer.from_pretrained(model,do_lower_case=True)
+    tokenizer = BertTokenizer.from_pretrained(model_name,do_lower_case=True)
                                             
     encoded_data = tokenizer.batch_encode_plus(
         text, 
-        add_special_tokens=True, 
+        add_special_tokens=False, 
         return_attention_mask=True, 
         pad_to_max_length=True, 
         truncation=True,
@@ -39,7 +39,7 @@ def get_bert_embedding(text, model_name = 'bert-base-uncased'):
         return_tensors='pt'
     )
 
-    # print(f'Encoded Text: {encoded_data}')
+    print(f'Encoded Text: {encoded_data}')
 
     # tokenized_text = tokenizer.tokenize(encoded_data)
 

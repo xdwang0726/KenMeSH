@@ -9,7 +9,7 @@ from torch.optim import AdamW
 from sklearn.metrics import f1_score, precision_score, recall_score
 import dgl.function as fn
 
-from eval_helper import getLabelIndex, precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
+# from eval_helper import getLabelIndex, precision_at_ks, example_based_evaluation, micro_macro_eval, zero_division
 
 BERT_MODEL_NAME = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext'
 
@@ -50,16 +50,24 @@ class KenmeshClassifier(pl.LightningModule):
         super().__init__()
 
         self.bert=BertModel.from_pretrained(BERT_MODEL_NAME, return_dict=True, output_hidden_states = True)
+        for param in self.bert.parameters():
+            param.requires_grad = False 
         embedding_dim = self.bert.config.hidden_size
-        ksz = 3
+        ksz = 5
         self.cnn = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim , kernel_size=ksz, padding=0, dilation=1),
-                                        nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
                                         nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
-                                        nn.SELU(), nn.AlphaDropout(p=0.05),
-                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=3),
-                                        nn.SELU(), nn.AlphaDropout(p=0.05))
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=4),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=1),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05))
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
-        self.classifier=nn.Linear(self.bert.config.hidden_size,n_classes) 
+        # self.flatten = nn.Flatten(start_dim=1)
+        # self.classifier=nn.Linear(768, 28415) 
+        # self.classifier2=nn.Linear(96000,28415) 
         self.steps_per_epoch = steps_per_epoch
         self.n_epochs = n_epochs
         self.lr = lr
@@ -67,9 +75,13 @@ class KenmeshClassifier(pl.LightningModule):
 
     def forward(self,input_ids, attn_mask, mesh_mask, g=[], g_node_feature=[], device="cuda"):
 
-        print("1 input_ids: ", input_ids, input_ids.shape)
-        print("2 attention_mask: ", attn_mask, attn_mask.shape)
-        print("4 Mesh_mask: ", mesh_mask, mesh_mask.shape)
+        # print("1 input_ids: ", input_ids, input_ids.shape)
+        # print("2 attention_mask: ", attn_mask, attn_mask.shape)
+        # print("4 Mesh_mask: ", mesh_mask, mesh_mask.shape)
+        # ones = (mesh_mask[0][0] == 1).sum(dim=0)
+        # print("Mesh_mask Ones: ", ones)
+
+
 
         data_module = self.trainer.datamodule
 
@@ -84,9 +96,13 @@ class KenmeshClassifier(pl.LightningModule):
         * mesh_mask -> [1,28415]
         * label_attn_mask -> [768, 28415]   
         """
+        # print("g_node_feature", g_node_feature)
+        # print("graph", g)
         label_feature = self.gcn(g, g_node_feature)
+        # print("Forward Label Feature: ", label_feature)
         # mesh_mask = torch.tensor(mesh_mask)  
-        label_attn_mask = label_feature.transpose(0, 1) # * mesh_mask 
+        label_attn_mask = label_feature.transpose(0, 1) * mesh_mask 
+        # print("Forward Label Attention: ", label_attn_mask)
 
         # print("mesh_mask: ", type(mesh_mask), mesh_mask.shape)
         # print("Forward Label Attn: ", type(label_attn_mask), label_attn_mask.size()) # [16, 768, 28415]
@@ -96,13 +112,19 @@ class KenmeshClassifier(pl.LightningModule):
         outputs = self.bert(input_ids=input_ids,attention_mask=attn_mask)
         output = outputs.last_hidden_state #[16,768] #[16, 512, 768]
         # print("Pooler output: ", type(output), output.size()) 
-
+        # print("Bert output: ", output)
         #CNN output should be: (bs, embed_dim*2, seq_len-ksz+1)
         output = self.cnn(output.permute(0,2,1)) # [1,768,1] # [16, 768, 500]
-        # print("CNN output: ", type(output), output.size(), output.view(1,-1).size()) 
+        # print("CNN output: ", type(output), output.size()) 
+        # print("CNN output: ", output)
 
-        # output = self.classifier(output.view(1,-1)) # [1, 28415]
-        # print("Classifier output: ", type(output), output.size()) 
+        # # Apply the linear projection to the input tensor
+        # projected_tensor = self.classifier(output.transpose(1, 2)).transpose(1, 2)
+
+        # # Apply mean-pooling along the token dimension
+        # pooled_tensor = torch.mean(projected_tensor, dim=2)
+
+        # print("Output tensor: ", pooled_tensor.size())
 
         # apply non-linear activation
         # output = nn.functional.relu(output)
@@ -114,21 +136,21 @@ class KenmeshClassifier(pl.LightningModule):
         
         alpha = torch.softmax(torch.matmul(output.transpose(1, 2), label_attn_mask.float()), dim=1)
         # print("output_masked: ", type(alpha), alpha.size()) # [16, 500, 28415]
-
+        # print("Forward Alpha output: ", alpha)
         # print("Test 1: ", type(output), type(alpha))
         output_features = torch.matmul(output, alpha).transpose(1, 2) # [16, 28415, 768]
         # print("output_features", type(output_features), output_features.size())
-
+        # print("Forward Output features: ", output_features)
         x_feature = torch.sum(output_features * label_feature, dim=2) # [16, 28415]
         # print("x_feature: ", x_feature, x_feature.size())
-
+        # print("Forward X feature: ", x_feature)
         # alpha_text = torch.softmax(torch.matmul(output, label_attn_mask), dim=0)
 
         # apply sigmoid activation to get predicted probabilities
-        probs = torch.sigmoid(x_feature)
+        # probs = torch.sigmoid(x_feature)
 
-        print("Probs classifier bert: ", type(probs), probs.size(), probs)
-        print("x_feature classifier bert: ", type(x_feature), x_feature)
+        # print("Probs classifier bert: ", type(probs), probs.size(), probs)
+        # print("x_feature classifier bert: ", type(x_feature), x_feature)
 
         torch.cuda.empty_cache()
             
@@ -142,7 +164,17 @@ class KenmeshClassifier(pl.LightningModule):
         mesh_mask = batch['mesh_mask']
         
         probs = self(input_ids,attention_mask, mesh_mask) # torch.Size([32, 28415]); 32 = batch_size
-        
+        # count = 0 
+        # count_label = 0
+        # for i in range(len(labels)):
+        #     for j in range(len(labels[0])):
+        #         if labels[i][j] == 1:
+        #             count_label += 1
+        #             if labels[i][j] == mesh_mask[i][0][j]: 
+        #                 count += 1
+        # print("Intersection: ", count, count_label, labels.size(), mesh_mask.size())
+        # print("labels, meshmask: ", labels.size(), mesh_mask.size())
+
         print("Hello Train: ", probs.size(), labels.size())
         # # flatten predicted probabilities
         # probs_flat = probs.mean(dim=1).view(-1, 28415)
@@ -170,7 +202,7 @@ class KenmeshClassifier(pl.LightningModule):
         
         self.log('train_loss',loss , prog_bar=True,logger=True)
         
-        return {"loss" :loss, "predictions":probs, "labels": labels }
+        return loss
 
 
     def validation_step(self,batch,batch_idx):
@@ -282,24 +314,3 @@ class KenmeshClassifier(pl.LightningModule):
         scheduler = get_linear_schedule_with_warmup(optimizer,warmup_steps,total_steps)
 
         return [optimizer], [scheduler]
-
-    def evaluate(self, T_score, P_score):
-        # T_score = torch.tensor(T_score)
-        # P_score = np.concatenate(P_score, axis=0) # 3d -> 2d array
-        # T_score = np.concatenate(T_score, axis=0)
-        # T_score = T.numpy()
-        print("True Label load done", type(T_score), T_score.shape)
-        # print(T_score)
-        threshold = np.array([0.0005] * 28415)
-
-        test_labelsIndex = getLabelIndex(T_score)
-        print("test_labelsIndex: ", test_labelsIndex, type(test_labelsIndex))
-        print("P_score: ", P_score, type(P_score))
-        precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
-        print('p@k', precisions)
-
-        emb = example_based_evaluation(P_score, T_score, threshold, 16)
-        print('(ebp, ebr, ebf): ', emb)
-
-        micro = micro_macro_eval(P_score, T_score, threshold)
-        print('mi/ma(MiF, MiP, MiR, MaF, MaP, MaR): ', micro)

@@ -7,6 +7,7 @@ import pickle
 import torch
 from torch.utils.data import DataLoader, random_split
 import logging
+from check_label import get_index_to_meshid
 
 def zero_division(x, y):
     try:
@@ -25,7 +26,17 @@ def precision(p, t):
     >>> precision({1, 2, 3, 4}, {1})
     0.25
     """
+    true_meshes = []
+    probs = []
+
+    for i in t: 
+        true_meshes.append(get_index_to_meshid(indx=i))
+    for j in p:
+        probs.append(get_index_to_meshid(indx=j))
+
     print("p,t: ", p,t)
+    print("probsss,truesss: ", probs,true_meshes)
+    
     return len(t.intersection(p)) / len(p)
 
 def precision_at_ks(Y_pred_scores, Y_test, ks):
@@ -33,6 +44,7 @@ def precision_at_ks(Y_pred_scores, Y_test, ks):
     Y_pred_scores: nd.array of dtype float, entry ij is the score of label j for instance i
     Y_test: list of label ids
     """
+    print("Test 2: ", Y_test[0])
     result = []
     for k in ks:
         Y_pred = []
@@ -53,6 +65,7 @@ def precision_at_ks(Y_pred_scores, Y_test, ks):
                 Y_pred.append(set(idx[:k]))
 
         print("precision_at_ks Y_pred: ", Y_pred)
+        print("precision_at_ks Y_test: ", Y_test[0])
         result.append(np.mean([precision(yp, set(yt)) for yt, yp in zip(Y_test, Y_pred)]))
     return result
 
@@ -166,7 +179,6 @@ def micro_f1(MiP, MiR):
 #     result = [round(MaP, 5), round(MiP, 5), round(MaR, 5), round(MiR, 5), round(MaF, 5), round(MiF, 5)]
 #    return result
 
-
 def example_based_precision(CL, y_hat):
     EBP = []
 
@@ -251,14 +263,17 @@ def find_common_label(y_actual, y_hat):
 
 
 def example_based_evaluation(pred, target, threshold, num_example):
+    # pt = [(i,m) for i, m in enumerate(pred[0]) if m > 4.1633608e-05]
     pred = np.greater_equal(pred, threshold).astype(int)
+    # p = [(i,m) for i, m in enumerate(pred[0]) if m != 0]
     print("Example evaluation pred: ", pred, pred.shape)
     print("Example evaluation target: ", target, target.shape)
-    print(" target count: ", [m for m in target[0] if m != 0])
-    print(" pred count: ", [m for m in pred[0] if m != 0])
+    # print(" target count: ", [m for m in target[0] if m != 0])
+    # print(" pred count: ", [m for m in pred[0] if m != 0])
 
     common_label = np.sum(np.multiply(pred, target), axis=1)
     sum_pred = np.sum(pred, axis=1)
+    print("common_label: ", common_label)
     print("sum_pred: ", sum_pred)
     sum_true = np.sum(target, axis=1)
     print("example_based_evaluation: ")
@@ -323,9 +338,9 @@ def main():
     P_score = torch.load("pred2")
     P_score = np.concatenate(P_score, axis=0) # 3d -> 2d array
 
-    probsss = 1 / (1 + np.exp(-P_score))
+    probsss = 1 / (1 + np.exp(P_score))
     preds_tensor = torch.tensor(P_score)
-    preds_probs_t = torch.sigmoid(preds_tensor).mean(axis=1)
+    preds_probs_t = torch.sigmoid(preds_tensor)
     preds_probs = preds_probs_t.numpy()
 
     # Convert the negative log probabilities to probabilities using softmax
@@ -345,13 +360,16 @@ def main():
     print("T_score", type(T_score), len(T_score), T_score, T_score.shape)
     print("P_score", type(P_score), len(P_score), P_score, P_score.shape)
     print("Label test load done", type(label_test), len(label_test), label_test, label_test.shape)
-    threshold = np.array([0.0005] * 28415)
+    threshold = np.array([1.6170531e-04] * 28415)
 
-    c = [m for m in T_score[0] if m != 0]
+    c = [i for i, m in enumerate(T_score[0]) if m != 0]
     print("C: ", c)
     test_labelsIndex = getLabelIndex(T_score)
     d = [m for m in test_labelsIndex[0] if m != 0]
     print("D: ", d)
+
+    # for i,m in enumerate(T_score[0]):
+    #     print(T_score[0][i], test_labelsIndex[0][i])
     
     print("Eval Helper: test_labelsIndex: ", type(test_labelsIndex), test_labelsIndex.size, test_labelsIndex.shape, test_labelsIndex[0])
     print("Eval Helper: P_score: ", type(P_score), P_score.size, P_score.shape, P_score[0].shape, np.min(P_score[0]), np.mean(P_score[0]), np.max(P_score[0]))
@@ -360,20 +378,33 @@ def main():
     print("Eval Helper: bin_pred_labels_np: ", type(bin_pred_labels_np), bin_pred_labels_np.size, bin_pred_labels_np.shape, bin_pred_labels_np[0].shape)
     print(np.min(bin_pred_labels_np[0]), np.mean(bin_pred_labels_np[0]), np.max(bin_pred_labels_np[0]))
 
-    precisions = precision_at_ks(probsss, test_labelsIndex, ks=[1, 3, 5])
-    print('p@k', precisions)
+    # flatten the matrix to a 1D array
+    flat_matrix = preds_probs.flatten()
 
-    precision_1 = precision_at_k(T_score, probsss, 1)
-    precision_3 = precision_at_k(T_score, probsss, 3)
-    precision_5 = precision_at_k(T_score, probsss, 5)
-    print("Precision@1:", precision_1)
-    print("Precision@3:", precision_3)
-    print("Precision@5:", precision_5)
+    # sort the array in descending order
+    sorted_matrix = np.sort(flat_matrix)[::-1]
 
-    emb = example_based_evaluation(probsss, T_score, threshold, 16)
+    # get the top 10th max values
+    top_10th_max = sorted_matrix[:int(len(sorted_matrix)*0.05)]
+
+    print("top_10th_max: ", top_10th_max)
+    # print("Test 1: ", test_labelsIndex[0])
+    # precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
+    # print('p@k', precisions)
+
+    # precision_1 = precision_at_k(T_score, preds_probs, 1)
+    # precision_3 = precision_at_k(T_score, preds_probs, 3)
+    # precision_5 = precision_at_k(T_score, preds_probs, 5)
+    # print("Precision@1:", precision_1)
+    # print("Precision@3:", precision_3)
+    # print("Precision@5:", precision_5)
+# [2861, 2976, 10232, 13305, 14311, 19039, 19106, 19662, 22750, 22752, 22940, 23403, 24496, 24698, 25440]
+# {2976, 22752, 19106, 25440, 0, 14311, 23403, 2861, 19662, 24496, 10232, 13305, 24698, 22940, 22750, 19039}
+
+    emb = example_based_evaluation(preds_probs, T_score, threshold, len(P_score))
     print('(ebp, ebr, ebf): ', emb)
 
-    micro = micro_macro_eval(probsss, T_score, threshold)
+    micro = micro_macro_eval(preds_probs, T_score, threshold)
     print('mi/ma(MiF, MiP, MiR, MaF, MaP, MaR): ', micro)
 
 
