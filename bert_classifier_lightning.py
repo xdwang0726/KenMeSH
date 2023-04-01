@@ -175,7 +175,7 @@ class KenmeshClassifier(pl.LightningModule):
         # print("Intersection: ", count, count_label, labels.size(), mesh_mask.size())
         # print("labels, meshmask: ", labels.size(), mesh_mask.size())
 
-        print("Hello Train: ", probs.size(), labels.size())
+        # print("Hello Train: ", probs.size(), labels.size())
         # # flatten predicted probabilities
         # probs_flat = probs.mean(dim=1).view(-1, 28415)
 
@@ -197,10 +197,11 @@ class KenmeshClassifier(pl.LightningModule):
             precision += correct_labels / k
         precision /= n_samples
 
-        print("P@1: ", precision)
+        # print("P@1: ", precision)
     
         
         self.log('train_loss',loss , prog_bar=True,logger=True)
+        self.log("P@1", precision , prog_bar=True,logger=True)
         
         return loss
 
@@ -294,8 +295,8 @@ class KenmeshClassifier(pl.LightningModule):
         probs = self(input_ids, attention_mask, mesh_mask)
         
         # Print the shape of the predicted probabilities tensor and the labels tensor
-        print("Probs shape:", probs.shape)
-        print("Labels shape:", labels.shape)
+        # print("Probs shape:", probs.shape)
+        # print("Labels shape:", labels.shape)
 
         # Compute the loss for the predictions
         loss = self.criterion(probs, labels.float())

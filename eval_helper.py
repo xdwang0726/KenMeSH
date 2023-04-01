@@ -392,14 +392,12 @@ def main():
     # precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
     # print('p@k', precisions)
 
-    # precision_1 = precision_at_k(T_score, preds_probs, 1)
-    # precision_3 = precision_at_k(T_score, preds_probs, 3)
-    # precision_5 = precision_at_k(T_score, preds_probs, 5)
-    # print("Precision@1:", precision_1)
-    # print("Precision@3:", precision_3)
-    # print("Precision@5:", precision_5)
-# [2861, 2976, 10232, 13305, 14311, 19039, 19106, 19662, 22750, 22752, 22940, 23403, 24496, 24698, 25440]
-# {2976, 22752, 19106, 25440, 0, 14311, 23403, 2861, 19662, 24496, 10232, 13305, 24698, 22940, 22750, 19039}
+    precision_1 = precision_at_k(T_score, P_score, 1)
+    precision_3 = precision_at_k(T_score, P_score, 3)
+    precision_5 = precision_at_k(T_score, P_score, 5)
+    print("Precision@1:", precision_1)
+    print("Precision@3:", precision_3)
+    print("Precision@5:", precision_5)
 
     emb = example_based_evaluation(preds_probs, T_score, threshold, len(P_score))
     print('(ebp, ebr, ebf): ', emb)

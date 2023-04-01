@@ -236,7 +236,7 @@ def main():
     # predictions = result[0]["predictions"]
 
     # Print the predictions
-    print("predictions: ", result)
+    # print("predictions: ", result)
    
     # Evaluate the model performance on the test dataset
     # print("Evaluation: ")
@@ -245,8 +245,8 @@ def main():
     # print("predicted_label_features", type(predicted_label_features))
     # print("true_labels", type(true_labels))
 
-    print("predicted_labels: ", type(predicted_labels), len(predicted_labels), predicted_labels)
-    print("true_labels: ", type(true_labels), len(true_labels), true_labels)
+    # print("predicted_labels: ", type(predicted_labels), len(predicted_labels), predicted_labels)
+    # print("true_labels: ", type(true_labels), len(true_labels), true_labels)
     # np.save("pred2", predicted_labels)
     torch.save(predicted_labels, "pred2")  
     torch.save(true_labels, "true_label2")  

@@ -225,13 +225,14 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
+    global BATCH_SIZE
     BATCH_SIZE = args.batch_sz
-    N_EPOCHS = args.num_epochs
+    num_epochs = args.num_epochs
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes= prepare_dataset(args.dataset_path, args.meSH_pair_path, args.graph, device)
     
     # Inittialising Bert Classifier Model
-    model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=args.lr)
+    model = KenmeshClassifier(num_labels=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=num_epochs, lr=args.lr)
     
     model.to(device)
    
@@ -246,7 +247,7 @@ def main():
     )
 
     # Instantiate the Model Trainer
-    trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', callbacks=[checkpoint_callback])
+    trainer = pl.Trainer(max_epochs = num_epochs , devices = 1, accelerator='gpu', callbacks=[checkpoint_callback])
     # trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
     # print("Best checkpoint path: ", checkpoint_callback.best_model_path)
     # pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
