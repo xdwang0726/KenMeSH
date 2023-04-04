@@ -55,19 +55,19 @@ class KenmeshClassifier(pl.LightningModule):
         embedding_dim = self.bert.config.hidden_size
         ksz = 5
         # self.dense_layer = nn.Linear(768, num_labels)
-        self.cnn = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim , kernel_size=ksz, padding=0, dilation=2),
+        self.cnn = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim , kernel_size=ksz, padding=0, dilation=1),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
                                         nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
                                         nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=4),
-                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
-                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=8),
-                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
-                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=16),
                                         nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
                                         nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=8),
                                         nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
                                         nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=4),
                                         nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
                                         nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=1),
                                         nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05))
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         # self.flatten = nn.Flatten(start_dim=1)
