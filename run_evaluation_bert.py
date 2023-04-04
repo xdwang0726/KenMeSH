@@ -199,10 +199,10 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print('Device:{}'.format(device))
 
-    # Saving test dataset to pickle for using in evaluation
-    text_test = pickle.load(open("text_train.pkl", 'rb'))
-    label_test = pickle.load(open("label_train.pkl", 'rb'))
-    mesh_mask_test = pickle.load(open("mesh_mask_train.pkl", 'rb'))
+    # Loading Test Dataset
+    text_test = pickle.load(open("text_test.pkl", 'rb'))
+    label_test = pickle.load(open("label_test.pkl", 'rb'))
+    mesh_mask_test = pickle.load(open("mesh_mask_test.pkl", 'rb'))
 
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes, G= prepare_dataset(text_test, label_test, mesh_mask_test, args.meSH_pair_path, args.graph, device)

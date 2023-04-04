@@ -333,8 +333,8 @@ def flatten(l):
     return flat
 
 def main():
-    label_test = pickle.load(open("label_test.pkl", 'rb'))
-    label_test = np.array(label_test)
+    # label_test = pickle.load(open("label_test.pkl", 'rb'))
+    # label_test = np.array(label_test)
     P_score = torch.load("pred2")
     P_score = np.concatenate(P_score, axis=0) # 3d -> 2d array
 

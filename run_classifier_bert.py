@@ -90,10 +90,10 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
         texts.append(text)
         label_id.append(list(obj["meshID"].keys()))
         titles.append(title)
-        if i == 0:
-            # print("Mesh Mask: ", len(mesh_mask[0]), len(mesh_mask[0][0]), mesh_mask[0].count(1), mesh_mask[0][0].count(1))
-            print("Label: ", obj["meshID"])
-            print("Label ID: ", len(label_id[0]), label_id[0])
+        # if i == 0:
+        #     # print("Mesh Mask: ", len(mesh_mask[0]), len(mesh_mask[0][0]), mesh_mask[0].count(1), mesh_mask[0][0].count(1))
+        #     print("Label: ", obj["meshID"])
+        #     print("Label ID: ", len(label_id[0]), label_id[0])
     
     print('Finish loading training data')
     f.close()
@@ -121,18 +121,18 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     mlb.fit(meshIDs)
     yt = mlb.fit_transform(label_id)
 
-    print()
-    print("title: ", titles[0])
-    print("pmid: ", pubmed_ids[0])
-    print("1: ", np.count_nonzero(yt[0])) # yt[0] -> [28415] -> count_of_nonzero == number of lebels for the doc
-    print("2: ", mlb.inverse_transform(yt[0].reshape(1,-1)))
+    # print()
+    # print("title: ", titles[0])
+    # print("pmid: ", pubmed_ids[0])
+    # print("1: ", np.count_nonzero(yt[0])) # yt[0] -> [28415] -> count_of_nonzero == number of lebels for the doc
+    # print("2: ", mlb.inverse_transform(yt[0].reshape(1,-1)))
     # print("3: ", mlb.classes_)
 
-    print("4: ", label_id[0])
+    # print("4: ", label_id[0])
     # print("5: ", mesh_mask[0][0].count(1)) # mesh_mask -> [1, 28415]
 
     # Prepare label features
-    print('Load graph')
+    print('Loading graph...')
     G = load_graphs(graph_file)[0][0]
     # print('graph', G.ndata['feat'].shape) # [28415, 768]
     
@@ -145,17 +145,17 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     
     # print("text_test, label_test, mesh_mask_test: ", text_test, label_test, mesh_mask_test)
     # Saving test dataset to pickle for using in evaluation
-    pickle.dump(text_train, open("text_train.pkl", 'wb'))
-    pickle.dump(label_train, open("label_train.pkl", 'wb'))
-    pickle.dump(mesh_mask_train, open("mesh_mask_train.pkl", 'wb'))
+    pickle.dump(text_train, open("text_train_full.pkl", 'wb'))
+    pickle.dump(label_train, open("label_train_full.pkl", 'wb'))
+    pickle.dump(mesh_mask_train, open("mesh_mask_train_full.pkl", 'wb'))
 
-    pickle.dump(text_test, open("text_test.pkl", 'wb'))
-    pickle.dump(label_test, open("label_test.pkl", 'wb'))
-    pickle.dump(mesh_mask_test, open("mesh_mask_test.pkl", 'wb'))
+    pickle.dump(text_test, open("text_test_full.pkl", 'wb'))
+    pickle.dump(label_test, open("label_test_full.pkl", 'wb'))
+    pickle.dump(mesh_mask_test, open("mesh_mask_test_full.pkl", 'wb'))
 
-    pickle.dump(text_val, open("text_val.pkl", 'wb'))
-    pickle.dump(label_val, open("label_val.pkl", 'wb'))
-    pickle.dump(mesh_mask_val, open("mesh_mask_val.pkl", 'wb'))
+    pickle.dump(text_val, open("text_val_full.pkl", 'wb'))
+    pickle.dump(label_val, open("label_val_full.pkl", 'wb'))
+    pickle.dump(mesh_mask_val, open("mesh_mask_val_full.pkl", 'wb'))
 
     print("-"*10, "pickle data dumpled", "-"*10)
 
@@ -247,7 +247,7 @@ def main():
     )
 
     # Instantiate the Model Trainer
-    trainer = pl.Trainer(max_epochs = num_epochs , devices = 1, accelerator='gpu', callbacks=[checkpoint_callback])
+    trainer = pl.Trainer(max_epochs = num_epochs , devices = 1, accelerator='gpu', callbacks=[EarlyStopping(monitor="val_loss", mode="max"), checkpoint_callback])
     # trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', profiler="simple", callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
     # print("Best checkpoint path: ", checkpoint_callback.best_model_path)
     # pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
