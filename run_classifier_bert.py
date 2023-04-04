@@ -248,7 +248,7 @@ def main():
 
     # Instantiate the Model Trainer
     trainer = pl.Trainer(max_epochs = num_epochs , devices = 1, accelerator='gpu', callbacks=[checkpoint_callback])
-    # trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
+    # trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', profiler="simple", callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
     # print("Best checkpoint path: ", checkpoint_callback.best_model_path)
     # pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
 

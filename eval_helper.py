@@ -44,7 +44,7 @@ def precision_at_ks(Y_pred_scores, Y_test, ks):
     Y_pred_scores: nd.array of dtype float, entry ij is the score of label j for instance i
     Y_test: list of label ids
     """
-    print("Test 2: ", Y_test[0])
+    # print("Test 2: ", Y_test[0])
     result = []
     for k in ks:
         Y_pred = []
@@ -57,15 +57,15 @@ def precision_at_ks(Y_pred_scores, Y_test, ks):
                 # [i, :] : picks all columns of ith row, specific to numpy
                 # np.argsort returns the indices of the sorted array
                 # [::-1] arranges the array in a descending order
-                print("1: ",  Y_pred_scores)
-                print("2: ",  Y_pred_scores[i, :])
-                print("3: ",  np.argsort(Y_pred_scores[i, :]))
-                print("4: ",  np.argsort(Y_pred_scores[i, :])[::-1])
-                print("5: ",  np.argsort(Y_pred_scores[i, :][::-1]))
+                # print("1: ",  Y_pred_scores)
+                # print("2: ",  Y_pred_scores[i, :])
+                # print("3: ",  np.argsort(Y_pred_scores[i, :]))
+                # print("4: ",  np.argsort(Y_pred_scores[i, :])[::-1])
+                # print("5: ",  np.argsort(Y_pred_scores[i, :][::-1]))
                 Y_pred.append(set(idx[:k]))
 
-        print("precision_at_ks Y_pred: ", Y_pred)
-        print("precision_at_ks Y_test: ", Y_test[0])
+        # print("precision_at_ks Y_pred: ", Y_pred)
+        # print("precision_at_ks Y_test: ", Y_test[0])
         result.append(np.mean([precision(yp, set(yt)) for yt, yp in zip(Y_test, Y_pred)]))
     return result
 
@@ -223,7 +223,7 @@ def find_common_label(y_actual, y_hat):
 
 # def example_based_evaluation(y_actual, y_hat):
 #     num_common_label = find_common_label(y_actual, y_hat)
-#
+
 #     EBP = example_based_precision(num_common_label, y_hat)
 #     EBR = example_based_recall(num_common_label, y_actual)
 #     EBF = example_based_fscore(num_common_label, y_actual, y_hat)
@@ -262,9 +262,9 @@ def find_common_label(y_actual, y_hat):
 # """
 
 
-def example_based_evaluation(pred, target, threshold, num_example):
+def example_based_evaluation(pred, target, num_example):
     # pt = [(i,m) for i, m in enumerate(pred[0]) if m > 4.1633608e-05]
-    pred = np.greater_equal(pred, threshold).astype(int)
+    # pred = np.greater_equal(pred, threshold).astype(int)
     # p = [(i,m) for i, m in enumerate(pred[0]) if m != 0]
     print("Example evaluation pred: ", pred, pred.shape)
     print("Example evaluation target: ", target, target.shape)
@@ -357,37 +357,37 @@ def main():
     T_score = torch.load('true_label2')
     T_score = np.concatenate(T_score, axis=0)
     # T_score = T.numpy()
-    print("T_score", type(T_score), len(T_score), T_score, T_score.shape)
-    print("P_score", type(P_score), len(P_score), P_score, P_score.shape)
-    print("Label test load done", type(label_test), len(label_test), label_test, label_test.shape)
+    # print("T_score", type(T_score), len(T_score), T_score, T_score.shape)
+    # print("P_score", type(P_score), len(P_score), P_score, P_score.shape)
+    # print("Label test load done", type(label_test), len(label_test), label_test, label_test.shape)
     threshold = np.array([1.6170531e-04] * 28415)
 
-    c = [i for i, m in enumerate(T_score[0]) if m != 0]
-    print("C: ", c)
+    # c = [i for i, m in enumerate(T_score[0]) if m != 0]
+    # print("C: ", c)
     test_labelsIndex = getLabelIndex(T_score)
     d = [m for m in test_labelsIndex[0] if m != 0]
-    print("D: ", d)
+    # print("D: ", d, len(d))
 
     # for i,m in enumerate(T_score[0]):
     #     print(T_score[0][i], test_labelsIndex[0][i])
     
-    print("Eval Helper: test_labelsIndex: ", type(test_labelsIndex), test_labelsIndex.size, test_labelsIndex.shape, test_labelsIndex[0])
-    print("Eval Helper: P_score: ", type(P_score), P_score.size, P_score.shape, P_score[0].shape, np.min(P_score[0]), np.mean(P_score[0]), np.max(P_score[0]))
-    print("Eval Helper: preds_probs: ", type(preds_probs), preds_probs.size, preds_probs.shape, preds_probs[0].shape)
-    print(np.min(preds_probs[0]), np.mean(preds_probs[0]), np.max(preds_probs[0]))
-    print("Eval Helper: bin_pred_labels_np: ", type(bin_pred_labels_np), bin_pred_labels_np.size, bin_pred_labels_np.shape, bin_pred_labels_np[0].shape)
-    print(np.min(bin_pred_labels_np[0]), np.mean(bin_pred_labels_np[0]), np.max(bin_pred_labels_np[0]))
+    # print("Eval Helper: test_labelsIndex: ", type(test_labelsIndex), test_labelsIndex.size, test_labelsIndex.shape, test_labelsIndex[0])
+    # print("Eval Helper: P_score: ", type(P_score), P_score.size, P_score.shape, P_score[0].shape, np.min(P_score[0]), np.mean(P_score[0]), np.max(P_score[0]))
+    # print("Eval Helper: preds_probs: ", type(preds_probs), preds_probs.size, preds_probs.shape, preds_probs[0].shape)
+    # print(np.min(preds_probs[0]), np.mean(preds_probs[0]), np.max(preds_probs[0]))
+    # print("Eval Helper: bin_pred_labels_np: ", type(bin_pred_labels_np), bin_pred_labels_np.size, bin_pred_labels_np.shape, bin_pred_labels_np[0].shape)
+    # print(np.min(bin_pred_labels_np[0]), np.mean(bin_pred_labels_np[0]), np.max(bin_pred_labels_np[0]))
 
     # flatten the matrix to a 1D array
-    flat_matrix = preds_probs.flatten()
+    # flat_matrix = preds_probs.flatten()
 
     # sort the array in descending order
-    sorted_matrix = np.sort(flat_matrix)[::-1]
+    # sorted_matrix = np.sort(flat_matrix)[::-1]
 
     # get the top 10th max values
-    top_10th_max = sorted_matrix[:int(len(sorted_matrix)*0.05)]
+    # top_10th_max = sorted_matrix[:int(len(sorted_matrix)*0.05)]
 
-    print("top_10th_max: ", top_10th_max)
+    # print("top_10th_max: ", top_10th_max)
     # print("Test 1: ", test_labelsIndex[0])
     # precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
     # print('p@k', precisions)
@@ -399,10 +399,22 @@ def main():
     print("Precision@3:", precision_3)
     print("Precision@5:", precision_5)
 
-    emb = example_based_evaluation(preds_probs, T_score, threshold, len(P_score))
+    y_pred_binary = (preds_probs >= 0.05).astype(int)
+    # print(y_pred_binary.shape, y_pred_binary[0])
+    emb = example_based_evaluation(y_pred_binary, T_score, len(P_score))
     print('(ebp, ebr, ebf): ', emb)
 
-    micro = micro_macro_eval(preds_probs, T_score, threshold)
+    c = [i for i, m in enumerate(y_pred_binary[0]) if m != 0]
+    # print("C: ", c, len(c))
+    print("Intersection: ", intersection(c,d))
+
+
+    precision = precision_score(T_score, y_pred_binary, average='samples')
+    recall = recall_score(T_score, y_pred_binary, average='samples')
+
+    print("precision, recall: ", precision, recall)
+
+    micro = micro_macro_eval(y_pred_binary, T_score, threshold)
     print('mi/ma(MiF, MiP, MiR, MaF, MaP, MaR): ', micro)
 
 

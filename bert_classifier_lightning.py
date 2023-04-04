@@ -54,17 +54,21 @@ class KenmeshClassifier(pl.LightningModule):
             param.requires_grad = False 
         embedding_dim = self.bert.config.hidden_size
         ksz = 5
-        self.dense_layer = nn.Linear(768, num_labels)
-        # self.cnn = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim , kernel_size=ksz, padding=0, dilation=1),
-        #                                 nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
-        #                                 nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
-        #                                 nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
-        #                                 nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=4),
-        #                                 nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
-        #                                 nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
-        #                                 nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
-        #                                 nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=1),
-        #                                 nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05))
+        # self.dense_layer = nn.Linear(768, num_labels)
+        self.cnn = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim , kernel_size=ksz, padding=0, dilation=2),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=4),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=8),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=16),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=8),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=4),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
+                                        nn.Conv1d(embedding_dim, embedding_dim, kernel_size=ksz, padding=0, dilation=2),
+                                        nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05))
         self.gcn = LabelNet(embedding_dim, embedding_dim, embedding_dim)
         # self.flatten = nn.Flatten(start_dim=1)
         # self.classifier=nn.Linear(768, 28415) 
@@ -115,7 +119,7 @@ class KenmeshClassifier(pl.LightningModule):
         # print("Pooler output: ", type(output), output.size()) 
         # print("Bert output: ", output)
         #CNN output should be: (bs, embed_dim*2, seq_len-ksz+1)
-        # output = self.cnn(output.permute(0,2,1)) # [1,768,1] # [16, 768, 500]
+        cnn_output = self.cnn(bert_output.permute(0,2,1)) # [1,768,1] # [16, 768, 500]
         # print("CNN output: ", type(output), output.size()) 
         # print("CNN output: ", output)
 
@@ -135,18 +139,18 @@ class KenmeshClassifier(pl.LightningModule):
         # output_masked = output.unsqueeze(0) * label_attn_mask.float().mean(dim=0, keepdim=True) # [1, 768, 28415]
         # [16, 768, 500] * [768, 28415]
 
-        dense_output = torch.matmul(bert_output, self.dense_layer.weight.t()) + self.dense_layer.bias  # dense layer
+        # dense_output = torch.matmul(bert_output, self.dense_layer.weight.t()) + self.dense_layer.bias  # dense layer
         # dense_output = dense_output.permute(0,2,1)
         # print("dense_output: ", dense_output.size()) # torch.Size([16, 512, 28415])
-        label_attn_mask = label_attn_mask.transpose(1, 2)  # transpose to shape [16, 28415, 768]
+        # label_attn_mask = label_attn_mask.transpose(1, 2)  # transpose to shape [16, 28415, 768]
         # print("label_attn_mask: ", label_attn_mask.size()) 
-        alpha = torch.softmax(torch.matmul(dense_output, label_attn_mask), dim=2)
+        # alpha = torch.softmax(torch.matmul(dense_output, label_attn_mask), dim=2)
         
-        # alpha = torch.softmax(torch.matmul(output.transpose(1, 2), label_attn_mask.float()), dim=1)
+        alpha = torch.softmax(torch.matmul(cnn_output.transpose(1, 2), label_attn_mask.float()), dim=1)
         # print("alpha output: ", type(alpha), alpha.size()) # [16, 500, 28415] [16,512,768]
         # print("Forward Alpha output: ", alpha)
         # print("Test 1: ", type(output), type(alpha))
-        output_features = torch.matmul(dense_output.transpose(1,2), alpha) # [16, 28415, 768]
+        output_features = torch.matmul(cnn_output, alpha).transpose(1, 2) # [16, 28415, 768]
         # print("output_features", output_features.size()) # torch.Size([16, 768, 28415])
         # print("Forward Output features: ", output_features)
         x_feature = torch.sum(output_features * label_feature, dim=2) # [16, 28415]

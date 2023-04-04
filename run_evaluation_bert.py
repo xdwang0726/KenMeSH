@@ -210,7 +210,7 @@ def main():
     # checkpoint_callback = pickle.load(open('checkpoint.pkl', 'rb'))
     # model_path = checkpoint_callback.best_model_path
     # Inittialising Bert Classifier Model
-    model = KenmeshClassifier(n_classes=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
+    model = KenmeshClassifier(num_labels=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
 
     # checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=09-val_loss=0.01.ckpt')
     # model.load_state_dict(checkpoint['state_dict'])
