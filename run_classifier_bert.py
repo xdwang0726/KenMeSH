@@ -61,6 +61,48 @@ def split_train_test_val(texts, labels, mesh_masks, test_size = 0.1):
     
     return text_train, label_train, mesh_mask_train, text_test, label_test, mesh_mask_test
 
+def load_dataset(graph_file, device):
+    print("Loading data...")
+
+    text_train = pickle.load(open("text_train_full.pkl", 'rb'))
+    label_train = pickle.load(open("label_train_full.pkl", 'rb'))
+    mesh_mask_train = pickle.load(open("mesh_mask_train_full.pkl", 'rb'))
+
+    text_test = pickle.load(open("text_test_full.pkl", 'rb'))
+    label_test = pickle.load(open("label_test_full.pkl", 'rb'))
+    mesh_mask_test = pickle.load(open("mesh_mask_test_full.pkl", 'rb'))
+
+    text_val = pickle.load(open("text_val_full.pkl", 'rb'))
+    label_val = pickle.load(open("label_val_full.pkl", 'rb'))
+    mesh_mask_val = pickle.load(open("mesh_mask_val_full.pkl", 'rb'))
+
+    print("Data Load Done...")
+
+    n_classes = len(mesh_mask_train[0][0])
+
+    print("n_classes: ", n_classes)
+
+    print('Loading graph...')
+    G = load_graphs(graph_file)[0][0]
+
+    print("Batch size: ", BATCH_SIZE)
+    steps_per_epoch = len(text_train)//BATCH_SIZE
+
+    # Instantiate and set up the data_module
+    Bert_tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
+
+    kenmesh_data_Module = KenmeshDataModule(text_train, label_train, mesh_mask_train,\
+         text_val, label_val, mesh_mask_val, text_test, label_test, mesh_mask_test, Bert_tokenizer,\
+          device, G, G.ndata['feat'], BATCH_SIZE, MAX_LEN)
+    kenmesh_data_Module.setup()
+
+
+
+    print('prepare dataset and labels graph done!')
+    # return len(meshIDs), mlb, train_dataset, valid_dataset, vectors, G
+    # return text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val, text_test, label_test, mesh_mask_test
+    return kenmesh_data_Module, steps_per_epoch, n_classes
+
 def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
     """ Load Dataset and Preprocessing """
     
@@ -141,21 +183,21 @@ def prepare_dataset(dataset_path, MeSH_id_pair_file, graph_file, device):
 
     # First Split for Train and Test
     text_train, label_train, mesh_mask_train, text_test, label_test, mesh_mask_test = split_train_test_val(texts, yt, mesh_mask, test_size = 0.2)
-    text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val = split_train_test_val(text_train, label_train, mesh_mask_train, test_size = 0.2)
+    text_train, label_train, mesh_mask_train, text_val, label_val, mesh_mask_val = split_train_test_val(text_train, label_train, mesh_mask_train, test_size = 0.02)
     
     # print("text_test, label_test, mesh_mask_test: ", text_test, label_test, mesh_mask_test)
     # Saving test dataset to pickle for using in evaluation
-    pickle.dump(text_train, open("text_train_full.pkl", 'wb'))
-    pickle.dump(label_train, open("label_train_full.pkl", 'wb'))
-    pickle.dump(mesh_mask_train, open("mesh_mask_train_full.pkl", 'wb'))
+    # pickle.dump(text_train, open("text_train_full.pkl", 'wb'))
+    # pickle.dump(label_train, open("label_train_full.pkl", 'wb'))
+    # pickle.dump(mesh_mask_train, open("mesh_mask_train_full.pkl", 'wb'))
 
     pickle.dump(text_test, open("text_test_full.pkl", 'wb'))
     pickle.dump(label_test, open("label_test_full.pkl", 'wb'))
     pickle.dump(mesh_mask_test, open("mesh_mask_test_full.pkl", 'wb'))
 
-    pickle.dump(text_val, open("text_val_full.pkl", 'wb'))
-    pickle.dump(label_val, open("label_val_full.pkl", 'wb'))
-    pickle.dump(mesh_mask_val, open("mesh_mask_val_full.pkl", 'wb'))
+    # pickle.dump(text_val, open("text_val_full.pkl", 'wb'))
+    # pickle.dump(label_val, open("label_val_full.pkl", 'wb'))
+    # pickle.dump(mesh_mask_val, open("mesh_mask_val_full.pkl", 'wb'))
 
     print("-"*10, "pickle data dumpled", "-"*10)
 
@@ -196,7 +238,7 @@ def main():
     # environment
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--nKernel', type=int, default=768) # Changed here for embed dimension
-    parser.add_argument('--ksz', default=5)
+    parser.add_argument('--ksz', type=int, default=5)
     parser.add_argument('--hidden_gcn_size', type=int, default=768) # Changed here for embed dimension
     parser.add_argument('--embedding_dim', type=int, default=768) # Changed here for embed dimension
     parser.add_argument('--dropout', type=float, default=0.2)
@@ -230,9 +272,11 @@ def main():
     num_epochs = args.num_epochs
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes= prepare_dataset(args.dataset_path, args.meSH_pair_path, args.graph, device)
+    # kenmesh_data_Module, steps_per_epoch, n_classes= load_dataset(args.graph, device)
     
+
     # Inittialising Bert Classifier Model
-    model = KenmeshClassifier(num_labels=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=num_epochs, lr=args.lr)
+    model = KenmeshClassifier(num_labels=n_classes, ksz=args.ksz, steps_per_epoch=steps_per_epoch, n_epochs=num_epochs, lr=args.lr)
     
     model.to(device)
    
@@ -247,10 +291,21 @@ def main():
     )
 
     # Instantiate the Model Trainer
-    trainer = pl.Trainer(max_epochs = num_epochs , devices = 1, accelerator='gpu', callbacks=[EarlyStopping(monitor="val_loss", mode="max"), checkpoint_callback])
-    # trainer = pl.Trainer(max_epochs = N_EPOCHS , devices = 1, accelerator='gpu', profiler="simple", callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
+    trainer = pl.Trainer(max_epochs = num_epochs , devices = 1, accelerator='gpu', callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=3), checkpoint_callback])
+    
+    # trainer with more configurations:
+    # trainer = pl.Trainer(max_epochs = N_EPOCHS , precision=32, auto_scale_batch_size='binsearch', devices = 1, accelerator='gpu', profiler="simple", callbacks=[EarlyStopping(monitor="val_loss", mode="min"), checkpoint_callback])
+    
     # print("Best checkpoint path: ", checkpoint_callback.best_model_path)
     # pickle.dump(checkpoint_callback.best_model_path, open("checkpoint.pkl", "wb"))
+
+    # For optimal learning rate: 
+    # lr_finder = trainer.tuner.lr_find(model, 
+    #                     min_lr=0.0005, 
+    #                     max_lr=0.005,
+    #                     mode='linear')
+    # model.learning_rate = lr_finder.suggestion()
+    # trainer.tune(model) # for optimal batch size
 
     # Train the Classifier Model
     print("Training...")

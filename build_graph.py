@@ -482,10 +482,10 @@ def main():
         edge, node_count, label_embedding = get_edge_and_bert_node_fatures(args.meSH_pair_path, args.meSH_description_path, args.mesh_parent_children_path, tokenizer, model)
         G = build_MeSH_graph(edge, node_count, label_embedding)
     else:
-        # print('Load pre-trained vectors')
-        # cache, name = os.path.split(args.word2vec_path)
-        # print(f"cache: {cache}, name: {name}")
-        # vectors = Vectors(name=name, cache=cache)
+        print('Load pre-trained vectors')
+        cache, name = os.path.split(args.word2vec_path)
+        print(f"cache: {cache}, name: {name}")
+        vectors = Vectors(name=name, cache=cache)
         if args.graph_type == 'GCN':
             edges, node_count, label_embedding = get_edge_and_node_fatures(args.meSH_pair_path, args.meSH_description_path, args.mesh_parent_children_path,
                                                                            [], args.bert)

@@ -9,6 +9,7 @@ data/
 *.json
 *.pkl
 *.txt
+!requirements.txt
 *.csv
 *.w2v
 *.pt

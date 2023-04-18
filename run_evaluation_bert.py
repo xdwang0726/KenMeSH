@@ -200,9 +200,9 @@ def main():
     print('Device:{}'.format(device))
 
     # Loading Test Dataset
-    text_test = pickle.load(open("text_test.pkl", 'rb'))
-    label_test = pickle.load(open("label_test.pkl", 'rb'))
-    mesh_mask_test = pickle.load(open("mesh_mask_test.pkl", 'rb'))
+    text_test = pickle.load(open("text_test_full.pkl", 'rb'))
+    label_test = pickle.load(open("label_test_full.pkl", 'rb'))
+    mesh_mask_test = pickle.load(open("mesh_mask_test_full.pkl", 'rb'))
 
     # Get dataset and label graph & Load pre-trained embeddings
     kenmesh_data_Module, steps_per_epoch, n_classes, G= prepare_dataset(text_test, label_test, mesh_mask_test, args.meSH_pair_path, args.graph, device)
@@ -248,8 +248,8 @@ def main():
     # print("predicted_labels: ", type(predicted_labels), len(predicted_labels), predicted_labels)
     # print("true_labels: ", type(true_labels), len(true_labels), true_labels)
     # np.save("pred2", predicted_labels)
-    torch.save(predicted_labels, "pred2")  
-    torch.save(true_labels, "true_label2")  
+    torch.save(predicted_labels, "pred")  
+    torch.save(true_labels, "true_label")  
     # print("pred and true labels saved")
     # evaluation(predicted_label_features, true_labels)
 
