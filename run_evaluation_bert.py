@@ -72,7 +72,7 @@ def prepare_dataset(text_test, label_test, mesh_mask_test, MeSH_id_pair_file, gr
     kenmesh_data_Module = KenmeshDataModule([], [], [],\
          [], [], [], text_test, label_test, mesh_mask_test, Bert_tokenizer,\
           device, G, G.ndata['feat'], BATCH_SIZE, MAX_LEN)
-    print("Big Print: ", kenmesh_data_Module.get_test_data())
+    # print("Big Print: ", kenmesh_data_Module.get_test_data())
 
 
 
@@ -212,9 +212,9 @@ def main():
     # Inittialising Bert Classifier Model
     model = KenmeshClassifier(num_labels=n_classes, steps_per_epoch=steps_per_epoch, n_epochs=N_EPOCHS, lr=LR)
 
-    # checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_250/checkpoints/QTag-epoch=09-val_loss=0.01.ckpt')
-    # model.load_state_dict(checkpoint['state_dict'])
-    model.load_state_dict(torch.load(args.model))
+    checkpoint = torch.load('/KenMeSH-master/lightning_logs/version_439/checkpoints/QTag-epoch=19-val_loss=0.00.ckpt')
+    model.load_state_dict(checkpoint['state_dict'])
+    # model.load_state_dict(torch.load(args.model))
 
     # model.load_state_dict(torch.load(model_path))
 
@@ -248,8 +248,8 @@ def main():
     # print("predicted_labels: ", type(predicted_labels), len(predicted_labels), predicted_labels)
     # print("true_labels: ", type(true_labels), len(true_labels), true_labels)
     # np.save("pred2", predicted_labels)
-    torch.save(predicted_labels, "pred2")  
-    torch.save(true_labels, "true_label2")  
+    torch.save(predicted_labels, "pred100")  
+    torch.save(true_labels, "true_label100")  
     # print("pred and true labels saved")
     # evaluation(predicted_label_features, true_labels)
 

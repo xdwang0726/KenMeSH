@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader, random_split
 import logging
 from check_label import get_index_to_meshid
 
+from threshold import *
+
 def zero_division(x, y):
     try:
         return x / y
@@ -18,7 +20,6 @@ def zero_division(x, y):
 
 def intersection(lst1, lst2):
     return list(set(lst1) & set(lst2))
-
 
 def precision(p, t):
     """
@@ -86,10 +87,33 @@ def precision_at_k(y_true, y_pred, k):
     for i in range(n_samples):
         true_labels = y_true[i]
         pred_labels = y_pred[i]
-        sorted_indices = np.argsort(pred_labels)[::-1] # sort in descending order
-        top_k = sorted_indices[:k]
-        correct_labels = np.sum(true_labels[top_k])
-        precision += correct_labels / k
+        # sorted_indices = np.argsort(pred_labels)[::-1] # sort in descending order
+        # top_k = sorted_indices[:k]
+        unique_values = set(pred_labels)  # Get the unique values in the list
+        sorted_values = sorted(unique_values, reverse=True)  # Sort the unique values in descending order
+        # print(sorted_values)
+        top_predicted_scores = sorted_values[:k]  # Get the top 3 values
+        # print("tok_p: ", top_k)
+        c = [i for i, m in enumerate(true_labels) if m != 0]
+        d = [pred_labels[i] for i in c]
+        e = []
+        for prediction_score in top_predicted_scores:
+            # print("k : ", k)
+            for i, m in enumerate(pred_labels):
+                if m == prediction_score:
+                    # print("(i,m): ", (i,m))
+                    e.append(i)
+
+        # print("top_k_before: ", top_k)
+        correct_labels = intersection(c,e)
+        top_k = []
+        if correct_labels:
+            top_k = correct_labels[:k]
+        # print(f"c: {c},\n d: {d}, \n e: {e}, correct_labels: {correct_labels}")
+        # print("top_k: ", top_k, pred_labels[top_k], true_labels[top_k])
+        correct_labels_sum = len(top_k)
+        print("correct_labels: ", correct_labels)
+        precision += correct_labels_sum / k
     precision /= n_samples
     return precision
 
@@ -262,7 +286,7 @@ def find_common_label(y_actual, y_hat):
 # """
 
 
-def example_based_evaluation(pred, target, num_example):
+def example_based_evaluation(pred, target, num_example, n_pred):
     # pt = [(i,m) for i, m in enumerate(pred[0]) if m > 4.1633608e-05]
     # pred = np.greater_equal(pred, threshold).astype(int)
     # p = [(i,m) for i, m in enumerate(pred[0]) if m != 0]
@@ -272,7 +296,7 @@ def example_based_evaluation(pred, target, num_example):
     # print(" pred count: ", [m for m in pred[0] if m != 0])
 
     common_label = np.sum(np.multiply(pred, target), axis=1)
-    sum_pred = np.sum(pred, axis=1)
+    sum_pred = n_pred
     print("common_label: ", common_label)
     print("sum_pred: ", sum_pred)
     sum_true = np.sum(target, axis=1)
@@ -335,7 +359,7 @@ def flatten(l):
 def main():
     # label_test = pickle.load(open("label_test.pkl", 'rb'))
     # label_test = np.array(label_test)
-    P_score = torch.load("pred2")
+    P_score = torch.load("pred")
     P_score = np.concatenate(P_score, axis=0) # 3d -> 2d array
 
     probsss = 1 / (1 + np.exp(P_score))
@@ -354,13 +378,12 @@ def main():
     bin_pred_labels_np = bin_pred_labels.numpy()
 
     # print("Pred load done", type(P_score), P_score)
-    T_score = torch.load('true_label2')
+    T_score = torch.load('true_label')
     T_score = np.concatenate(T_score, axis=0)
     # T_score = T.numpy()
     # print("T_score", type(T_score), len(T_score), T_score, T_score.shape)
     # print("P_score", type(P_score), len(P_score), P_score, P_score.shape)
     # print("Label test load done", type(label_test), len(label_test), label_test, label_test.shape)
-    threshold = np.array([1.6170531e-04] * 28415)
 
     # c = [i for i, m in enumerate(T_score[0]) if m != 0]
     # print("C: ", c)
@@ -392,16 +415,28 @@ def main():
     # precisions = precision_at_ks(P_score, test_labelsIndex, ks=[1, 3, 5])
     # print('p@k', precisions)
 
+    _N = len(T_score[1]) # num of class
+    _n = len(T_score) # num of test data
+
+    # threshold = get_threshold(_N, _n, P_score, T_score)
+
+    # print(threshold, _N, _n)
+
     precision_1 = precision_at_k(T_score, P_score, 1)
     precision_3 = precision_at_k(T_score, P_score, 3)
     precision_5 = precision_at_k(T_score, P_score, 5)
     print("Precision@1:", precision_1)
     print("Precision@3:", precision_3)
     print("Precision@5:", precision_5)
-
-    y_pred_binary = (preds_probs >= 0.05).astype(int)
-    # print(y_pred_binary.shape, y_pred_binary[0])
-    emb = example_based_evaluation(y_pred_binary, T_score, len(P_score))
+    T = 0.0005
+    threshold = np.array([T] * 28415)
+    uniq_pred = np.unique(preds_probs[0])
+    n_pred = len([m for m in uniq_pred if m > T]) 
+    y_pred_binary = (preds_probs >= T).astype(int)
+    print(y_pred_binary.shape, y_pred_binary[0], np.count_nonzero(y_pred_binary[0] > 0))
+    # aa = [(i,m) for i,m in enumerate(y_pred_binary) if m > 0]
+    # print("aa: ", aa, len(aa))
+    emb = example_based_evaluation(y_pred_binary, T_score, len(P_score), n_pred)
     print('(ebp, ebr, ebf): ', emb)
 
     c = [i for i, m in enumerate(y_pred_binary[0]) if m != 0]

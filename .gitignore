@@ -9,6 +9,7 @@ data/
 *.json
 *.pkl
 *.txt
+!requirements.txt
 *.csv
 *.w2v
 *.pt
@@ -36,3 +37,6 @@ model1006
 model1007
 model1008
 model1009
+pred100
+true_label100
+QTag-epoch=12-val_loss=0.01.ckpt

@@ -46,14 +46,13 @@ class LabelNet(nn.Module):
     
 class KenmeshClassifier(pl.LightningModule):
     # Set up the classifier
-    def __init__(self, num_labels=28415,steps_per_epoch=None,n_epochs=3, lr=2e-5):
+    def __init__(self, num_labels=28415, steps_per_epoch=None, ksz=5, n_epochs=3, lr=2e-5):
         super().__init__()
 
         self.bert=BertModel.from_pretrained(BERT_MODEL_NAME, return_dict=True, output_hidden_states = True)
         for param in self.bert.parameters():
             param.requires_grad = False 
         embedding_dim = self.bert.config.hidden_size
-        ksz = 5
         # self.dense_layer = nn.Linear(768, num_labels)
         self.cnn = nn.Sequential(nn.Conv1d(embedding_dim, embedding_dim , kernel_size=ksz, padding=0, dilation=1),
                                         nn.BatchNorm1d(embedding_dim), nn.SELU(), nn.AlphaDropout(p=0.05),
